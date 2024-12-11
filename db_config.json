@@ -1,0 +1,9 @@
+{
+  "username": "BANINST1",
+  "password": "Bnn3R02_2020",
+  "host": "t10oradbdev03.uvmnet.edu",
+  "port": "1521",
+  "service_name": "t10devld_dev_phx",
+  "environment": "dev",
+  "schema": "BANINST1"
+}
