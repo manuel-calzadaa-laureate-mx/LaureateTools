@@ -1,0 +1,10 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+/laureateTools.iml
+/.idea/
+/banner7/phase_one/src/
+/banner7/*.out
+/banner7/*.csv
+/*.json
+/banner7/phase_one/*.csv
