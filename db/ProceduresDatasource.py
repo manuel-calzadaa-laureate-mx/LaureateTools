@@ -39,7 +39,7 @@ def query_all_procedures_by_package(connection, package):
     return procedures
 
 
-def query_all_procedures_by_owner_and_list_of_procedures(connection, owner, list_of_procedures):
+def query_all_procedures_by_owner_and_list_of_procedures(connection: cx_Oracle.Connection, owner : str, list_of_procedures: [str]):
     """
     Query the ALL_PROCEDURES table to get procedures for the given owner and procedure.
     """

@@ -6,7 +6,9 @@ import re
 import cx_Oracle
 
 from db.OracleDatabaseTools import get_connection, is_oracle_built_in_object
-from db.ProcedureTools import query_all_procedures_by_owner_and_package, extract_object_source_code
+from db.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
+from db.TablesDatasource import fetch_table_columns_for_tables, fetch_table_attributes_for_tables, \
+    fetch_column_comments_for_tables, fetch_indexes_for_tables
 from tools.BusinessRulesTools import is_custom_table
 from tools.PatternMatchingTools import extract_select_tables, extract_update_tables, extract_delete_tables, \
     extract_type_declarations, extract_insert_tables, exclude_insert_into_not_functions, \
@@ -242,6 +244,37 @@ def export_data_to_object_json(input_filename: str, output_filename: str) -> Non
 
     print(f'Successfully converted {input_filename} to {output_filename}')
 
+def extract_attributes_from_tables(connection: cx_Oracle.Connection, table_names: [str]):
+    """
+    Generate a JSON file containing metadata for given tables across all accessible schemas.
+
+    :param connection:
+    :param table_names: List of table names (e.g., ["SZTBLAN", "ANOTHER_TABLE"])
+    :param output_file: The output file to save the generated JSON
+    """
+
+    # Fetch metadata
+    columns = fetch_table_columns_for_tables(connection, table_names)
+    attributes = fetch_table_attributes_for_tables(connection, table_names)
+    comments = fetch_column_comments_for_tables(connection, table_names)
+    indexes = fetch_indexes_for_tables(connection, table_names)
+
+    # Construct JSON structure
+    table_metadata = []
+    for schema in columns.keys():
+        for table_name in columns[schema].keys():
+            table_entry = {
+                "name": table_name,
+                "type": "TABLE",
+                "owner": schema,
+                "columns": columns[schema].get(table_name, []),
+                "attributes": attributes[schema].get(table_name, {}),
+                "comments": comments[schema].get(table_name, {}),
+                "indexes": indexes[schema].get(table_name, [])
+            }
+            table_metadata.append(table_entry)
+
+    return json.dumps(table_metadata, indent=4)
 
 if __name__ == "__main__":
     config_file = '../db_config.json'  # JSON file containing db credentials
