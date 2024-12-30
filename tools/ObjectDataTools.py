@@ -50,10 +50,14 @@ def append_metadata_to_json(input_file, environment, metadata_json):
     with open(input_file, "r") as file:
         data = json.load(file)
 
+    new_metadata = json.loads(metadata_json)
+
     # Find the correct environment and append metadata
     for env in data.get("root", []):
         if env.get("environment") == environment:
-            env["objects"].append(json.loads(metadata_json))
+            env_objects = env.get("objects", [])
+            env_objects.extend(new_metadata)
+            env["objects"] = env_objects
             break
 
     # Write back to the file

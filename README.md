@@ -18,12 +18,12 @@ This consist in several use phases:
 ## Phase Two - Build dependencies scripts
 
 ### Tables
-[] Find the elements of each custom table
-[] Create a json file with each table's elements
+[x] Find the elements of each custom table
+[x] Create a json file with each table's elements
 
 ### Sequences
-[] Find the elements of each sequence
-[] Create a json file with each sequence's element
+[x] Find the elements of each sequence
+[x] Create a json file with each sequence's element
 
 ## Phase Three - Migration
 
