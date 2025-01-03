@@ -1,24 +1,28 @@
 import json
+
 import cx_Oracle
 
+from database.DatabaseProperties import DatabaseEnvironment
+
+
 def _load_config(config_file):
-    """Load db configuration from a JSON file."""
+    """Load database configuration from a JSON file."""
     with open(config_file, 'r') as file:
         return json.load(file)
 
-def _get_config_for_database(configs, database_name):
+def _get_config_for_database(configs, database_name: DatabaseEnvironment):
     """Retrieve the config for a specific database name."""
     for entry in configs:
-        if entry['databaseName'] == database_name:
+        if entry['databaseName'].upper() == database_name.name:
             return entry['config']
-    raise ValueError(f"Database '{database_name}' not found in configurations.")
+    raise ValueError(f"Database '{database_name.name}' not found in configurations.")
 
 
 def _build_connection_string(config):
     """Construct the Oracle connection string from configuration."""
     return f"{config['username']}/{config['password']}@{config['host']}:{config['port']}/{config['service_name']}"
 
-def get_connection(config_file : str, database_name: str) -> cx_Oracle.Connection:
+def get_connection(config_file : str, database_name: DatabaseEnvironment) -> cx_Oracle.Connection:
     configs = _load_config(config_file)
     database_config = _get_config_for_database(configs, database_name)
     connection_config = _build_connection_string(database_config)

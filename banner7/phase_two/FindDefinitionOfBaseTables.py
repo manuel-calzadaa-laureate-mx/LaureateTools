@@ -8,12 +8,13 @@ if __name__ == "__main__":
     object_data = "../../object_data.json"
 
     unique_tables = extract_unique_tables_from_procedure_and_function_dependencies(input_file_name=object_data,
-                                                                                   environment=DatabaseEnvironment.BANNER7)
+                                                                                   environment=DatabaseEnvironment.BANNER7,
+                                                                                   is_custom=False)
 
     if unique_tables:
         connection = get_connection("../../db_config.json", DatabaseEnvironment.BANNER7)
         json_attributes_from_tables = extract_attributes_from_tables(connection, unique_tables)
-        add_new_object_element_to_object_data_file(input_file=object_data, environment=DatabaseEnvironment.BANNER7,
-                                                   metadata_json=json_attributes_from_tables)
+        add_new_object_element_to_object_data_file(object_data, DatabaseEnvironment.BANNER7,
+                                                   json_attributes_from_tables)
     else:
-        print("No unique custom tables found. Skipping database operations.")
+        print("No unique base tables found. Skipping database operations.")

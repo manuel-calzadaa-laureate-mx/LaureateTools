@@ -20,7 +20,6 @@ def fetch_attributes_for_sequences(connection, sequence_names):
             ALL_SEQUENCES
         WHERE SEQUENCE_NAME IN ({})
     """.format(",".join([f"'{name}'" for name in sequence_names]))
-
     cursor.execute(query)
 
     sequences = [{

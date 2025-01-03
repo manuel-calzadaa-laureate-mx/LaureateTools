@@ -67,18 +67,19 @@ def query_all_procedures_by_owner_and_list_of_procedures(connection: cx_Oracle.C
     return procedures
 
 
-def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, package: str, procedure: str):
+def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, package: str, procedure: str, function: str):
     """
     Extracts the source code of a procedure or a package body from the ALL_SOURCE table.
 
     Args:
-        connection (cx_Oracle.Connection): Oracle db connection.
+        connection (cx_Oracle.Connection): Oracle database connection.
         owner (str): The owner of the object.
         package (str): The package name (optional).
         procedure (str): The procedure name.
 
     Returns:
         str: The concatenated source code.
+        :param function:
     """
     cursor = connection.cursor()
 
@@ -94,7 +95,7 @@ def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, pac
             ORDER BY LINE
         """
         cursor.execute(query, {'owner': owner, 'package': package})
-    else:
+    elif procedure:
         # Query for standalone procedure
         query = """
             SELECT TEXT
@@ -106,6 +107,18 @@ def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, pac
             ORDER BY LINE
         """
         cursor.execute(query, {'owner': owner, 'procedure': procedure})
+    elif function:
+        # Query for standalone function
+        query = """
+            SELECT TEXT
+            FROM ALL_SOURCE
+            WHERE OWNER = :owner
+              AND TYPE = 'FUNCTION'
+              AND NAME = :function
+              AND length(trim(ALL_SOURCE.TEXT)) > 1
+            ORDER BY LINE
+        """
+        cursor.execute(query, {'owner': owner, 'function': function})
 
     rows = cursor.fetchall()
     source_code = [row[0] for row in rows]

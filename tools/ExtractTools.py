@@ -1,29 +1,29 @@
 import csv
 import json
+import logging
 import os
-import re
-
 import cx_Oracle
 
-from db.OracleDatabaseTools import get_connection, is_oracle_built_in_object
-from db.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
-from db.TablesDatasource import fetch_table_columns_for_tables, fetch_table_attributes_for_tables, \
+from database.OracleDatabaseTools import get_connection, is_oracle_built_in_object
+from database.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
+from database.TablesDatasource import fetch_table_columns_for_tables, fetch_table_attributes_for_tables, \
     fetch_column_comments_for_tables, fetch_indexes_for_tables
 from tools.BusinessRulesTools import is_custom_table
 from tools.PatternMatchingTools import extract_select_tables, extract_update_tables, extract_delete_tables, \
-    extract_type_declarations, extract_insert_tables, exclude_insert_into_not_functions, \
-    exclude_procedure_not_functions, extract_sequences
+    extract_type_declarations, extract_insert_tables, extract_sequences, extract_local_functions, \
+    extract_functions
 from tools.ScriptTools import clean_comments_and_whitespace
 
+logging.basicConfig(level=logging.INFO)
 
-def find_procedures_from_csv_file(input_file: str, output_file: str, connection: cx_Oracle.Connection):
+def find_missing_procedures_from_csv_file(input_file: str, output_file: str, connection: cx_Oracle.Connection):
     """
     Read the input CSV, query missing procedures, and generate a new CSV.
     """
     with open(input_file, mode='r') as infile, open(output_file, mode='w', newline='') as outfile:
         reader = csv.reader(infile)
         writer = csv.writer(outfile)
-        writer.writerow(['Owner', 'Package', 'Procedure'])  # Write header
+        writer.writerow(['Owner', 'Package', 'Procedure', 'Function'])  # Write header
 
         for row in reader:
             owner = row[0].strip()
@@ -34,9 +34,9 @@ def find_procedures_from_csv_file(input_file: str, output_file: str, connection:
                 # Query missing procedures
                 procedures = query_all_procedures_by_owner_and_package(connection, owner, package)
                 for proc in procedures:
-                    writer.writerow([owner, package, proc])
+                    writer.writerow([owner, package, proc, ""])
             else:
-                writer.writerow([owner, package, procedure])
+                writer.writerow([owner, package, procedure, ""])
 
 
 def extract_source_code_from_procedures(connection: cx_Oracle.Connection, input_file: str, output_dir: str):
@@ -44,42 +44,74 @@ def extract_source_code_from_procedures(connection: cx_Oracle.Connection, input_
     Process the source code extraction for each row in the input CSV.
 
     Args:
+        connection (cx_Oracle.Connection): Oracle DB connection.
         input_file (str): Path to the input CSV file.
-        connection (cx_Oracle.Connection): Oracle db connection.
-        :param input_file:
-        :param connection:
-        :param output_dir:
+        output_dir (str): Path to the directory where the output files will be saved.
     """
     # Ensure output directories exist
     os.makedirs(output_dir, exist_ok=True)
 
+    # Read input CSV file and process each row
     with open(input_file, mode='r', encoding='utf-8') as infile:
         reader = csv.DictReader(infile)
 
         for row in reader:
-            owner = row['Owner'].strip()
-            package = row['Package'].strip() if row['Package'] else None
-            procedure = row['Procedure'].strip()
+            try:
+                # Extract data from the row
+                owner = row['Owner'].strip()
+                package = row['Package'].strip() if row['Package'] else None
+                procedure = row['Procedure'].strip()
+                function = row['Function'].strip() if row['Function'] else None
 
-            # Extract the source code
-            source_code_lines = extract_object_source_code(connection, owner, package, procedure)
-            print("Procesando: ", owner, package, procedure)
+                # Log the processing details
+                logging.info(f"Processing: Owner={owner}, Package={package}, Procedure={procedure}, Function={function}")
 
-            # Prepare the output file path
-            output_file_path = os.path.join(output_dir, f"{procedure}.sql")
+                # Extract the source code for the object (procedure/function)
+                source_code_lines = extract_object_source_code(connection, owner, package, procedure, function)
 
-            if package:
-                # Find specific procedure or function source code
-                specific_source_code = find_object_source_code(source_code_lines, procedure)
-                with open(output_file_path, 'w', encoding='utf-8') as outfile:
-                    outfile.writelines(specific_source_code)  # Write the procedure's code to file
-            else:
-                # If not a package, write the entire source code to the file
-                with open(output_file_path, 'w', encoding='utf-8') as outfile:
-                    outfile.writelines(source_code_lines)
+                # Determine the output file path based on function or procedure
+                if function:
+                    output_file_path = os.path.join(output_dir, f"{function}.sql")
+                else:
+                    output_file_path = os.path.join(output_dir, f"{procedure}.sql")
+
+                # Write the source code to the output file
+                write_source_code_to_file(source_code_lines, package, procedure, function, output_file_path)
+
+            except Exception as e:
+                logging.error(f"Error processing row: {row}, Error: {e}")
+
+def write_source_code_to_file(source_code_lines, package, procedure, function, output_file_path):
+    """
+    Writes the source code to the specified file, based on whether it's a procedure or function in a package or standalone.
+
+    Args:
+        source_code_lines (str): The source code lines to write.
+        package (str): The package name, if applicable.
+        procedure (str): The procedure name, if applicable.
+        function (str): The function name, if applicable.
+        output_file_path (str): The output file path.
+    """
+    if package:
+        # If part of a package, extract specific code (function or procedure)
+        if procedure:
+            specific_source_code = extract_specific_object_source_code_from_package_body(source_code_lines, procedure)
+        elif function:
+            specific_source_code = extract_specific_object_source_code_from_package_body(source_code_lines, function)
+        else:
+            specific_source_code = source_code_lines  # If no specific procedure or function, use full code
+
+    else:
+        # Not part of a package, write the entire source code
+        specific_source_code = source_code_lines
+
+    # Write the source code to the file
+    with open(output_file_path, 'w', encoding='utf-8') as outfile:
+        outfile.writelines(specific_source_code)
+        logging.info(f"Source code written to: {output_file_path}")
 
 
-def find_object_source_code(source_code_lines: str, procedure_name: str):
+def extract_specific_object_source_code_from_package_body(source_code_lines: str, procedure_name: str):
     """
     Extract the source code for a specific procedure or function from the given package source.
 
@@ -115,7 +147,7 @@ def find_object_source_code(source_code_lines: str, procedure_name: str):
     return procedure_code
 
 
-def extract_dependencies_from_source_code_by_whole_file(source_code_lines) -> dict:
+def extract_dependencies_from_source_code_by_whole_file(source_code_lines: [str], object_type: str) -> dict:
     source_code = clean_comments_and_whitespace(source_code_lines)
 
     # Find all tables
@@ -125,16 +157,17 @@ def extract_dependencies_from_source_code_by_whole_file(source_code_lines) -> di
     delete_tables = extract_delete_tables(source_code)
     type_tables = extract_type_declarations(source_code)
 
-    # Find all functions
-    function_pattern = re.compile(r"\b([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
-    exclude_insert_tables = exclude_insert_into_not_functions(source_code)
-    exclude_procedure_names = exclude_procedure_not_functions(source_code)
+    # Find all global functions
+    all_functions = extract_functions(source_code)
+    local_functions = extract_local_functions(source_code)
+
+    # Find all procedures
 
     functions = set(
-        match.group(1) for match in function_pattern.finditer(source_code)
-        if
-        not is_oracle_built_in_object(match.group(1)) and match.group(1) not in exclude_insert_tables and match.group(
-            1) not in exclude_procedure_names
+        {function
+         for function in all_functions
+         if not is_oracle_built_in_object(function) and
+         function not in local_functions}
     )
 
     # Find all sequences
@@ -142,16 +175,17 @@ def extract_dependencies_from_source_code_by_whole_file(source_code_lines) -> di
 
     # Combine all unique table names
     all_tables = set(select_tables + insert_tables + update_tables + delete_tables + type_tables)
-    user_defined_tables = {table for table in all_tables if not is_oracle_built_in_object(table)}
+    user_defined_tables = {table.upper() for table in all_tables if not is_oracle_built_in_object(table)}
 
     return {
         "TABLE": sorted(user_defined_tables),
         "FUNCTION": sorted(functions),
+        "LOCAL_FUNCTION": sorted(local_functions),
         "SEQUENCE": sorted(sequences)
     }
 
 
-def process_source_folder(source_folder: str, output_csv: str):
+def read_source_code_folder_and_find_all_dependencies(source_folder: str, output_csv: str):
     """
     Process all SQL files in a source folder, extract their dependencies, and write the results to a CSV file.
 
@@ -178,7 +212,7 @@ def process_source_folder(source_folder: str, output_csv: str):
                 object_type = "PROCEDURE" if "PROCEDURE" in source_code_lines[0].upper() else "FUNCTION"
 
                 # Extract dependencies for the object
-                dependencies_map = extract_dependencies_from_source_code_by_whole_file(source_code_lines)
+                dependencies_map = extract_dependencies_from_source_code_by_whole_file(source_code_lines, object_type)
                 # Write the dependencies to the CSV
                 for dep_type, dep_names in dependencies_map.items():
                     for dep_name in dep_names:
@@ -230,8 +264,10 @@ def export_data_to_object_json(input_filename: str, output_filename: str) -> Non
                     objects_dict[obj_name]["dependencies"]["tables"].append({"name": dep_name, "custom": True})
                 else:
                     objects_dict[obj_name]["dependencies"]["tables"].append({"name": dep_name, "custom": False})
+            elif dep_type == "LOCAL_FUNCTION":
+                objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name, "local": True})
             elif dep_type == "FUNCTION":
-                objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name})
+                objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name, "local": False})
             elif dep_type == "SEQUENCE":
                 objects_dict[obj_name]["dependencies"]["sequences"].append({"name": dep_name})
 
@@ -244,10 +280,12 @@ def export_data_to_object_json(input_filename: str, output_filename: str) -> Non
 
     print(f'Successfully converted {input_filename} to {output_filename}')
 
+
 def extract_attributes_from_tables(connection: cx_Oracle.Connection, table_names: [str]):
     """
     Generate a JSON file containing metadata for given tables across all accessible schemas.
 
+    :param only_basic_info:
     :param connection:
     :param table_names: List of table names (e.g., ["SZTBLAN", "ANOTHER_TABLE"])
     :param output_file: The output file to save the generated JSON
@@ -267,26 +305,29 @@ def extract_attributes_from_tables(connection: cx_Oracle.Connection, table_names
                 "name": table_name,
                 "type": "TABLE",
                 "owner": schema,
+                "custom": is_custom_table(table_name),
                 "columns": columns[schema].get(table_name, []),
                 "attributes": attributes[schema].get(table_name, {}),
                 "comments": comments[schema].get(table_name, {}),
-                "indexes": indexes[schema].get(table_name, [])
+                "indexes": indexes[schema].get(table_name, []),
+                "sequences": []
             }
             table_metadata.append(table_entry)
 
     return json.dumps(table_metadata, indent=4)
 
+
 if __name__ == "__main__":
-    config_file = '../db_config.json'  # JSON file containing db credentials
+    config_file = '../db_config.json'  # JSON file containing database credentials
 
     input_csv = "procedures.csv"
     output_csv = "procedures.out"
 
-    # Load configuration and connect to the db
+    # Load configuration and connect to the database
     connection = get_connection(config_file, "banner7")
 
     # Find the missing procedures
-    find_procedures_from_csv_file(input_csv, output_csv, connection)
+    find_missing_procedures_from_csv_file(input_csv, output_csv, connection)
 
     procedures_list = "procedures.out"
     source_code_output = "../src"
@@ -298,9 +339,9 @@ if __name__ == "__main__":
 
     # Find all the elements for the procedures
     output_csv = "dependencies.out"
-    process_source_folder(source_code_output, output_csv)
+    read_source_code_folder_and_find_all_dependencies(source_code_output, output_csv)
 
-    # Close the db connection
+    # Close the database connection
     connection.close()
 
     # Send the info to json file
