@@ -1,9 +1,16 @@
+from logging import Logger
+
+import logging
+
 from FindAllObjectsSourceCode import extract_source_code_from_procedures
-from database.DatabaseProperties import DatabaseEnvironment
-from database.OracleDatabaseTools import get_connection
-from tools.DependencyFileTools import extract_unique_existing_functions, extract_unique_dependency_function
-from tools.ExtractTools import read_source_code_folder_and_find_all_dependencies
-from tools.ProcedureFileTools import normalize_function_names, update_procedures_file
+from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import get_connection
+from tools.DependencyFileTools import extract_unique_existing_functions, extract_unique_dependency_function, \
+    extract_unique_existing_objects, extract_unique_dependency_objects
+from tools.ExtractTools import extract_all_dependencies_from_source_file_folder
+from tools.ProcedureFileTools import update_procedures_file, normalize_object_names
+
+logging.basicConfig(level=logging.INFO)
 
 
 def main():
@@ -15,27 +22,29 @@ def main():
 
     while True:
         # Step 1: Execute FindAllDependenciesForProceduresAndFunctions functionality
-        read_source_code_folder_and_find_all_dependencies(source_code_output, output_csv)
+        extract_all_dependencies_from_source_file_folder(source_code_output, output_csv)
 
-        db_connection = get_connection(config_file=config_file, database_name=database_name)
-
-        # Extract and normalize functions
-        existing_functions = extract_unique_existing_functions(output_csv)
-        functions = extract_unique_dependency_function(output_csv)
-        normalized_existing_functions = normalize_function_names(existing_functions)
+        # Extract and normalize objects
+        existing_objects = extract_unique_existing_objects(output_csv)
+        print(existing_objects)
+        objects = extract_unique_dependency_objects(output_csv)
+        print(objects)
+        normalized_objects = normalize_object_names(existing_objects)
+        print(normalized_objects)
 
         # Find the remaining functions
-        remaining_functions = [func for func in functions if func.split('.')[-1] not in normalized_existing_functions]
+        remaining_objects = [func for func in objects if func.split('.')[-1] not in normalized_objects]
+        print(remaining_objects)
 
-        if not remaining_functions:
-            print("No remaining functions. Exiting loop.")
-            db_connection.close()
+        if not remaining_objects:
+            print("No remaining objects. Exiting loop.")
             break
 
-        print(f"Remaining functions to process: {remaining_functions}")
+        print(f"Remaining functions to process: {remaining_objects}")
 
         # Step 2: Update the procedures file
-        update_procedures_file(remaining_functions, db_connection, procedures_out_file)
+        db_connection = get_connection(config_file=config_file, database_name=database_name)
+        update_procedures_file(remaining_objects, db_connection, procedures_out_file)
 
         # Step 3: Execute FindAllObjectsSourceCode functionality
         extract_source_code_from_procedures(db_connection, procedures_out_file, source_code_output)

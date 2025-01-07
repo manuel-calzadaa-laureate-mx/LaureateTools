@@ -1,19 +1,21 @@
-from database.DatabaseProperties import DatabaseEnvironment
-from database.OracleDatabaseTools import get_connection
-from tools.ExtractTools import extract_attributes_from_tables
-from tools.ObjectDataFileTools import extract_unique_tables_from_procedure_and_function_dependencies, \
-    add_new_object_element_to_object_data_file
+from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
+from db.OracleDatabaseTools import get_connection
+from tools.ExtractTools import extract_table_metadata_from_database
+from tools.ObjectDataFileTools import add_new_object_element_to_object_data_file, \
+    extract_unique_dependencies_from_data_file
 
 if __name__ == "__main__":
     object_data = "../../object_data.json"
 
-    unique_tables = extract_unique_tables_from_procedure_and_function_dependencies(input_file_name=object_data,
-                                                                                   environment=DatabaseEnvironment.BANNER7)
+    unique_tables = extract_unique_dependencies_from_data_file(input_file_name=object_data,
+                                                               database_object_type=DatabaseObject.TABLE,
+                                                               environment=DatabaseEnvironment.BANNER7,
+                                                               is_custom=True)
 
     if unique_tables:
         connection = get_connection("../../db_config.json", DatabaseEnvironment.BANNER7)
-        json_attributes_from_tables = extract_attributes_from_tables(connection, unique_tables)
+        json_attributes_from_tables = extract_table_metadata_from_database(connection, unique_tables)
         add_new_object_element_to_object_data_file(input_file=object_data, environment=DatabaseEnvironment.BANNER7,
                                                    metadata_json=json_attributes_from_tables)
     else:
-        print("No unique custom tables found. Skipping database operations.")
+        print("No unique custom tables found. Skipping db operations.")

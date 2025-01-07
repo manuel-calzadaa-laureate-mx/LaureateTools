@@ -2,16 +2,16 @@ import json
 
 import cx_Oracle
 
-from database.DatabaseProperties import DatabaseEnvironment
+from db.DatabaseProperties import DatabaseEnvironment
 
 
 def _load_config(config_file):
-    """Load database configuration from a JSON file."""
+    """Load db configuration from a JSON file."""
     with open(config_file, 'r') as file:
         return json.load(file)
 
 def _get_config_for_database(configs, database_name: DatabaseEnvironment):
-    """Retrieve the config for a specific database name."""
+    """Retrieve the config for a specific db name."""
     for entry in configs:
         if entry['databaseName'].upper() == database_name.name:
             return entry['config']
@@ -38,7 +38,7 @@ def is_oracle_built_in_object(text) -> bool:
         "VARCHAR2", "TO_DATE", "ABS", "AND", "EXISTS", "LPAD", "NUMBER", "FROM", "TRIM", "OR", "VARCHAR", "RETURN",
         "NULL", "ELSE", "ELSIF", "END", "FOR", "LOOP", "NOT", "LIKE", "BETWEEN", "IS",
         "ROWNUM", "USER", "CONNECT_BY_ROOT", "PRIOR", "LEVEL", "ROWID", "SYS_CONNECT_BY_PATH",
-        "NEXTVAL", "CURRVAL", "RAISE_APPLICATION_ERROR"
+        "NEXTVAL", "CURRVAL", "RAISE_APPLICATION_ERROR","PUT_LINE"
     }
 
     # Check if the text is in the built-in set

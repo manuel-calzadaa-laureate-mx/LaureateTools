@@ -2,49 +2,8 @@ import json
 
 import cx_Oracle
 
-from database.DatabaseProperties import DatabaseEnvironment
-from database.SequenceDatasource import fetch_attributes_for_sequences
-
-
-def extract_unique_tables_from_procedure_and_function_dependencies(input_file_name: str, environment: DatabaseEnvironment, is_custom: bool = True) -> [str]:
-    """
-    Extracts all unique table names from a JSON file filtered by a specific environment.
-
-    Parameters:
-        input_file_name (str): The path to the JSON file.
-        environment (str): The environment to filter by.
-
-    Returns:
-        list: A sorted list of unique table names.
-        :param is_custom:
-    """
-    try:
-        with open(input_file_name, 'r') as file:
-            data = json.load(file)
-
-        # Ensure root exists and is a list
-        if 'root' not in data or not isinstance(data['root'], list):
-            raise ValueError("Invalid JSON structure: 'root' key not found or not a list.")
-
-        table_names = set()
-        # Iterate through root objects and filter by environment
-        for item in data['root']:
-            if item.get('environment').upper() == environment.name:
-                objects = item.get('objects', [])
-                for obj in objects:
-                    dependencies = obj.get('dependencies', {})
-                    tables = dependencies.get('tables', [])
-                    for table in tables:
-                        if table.get('custom') == is_custom:
-                            table_names.add(table.get('name').upper())
-
-        return sorted(table_names)
-
-    except FileNotFoundError:
-        raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
-    except json.JSONDecodeError:
-        raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
-
+from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
+from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
 
 def add_new_object_element_to_object_data_file(input_file: str, environment: DatabaseEnvironment, metadata_json):
     """
@@ -72,16 +31,23 @@ def add_new_object_element_to_object_data_file(input_file: str, environment: Dat
         json.dump(data, file, indent=4)
 
 
-def extract_unique_sequences(input_file_name: str, environment: DatabaseEnvironment):
+def extract_unique_dependencies_from_data_file(
+    input_file_name: str,
+    environment: DatabaseEnvironment,
+    database_object_type: DatabaseObject,
+    is_custom: bool = True
+) -> [str]:
     """
-    Extracts all unique table names from a JSON file filtered by a specific environment.
+    Extracts all unique dependency names from a JSON file filtered by a specific environment and object type.
 
     Parameters:
         input_file_name (str): The path to the JSON file.
-        environment (str): The environment to filter by.
+        environment (DatabaseEnvironment): The environment to filter by.
+        database_object_type (DatabaseObject): The type of dependency to extract (e.g., tables, functions).
+        is_custom (bool, optional): Filter for custom dependencies if the object type is 'TABLE'.
 
     Returns:
-        list: A sorted list of unique table names.
+        list: A sorted list of unique dependency names.
     """
     try:
         with open(input_file_name, 'r') as file:
@@ -91,8 +57,7 @@ def extract_unique_sequences(input_file_name: str, environment: DatabaseEnvironm
         if 'root' not in data or not isinstance(data['root'], list):
             raise ValueError("Invalid JSON structure: 'root' key not found or not a list.")
 
-        sequence_names = set()
-
+        dependency_names = set()
         # Iterate through root objects and filter by environment
         for item in data['root']:
             if item.get('environment').upper() == environment.name:
@@ -101,15 +66,22 @@ def extract_unique_sequences(input_file_name: str, environment: DatabaseEnvironm
                     object_type = obj.get("type")
                     if object_type in ["PROCEDURE", "FUNCTION"]:
                         dependencies = obj.get('dependencies', {})
-                        sequences = dependencies.get('sequences', [])
-                        for sequence in sequences:
-                            sequence_names.add(sequence.get('name'))
-        return sorted(sequence_names)
+                        dependency_objects = dependencies.get(database_object_type.value, [])
+                        for dependency in dependency_objects:
+                            # Apply custom filter if the object type is TABLE
+                            if database_object_type.name.upper() == DatabaseObject.TABLE.name and is_custom:
+                                if dependency.get('custom') == is_custom:
+                                    dependency_names.add(dependency.get('name').upper())
+                            else:
+                                dependency_names.add(dependency.get('name').upper())
+
+        return sorted(dependency_names)
 
     except FileNotFoundError:
         raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
     except json.JSONDecodeError:
         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
+
 
 
 def extract_attributes_from_sequences(connection: cx_Oracle.Connection, unique_sequences: [str]):
@@ -119,8 +91,6 @@ def extract_attributes_from_sequences(connection: cx_Oracle.Connection, unique_s
     :param unique_sequences:
     :param connection:
     """
-
-
     # Fetch metadata
     sequences = fetch_attributes_for_sequences(connection, unique_sequences)
 

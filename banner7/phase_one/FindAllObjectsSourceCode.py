@@ -1,11 +1,11 @@
-from database.DatabaseProperties import DatabaseEnvironment
-from database.OracleDatabaseTools import get_connection
+from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import get_connection
 from tools.ExtractTools import extract_source_code_from_procedures
 
 if __name__ == "__main__":
-    config_file = '../../db_config.json'  # JSON file containing database credentials
+    config_file = '../../db_config.json'  # JSON file containing db credentials
 
-    # Load configuration and connect to the database
+    # Load configuration and connect to the db
     connection = get_connection(config_file, DatabaseEnvironment.BANNER7)
 
     procedures_list = "../procedures.out"

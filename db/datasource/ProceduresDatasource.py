@@ -72,13 +72,17 @@ def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, pac
     Extracts the source code of a procedure or a package body from the ALL_SOURCE table.
 
     Args:
-        connection (cx_Oracle.Connection): Oracle database connection.
+        connection (cx_Oracle.Connection): Oracle db connection.
         owner (str): The owner of the object.
         package (str): The package name (optional).
         procedure (str): The procedure name.
 
     Returns:
         str: The concatenated source code.
+        :param procedure:
+        :param package:
+        :param owner:
+        :param connection:
         :param function:
     """
     cursor = connection.cursor()

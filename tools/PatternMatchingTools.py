@@ -1,4 +1,6 @@
-import re
+import logging
+
+from db.OracleDatabaseTools import is_oracle_built_in_object
 
 
 def extract_select_tables(source_code):
@@ -28,21 +30,71 @@ def extract_type_declarations(source_code):
     type_pattern = re.compile(r"([a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+%type", re.IGNORECASE)
     return [match.group(1) for match in type_pattern.finditer(source_code)]
 
-def extract_procedures(source_code):
-    # Matches procedure names that have a prefix "P_"
-    procedure_prefix = re.compile(r"([a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+%type", re.IGNORECASE)
-    return [match.group(1) for match in procedure_prefix.finditer(source_code)]
 
-def exclude_insert_into_not_functions(source_code):
+def extract_procedures(source_code: str):
+    """
+       Extract valid procedure names from Oracle source code with exclusions.
+
+       Args:
+           source_code (str): Oracle source code.
+
+       Returns:
+           list: A list of valid procedure names.
+       """
+    # Step 1: Match the general pattern
+    pattern = r"""
+           \b(\w+\s+)?               # WORD (first word, can be rejected later)
+           (\w+)\.(\w+)\b            # PACKAGE.OBJECT (package and procedure name)
+           \s*\(                     # Opening parenthesis
+           [^;]*?\)                  # Parameters (anything up to the closing parenthesis)
+           \s*;                      # Semicolon
+       """
+    potential_matches = re.findall(pattern, source_code, re.IGNORECASE | re.VERBOSE)
+
+    valid_procedures = set()
+
+    for match in potential_matches:
+        starting_word, optional_package_name, object_name = match
+        # Combine optional_package_name and object_name into package_name.procedure_name if optional_package_name exists
+        full_name = f"{optional_package_name.strip()}.{object_name}" if optional_package_name else object_name
+
+        # Step 2: Exclusion for WORD1 (Reject PROCEDURE, FUNCTION, CURSOR, :=, etc.)
+        if starting_word.upper() in {"PROCEDURE", "FUNCTION", "CURSOR", ":=", "INTO"}:
+            logging.info(f"Excluding due to WORD: {starting_word}")
+            continue
+
+        # Step 3: Exclusion for names starting with "F_" (indicating a function)
+        if object_name.upper().startswith("F_"):
+            logging.info(f"Excluding due to 'F_' prefix: {full_name}")
+            continue
+
+        # Step 4: Validation for names starting with "P_"
+        if object_name.upper().startswith("P_"):
+            valid_procedures.add(full_name)
+            logging.info(f"Immediately adding due to starting with 'P_': {full_name}")
+            continue
+
+        # Step 5: Exclusion for Oracle built-in functions
+        if is_oracle_built_in_object(object_name):
+            logging.info(f"Excluding Oracle built-in object: {full_name}")
+            continue
+
+        # Step 6: Add valid procedure name
+        valid_procedures.add(full_name)
+        logging.info(f"Valid procedure found: {full_name}")
+
+    return valid_procedures
+
+def extract_insert_into(source_code):
     insert_pattern = re.compile(r"\bINSERT\s+INTO\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return set(match.group(1) for match in insert_pattern.finditer(source_code))
 
 
-def exclude_procedure_not_functions(source_code):
+def extract_procedures_names_at_first_line(source_code):
     procedure_pattern = re.compile(r"\bPROCEDURE\s+([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in procedure_pattern.finditer(source_code))
 
-def exclude_cursor_not_functions(source_code):
+def extract_cursors(source_code):
     cursor_pattern = re.compile(r"\bCURSOR\s+([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in cursor_pattern.finditer(source_code))
 
@@ -105,3 +157,16 @@ def extract_functions(source_code):
 
     # Find and return all matched function names
     return [match.group(1) for match in function_pattern.finditer(source_code)]
+
+if __name__ == "__main__":
+    source_code = """
+        CREATE OR REPLACE PROCEDURE some_proc IS BEGIN NULL; END;
+        := P_MY_PROCEDURE(a, b, c);
+        P_OTHER_PROCEDURE(x, y, z);
+        PROCEDURE P_IGNORE_ME(a, b, c);
+        P_NOT_A_BUILT_IN(a, b := 5);
+        GOOD_PROCEDURE(a,b);
+        INSERT into NOT_A_PROCEDURE(BLA, BLA, BLA) VALUES (BLA, BLA, BLA);
+    """
+    procedures = extract_procedures(source_code)
+    print(procedures)
