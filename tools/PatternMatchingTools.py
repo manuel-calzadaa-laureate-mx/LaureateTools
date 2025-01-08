@@ -1,6 +1,7 @@
 import logging
 
 from db.OracleDatabaseTools import is_oracle_built_in_object
+import re
 
 
 def extract_select_tables(source_code):
@@ -55,8 +56,14 @@ def extract_procedures(source_code: str):
 
     for match in potential_matches:
         starting_word, optional_package_name, object_name = match
+
+        # Step 1: Exclude invalid packages
+        if len(optional_package_name.strip()) == 1:
+            logging.info(f"Excluding due to invalid PACKAGE: {optional_package_name}")
+            continue
+
         # Combine optional_package_name and object_name into package_name.procedure_name if optional_package_name exists
-        full_name = f"{optional_package_name.strip()}.{object_name}" if optional_package_name else object_name
+        full_name = f"{optional_package_name.strip()}.{object_name.upper()}" if optional_package_name else object_name
 
         # Step 2: Exclusion for WORD1 (Reject PROCEDURE, FUNCTION, CURSOR, :=, etc.)
         if starting_word.upper() in {"PROCEDURE", "FUNCTION", "CURSOR", ":=", "INTO"}:
@@ -80,8 +87,8 @@ def extract_procedures(source_code: str):
             continue
 
         # Step 6: Add valid procedure name
-        valid_procedures.add(full_name)
-        logging.info(f"Valid procedure found: {full_name}")
+        valid_procedures.add(full_name.upper())
+        logging.info(f"Valid procedure found: {full_name.upper()}")
 
     return valid_procedures
 
@@ -101,10 +108,6 @@ def extract_cursors(source_code):
 def extract_generic_functions(source_code):
     function_pattern = re.compile(r"\b([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in function_pattern.finditer(source_code))
-
-
-import re
-
 
 def extract_local_functions(source_code):
     """
@@ -140,23 +143,63 @@ def extract_sequences(source_code):
 
 def extract_functions(source_code):
     """
-    Extracts function names with assignments from the source code.
-    Functions can be standalone or part of a package.
+           Extract valid procedure names from Oracle source code with exclusions.
 
-    Parameters:
-        source_code (str): The source code to analyze.
+           Args:
+               source_code (str): Oracle source code.
 
-    Returns:
-        list: A list of function names (with optional package prefixes).
-    """
-    # Regex pattern to match function names with assignments
-    function_pattern = re.compile(
-        r":=\s*([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)?)\s*\([^)]*\);",
-        re.IGNORECASE
-    )
+           Returns:
+               list: A list of valid procedure names.
+           """
+    # Step 1: Match the general pattern
+    pattern = r"""
+               \b(\w+\s+)?               # WORD (first word, can be rejected later)
+               (\w+)\.(\w+)\b            # PACKAGE.OBJECT (package and procedure name)
+               \s*\(                     # Opening parenthesis
+               [^;]*?\)                  # Parameters (anything up to the closing parenthesis)
+               \s*;                      # Semicolon
+           """
+    potential_matches = re.findall(pattern, source_code, re.IGNORECASE | re.VERBOSE)
 
-    # Find and return all matched function names
-    return [match.group(1) for match in function_pattern.finditer(source_code)]
+    valid_functions = set()
+
+    for match in potential_matches:
+        starting_word, optional_package_name, object_name = match
+
+        # Step 1: Exclude invalid packages
+        if len(optional_package_name.strip()) == 1:
+            logging.info(f"Excluding due to invalid PACKAGE: {optional_package_name}")
+            continue
+
+        # Combine optional_package_name and object_name into package_name.procedure_name if optional_package_name exists
+        full_name = f"{optional_package_name.strip().upper()}.{object_name.upper()}" if optional_package_name else object_name.upper()
+
+        # Step 2: Exclusion for WORD1 (Reject PROCEDURE, FUNCTION, CURSOR, etc.)
+        if starting_word.upper() in {"PROCEDURE", "FUNCTION", "CURSOR", "INTO", "AND"}:
+            logging.info(f"Excluding due to WORD: {starting_word}")
+            continue
+
+        # Step 3: Exclusion for names starting with "P_" (indicating a procedure)
+        if object_name.upper().startswith("P_"):
+            logging.info(f"Excluding due to 'P_' prefix: {full_name}")
+            continue
+
+        # Step 4: Validation for names starting with "F_"
+        if object_name.upper().startswith("F_"):
+            valid_functions.add(full_name)
+            logging.info(f"Immediately adding due to starting with 'F_': {full_name}")
+            continue
+
+        # Step 5: Exclusion for Oracle built-in functions
+        if is_oracle_built_in_object(object_name):
+            logging.info(f"Excluding Oracle built-in object: {full_name}")
+            continue
+
+        # Step 6: Add valid procedure name
+        valid_functions.add(full_name.upper())
+        logging.info(f"Valid function found: {full_name.upper()}")
+
+    return valid_functions
 
 if __name__ == "__main__":
     source_code = """

@@ -1,4 +1,5 @@
 import json
+from typing import Dict, List, Optional
 
 import cx_Oracle
 
@@ -113,3 +114,39 @@ def extract_attributes_from_sequences(connection: cx_Oracle.Connection, unique_s
 
     # Return the constructed JSON structure
     return json.dumps(sequence_metadata, indent=4)
+
+def extract_objects_from_json(input_file_name: str) -> List[Dict[str, Optional[str]]]:
+    """
+    Extracts a list of objects from the JSON data with the specified structure.
+
+    Args:
+        json_data (dict): The JSON data containing the objects to be extracted.
+
+    Returns:
+        List[Dict[str, Optional[str]]]: A list of dictionaries with the extracted data.
+        :param input_file_name:
+    """
+    try:
+        with open(input_file_name, 'r') as file:
+            json_data = json.load(file)
+        objects_list = []
+
+        # Navigate through the JSON structure
+        for root_entry in json_data.get("root", []):
+            for obj in root_entry.get("objects", []):
+                # Build the dictionary for each object
+                obj_dict = {
+                    "NAME": obj.get("name"),
+                    "TYPE": obj.get("type"),
+                    "PACKAGE": obj.get("package", None),  # Default to None if not present
+                    "SCHEMA": obj.get("owner"),
+                    "CUSTOM": obj.get("custom", None)  # Default to None if not present
+                }
+                objects_list.append(obj_dict)
+
+        return objects_list
+
+    except FileNotFoundError:
+        raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
+    except json.JSONDecodeError:
+        raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")

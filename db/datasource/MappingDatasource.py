@@ -1,7 +1,6 @@
 import cx_Oracle
 
-
-def get_gttbtmpeo_by_names(b7_names: list, db_connection) -> list:
+def get_full_mapping_by_name_list(b7_names: list, db_connection) -> list:
     """
     Retrieve all fields from the GTTBTMPEO table for a list of GZTBTMPEO_B7_NOMBRE values.
 
@@ -32,7 +31,7 @@ def get_gttbtmpeo_by_names(b7_names: list, db_connection) -> list:
         GZTBTMPEO_ACTIVITY_DATE,
         GZTBTMPEO_USER,
         GZTBTMPEO_DATA_ORIGIN
-    FROM GTTBTMPEO
+    FROM GZTBTMPEO
     WHERE GZTBTMPEO_B7_NOMBRE IN ({placeholders})
     """
 
@@ -52,10 +51,10 @@ def get_gttbtmpeo_by_names(b7_names: list, db_connection) -> list:
     return result
 
 
-import cx_Oracle
 
 
-def get_gttbtmpeo_by_name(b7_name: str, db_connection) -> dict:
+
+def get_full_mapping_by_name(b7_name: str, db_connection) -> dict:
     """
     Retrieve all fields from the GTTBTMPEO table by GZTBTMPEO_B7_NOMBRE.
 

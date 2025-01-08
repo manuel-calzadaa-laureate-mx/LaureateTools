@@ -205,13 +205,6 @@ def extract_dependencies_from_one_source_code_data(source_code_lines: [str], obj
     all_functions = extract_functions(source_code)
     local_functions = extract_local_functions(source_code)
 
-    functions = set(
-        {function
-         for function in all_functions
-         if not is_oracle_built_in_object(function) and
-         function not in local_functions}
-    )
-
     # Find all procedures
     procedures = extract_procedures(source_code)
 
@@ -220,7 +213,7 @@ def extract_dependencies_from_one_source_code_data(source_code_lines: [str], obj
 
     return {
         "TABLE": sorted(user_defined_tables),
-        "FUNCTION": sorted(functions),
+        "FUNCTION": sorted(all_functions),
         "LOCAL_FUNCTION": sorted(local_functions),
         "SEQUENCE": sorted(sequences),
         "PROCEDURE": sorted(procedures)

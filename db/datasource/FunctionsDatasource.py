@@ -9,7 +9,8 @@ def get_packaged_object_owner(object: str, db_connection) -> tuple:
     """
     cursor = db_connection.cursor()
     cursor.execute(query, func_name=func_name, package=package)
-    return cursor.fetchone()
+    result = cursor.fetchone()
+    return result if result else None
 
 def get_independent_object_owners(func_name: str, db_connection) -> list:
     """Retrieve the owners for independent functions."""

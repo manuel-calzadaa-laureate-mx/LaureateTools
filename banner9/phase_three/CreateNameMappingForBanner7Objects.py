@@ -1,7 +1,13 @@
 import json
 
+from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import get_connection
+from db.datasource.MappingDatasource import get_full_mapping_by_name_list
 from tools.MigrationTools import convert_object_to_banner9, ObjectType
-
+from tools.ObjectDataFileTools import extract_objects_from_json
+import csv
+from typing import List
+import cx_Oracle
 
 def create_mapping_json(source_file):
     """
@@ -58,12 +64,86 @@ def create_mapping_json(source_file):
         print(f"Error processing the JSON file: {e}")
         return {}
 
+def write_mapping_to_csv(
+    db_connection,
+    object_data_input_file: str,
+    output_csv: str
+) -> None:
+    """
+    Check if names from the JSON file exist in the table and write them into a CSV file.
+
+    Args:
+        db_connection (cx_Oracle.Connection): Oracle database connection.
+        object_data_input_file (dict): JSON-like data containing object definitions.
+        output_csv (str): Path to the output CSV file.
+
+    Returns:
+        None: Outputs the CSV file.
+    """
+    # Extract object data from JSON
+    object_data = extract_objects_from_json(object_data_input_file)
+
+    # Extract all names from the JSON objects
+    names_from_json = [obj["NAME"] for obj in object_data]
+
+    # Use the existing function to fetch full mapping data
+    matched_rows = get_full_mapping_by_name_list(names_from_json, db_connection)
+
+    # Extract names that exist in the table
+    existing_names = {row["GZTBTMPEO_B7_NOMBRE"] for row in matched_rows}
+
+    # Create a mapping from NAME to object_data for quick lookups
+    object_data_map = {obj["NAME"]: obj for obj in object_data}
+
+    # Open the CSV file for writing
+    with open(output_csv, mode="w", newline="") as file:
+        writer = csv.writer(file)
+
+        # Write the CSV header
+        writer.writerow([
+            "IS_MAPPED",
+            "B7_TIPO", "B7_ESQUEMA", "B7_PAQUETE", "B7_NOMBRE",
+            "B9_TIPO", "B9_ESQUEMA", "B9_PAQUETE", "B9_NOMBRE"
+        ])
+
+        # Write rows for each name extracted from the JSON file
+        for name in names_from_json:
+            if name in existing_names:
+                # Find the corresponding row for the name
+                matched_row = next(row for row in matched_rows if row["GZTBTMPEO_B7_NOMBRE"] == name)
+                writer.writerow([
+                    "true",
+                    matched_row.get("GZTBTMPEO_B7_TIPO", ""),
+                    matched_row.get("GZTBTMPEO_B7_ESQUEMA", ""),
+                    matched_row.get("GZTBTMPEO_B7_PAQUETE", ""),
+                    matched_row.get("GZTBTMPEO_B7_NOMBRE", ""),
+                    matched_row.get("GZTBTMPEO_B9_TIPO", ""),
+                    matched_row.get("GZTBTMPEO_B9_ESQUEMA", ""),
+                    matched_row.get("GZTBTMPEO_B9_PAQUETE", ""),
+                    matched_row.get("GZTBTMPEO_B9_NOMBRE", "")
+                ])
+            else:
+                # Use data from object_data if the name is not found
+                obj = object_data_map.get(name, {})
+                if obj["CUSTOM"] != False:
+                    writer.writerow([
+                        "false",
+                        obj.get("TYPE", ""),  # B7_TIPO
+                        obj.get("SCHEMA", ""),  # B7_ESQUEMA
+                        obj.get("PACKAGE", ""),  # B7_PAQUETE
+                        obj.get("NAME", ""),  # B7_NOMBRE
+                        "", "", "", ""  # Empty values for B9 columns
+                    ])
+
+
+
 
 if __name__ == "__main__":
     object_data = "../../object_data.json"
+    config_file = '../../db_config.json'  # JSON file containing db credentials
 
-    # object_list = read_all_objects_from_object_data(object_data)
-    # mapping_data = create_mapping_json(object_data)
+    # Load configuration and connect to the db
+    connection = get_connection(config_file, DatabaseEnvironment.BANNER9)
 
-    # Print the generated mapping data
-    # print(json.dumps(mapping_data, indent=4))
+    write_mapping_to_csv(db_connection=connection, object_data_input_file=object_data, output_csv="mapeo.csv")
+    connection.close()

@@ -10,8 +10,14 @@ def update_procedures_file(functions: list, db_connection: cx_Oracle.Connection,
     with open(output_file, 'a', newline='') as file:
         writer = csv.writer(file)
         for func in functions:
+            print(f"Processing function: {func}")
             if is_packaged_function(func):
-                owner, package, procedure = get_packaged_object_owner(func, db_connection)
+                result = get_packaged_object_owner(func, db_connection)
+                print(f"Result from get_packaged_object_owner: {result}")
+                if result is None:
+                    print(f"Could not retrieve owner/package/procedure for {func}")
+                    continue
+                owner, package, procedure = result
                 writer.writerow([owner, package, procedure, ''])
             else:
                 owners = get_independent_object_owners(func, db_connection)

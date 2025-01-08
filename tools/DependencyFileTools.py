@@ -18,7 +18,7 @@ def extract_unique_dependency_objects(file_path: str) -> list:
 
             for row in csv_reader:
                 if row['DEPENDENCY_TYPE'].strip() == 'FUNCTION' or row['DEPENDENCY_TYPE'].strip() == 'PROCEDURE':
-                    unique_objects.add(row['DEPENDENCY_NAME'].strip())
+                    unique_objects.add(row['DEPENDENCY_NAME'].strip().upper())
 
         return sorted(unique_objects)
     except FileNotFoundError:
@@ -74,7 +74,7 @@ def extract_unique_existing_objects(file_path: str) -> list:
 
             for row in csv_reader:
                 if row['OBJECT_TYPE'].strip() == 'FUNCTION' or row['OBJECT_TYPE'].strip() == 'PROCEDURE':
-                    unique_existing_objects.add(row['OBJECT_NAME'].strip())
+                    unique_existing_objects.add(row['OBJECT_NAME'].strip().upper())
 
         return sorted(unique_existing_objects)
     except FileNotFoundError:
