@@ -43,3 +43,80 @@ def build_create_table_script(object_data_file: str, environment: DatabaseEnviro
         raise FileNotFoundError(f"The file '{object_data_file}' was not found.")
     except json.JSONDecodeError:
         raise ValueError(f"The file '{object_data_file}' is not a valid JSON file.")
+
+def build_create_trigger_script(trigger_info: dict) -> str:
+    trigger_script = f"""
+    CREATE OR REPLACE TRIGGER {trigger_info['owner']}.{trigger_info['name']}
+    {trigger_info['trigger_type']}
+    {trigger_info['triggering_event']}
+    ON {trigger_info['table_name']}
+    {trigger_info['referencing_names']}
+    {f"WHEN ({trigger_info['when_clause']})" if trigger_info['when_clause'] else ""}
+    BEGIN
+    {trigger_info['trigger_body']}
+    END;
+    /
+
+    ALTER TRIGGER {trigger_info['owner']}.{trigger_info['name']} {trigger_info['status']};
+    """
+    return trigger_script.strip()
+
+if __name__ == "__main__":
+
+    # Trigger details
+    trigger_info = {
+        "owner": "SATURN",
+        "name": "SZTR_STDN_AOL",
+        "type": "TRIGGER",
+        "table_name": "SGBSTDN",
+        "trigger_type": "AFTER EACH ROW",
+        "triggering_event": "INSERT OR UPDATE OR DELETE",
+        "referencing_names": "REFERENCING NEW AS NEW OLD AS OLD",
+        "when_clause": None,
+        "status": "ENABLED",
+        "description": "SATURN.SZTR_STDN_AOL \nAFTER INSERT OR UPDATE OR DELETE ON SGBSTDN\nFOR EACH ROW\n",
+        "trigger_body": """DECLARE
+    
+       VL_NUM_ERROR   VARCHAR2(100);
+       VL_MENSAJE     VARCHAR2(500);
+       VL_GET_CAMPUS  VARCHAR2(5);
+       VL_VALOR       VARCHAR2(5);
+    
+    BEGIN
+    
+       SELECT F_GET_CAMPUS 
+         INTO VL_GET_CAMPUS 
+         FROM DUAL;
+    
+       SELECT NVL(ZSFNVALOR('CONF_AOL', 'CAMPONLN'), '53')
+         INTO VL_VALOR
+         FROM DUAL;
+    
+       IF VL_GET_CAMPUS <> VL_VALOR THEN
+    
+          IF INSERTING THEN
+    
+             SZPK_AOL_EV.P_REGISTRA_EVENTOS('CURRICULA', :NEW.SGBSTDN_TERM_CODE_EFF, :NEW.SGBSTDN_PIDM, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
+             SZPK_AOL_EV.P_REGISTRA_EVENTOS('PERSONAS', :NEW.SGBSTDN_PIDM, NULL, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
+    
+          ELSIF UPDATING THEN
+    
+             SZPK_AOL_EV.P_REGISTRA_EVENTOS('CURRICULA', :NEW.SGBSTDN_TERM_CODE_EFF, :NEW.SGBSTDN_PIDM, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
+             SZPK_AOL_EV.P_REGISTRA_EVENTOS('PERSONAS', :NEW.SGBSTDN_PIDM, NULL, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
+    
+          ELSE 
+    
+             SZPK_AOL_EV.P_REGISTRA_EVENTOS('CURRICULA', :OLD.SGBSTDN_TERM_CODE_EFF, :OLD.SGBSTDN_PIDM, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
+             SZPK_AOL_EV.P_REGISTRA_EVENTOS('PERSONAS', :OLD.SGBSTDN_PIDM, NULL, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
+    
+          END IF;
+    
+       END IF;
+    
+    END;"""
+    }
+
+    print(type(trigger_info))
+
+    # Generate the script
+    # print(build_create_trigger_script(trigger_info))

@@ -5,7 +5,7 @@ import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject, TableObject
 from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
-from db.datasource.TriggersDatasource import fetch_triggers_for_tables, fetch_triggers_elements_from_database
+from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database
 
 
 def add_new_object_element_to_object_data_file(input_file: str, environment: DatabaseEnvironment, metadata_json):

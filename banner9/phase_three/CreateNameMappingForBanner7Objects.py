@@ -1,14 +1,13 @@
+import csv
 import json
+
+import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_connection
 from db.datasource.B7ToB9MappingDatasource import get_full_mapping_by_name_list
-from tools.BusinessRulesTools import generate_new_b9_name
 from tools.MigrationTools import convert_object_to_banner9, ObjectType
 from tools.ObjectDataFileTools import extract_all_objects_from_data_file
-import csv
-from typing import List
-import cx_Oracle
 
 
 def create_mapping_json(source_file):

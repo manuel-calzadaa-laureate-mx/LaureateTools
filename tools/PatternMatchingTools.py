@@ -1,5 +1,4 @@
 import logging
-
 from db.OracleDatabaseTools import is_oracle_built_in_object
 import re
 
