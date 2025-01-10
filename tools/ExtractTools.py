@@ -1,6 +1,8 @@
-import json
+import csv
 import json
 import logging
+import os
+from collections import defaultdict
 
 import cx_Oracle
 
@@ -8,16 +10,13 @@ from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_connection, is_oracle_built_in_object
 from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
 from db.datasource.TablesDatasource import fetch_table_columns_for_tables, fetch_table_attributes_for_tables, \
-    fetch_column_comments_for_tables, fetch_indexes_for_tables
+    fetch_column_comments_for_tables, fetch_full_indexes_for_tables
+from db.datasource.TriggersDatasource import fetch_triggers_for_tables
 from tools.BusinessRulesTools import is_custom_table
 from tools.PatternMatchingTools import extract_select_tables, extract_update_tables, extract_delete_tables, \
     extract_type_declarations, extract_insert_tables, extract_sequences, extract_local_functions, \
     extract_functions, extract_procedures
-from tools.ScriptTools import clean_comments_and_whitespace
-from collections import defaultdict
-import os
-import logging
-import csv
+from tools.SourceCodeTools import clean_comments_and_whitespace
 
 logging.basicConfig(level=logging.INFO)
 
@@ -43,6 +42,7 @@ def find_missing_procedures_from_csv_file(input_file: str, output_file: str, con
                     writer.writerow([owner, package, proc, ""])
             else:
                 writer.writerow([owner, package, procedure, ""])
+
 
 def extract_source_code_from_procedures(connection: cx_Oracle.Connection, input_file: str, output_dir: str):
     """
@@ -102,7 +102,8 @@ def extract_source_code_from_procedures(connection: cx_Oracle.Connection, input_
                 # Extract source code for individual objects if package is None
                 source_code_lines = package_source_code
                 if not package:
-                    logging.info(f"Extracting individual source code: Owner={owner}, Procedure={procedure}, Function={function}")
+                    logging.info(
+                        f"Extracting individual source code: Owner={owner}, Procedure={procedure}, Function={function}")
                     source_code_lines = extract_object_source_code(
                         connection=connection,
                         owner=owner,
@@ -301,7 +302,7 @@ def convert_dependencies_file_to_json_object(input_filename: str) -> dict:
                 objects_dict[obj_name] = {
                     "type": obj_type,
                     "owner": obj_owner,
-                    "package" : obj_package,
+                    "package": obj_package,
                     "name": obj_name,
                     "dependencies": {
                         "tables": [],
@@ -345,7 +346,10 @@ def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table
     columns = fetch_table_columns_for_tables(connection, table_names)
     attributes = fetch_table_attributes_for_tables(connection, table_names)
     comments = fetch_column_comments_for_tables(connection, table_names)
-    indexes = fetch_indexes_for_tables(connection, table_names)
+    indexes = fetch_full_indexes_for_tables(connection, table_names)
+    triggers = fetch_triggers_for_tables(connection, table_names)
+
+    # sequences = fetch_sequences_names_for_tables(connection,table_names)
 
     # Construct JSON structure
     table_metadata = []
@@ -360,11 +364,35 @@ def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table
                 "attributes": attributes[schema].get(table_name, {}),
                 "comments": comments[schema].get(table_name, {}),
                 "indexes": indexes[schema].get(table_name, []),
-                "sequences": []
+                "sequences": [],
+                "triggers": get_trigger_names_and_status(triggers=triggers, schema=schema, table_name=table_name )
             }
             table_metadata.append(table_entry)
 
     return json.dumps(table_metadata, indent=4)
+
+
+def get_trigger_names_and_status(triggers: dict, schema: str, table_name: str):
+    """
+    Extract trigger names and their statuses for a given owner and table name.
+
+    Args:
+        triggers (dict): The nested dictionary of triggers grouped by owner and table name.
+        schema (str): The schema/owner of the table.
+        table_name (str): The name of the table.
+
+    Returns:
+        list: A list of dictionaries containing trigger names and statuses.
+              Example: [{"trigger_name": "TRIGGER1", "status": "ENABLED"}, ...]
+    """
+    # Get the triggers for the specified owner and table name, defaulting to an empty list
+    table_triggers = triggers.get(schema, {}).get(table_name, [])
+
+    # Extract the trigger name and status for each trigger
+    return [
+        {"name": trigger["trigger_name"], "status": trigger["status"]}
+        for trigger in table_triggers
+    ]
 
 
 if __name__ == "__main__":

@@ -3,8 +3,10 @@ from typing import Dict, List, Optional
 
 import cx_Oracle
 
-from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
+from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject, TableObject
 from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
+from db.datasource.TriggersDatasource import fetch_triggers_for_tables, fetch_triggers_elements_from_database
+
 
 def add_new_object_element_to_object_data_file(input_file: str, environment: DatabaseEnvironment, metadata_json):
     """
@@ -31,12 +33,44 @@ def add_new_object_element_to_object_data_file(input_file: str, environment: Dat
     with open(input_file, "w") as file:
         json.dump(data, file, indent=4)
 
+def extract_table_unique_dependencies_types_from_data_file(
+        input_file_name: str,
+        environment: DatabaseEnvironment,
+        table_object_type: TableObject
+) -> [str]:
+    try:
+        with open(input_file_name, 'r') as file:
+            data = json.load(file)
 
-def extract_unique_dependencies_from_data_file(
-    input_file_name: str,
-    environment: DatabaseEnvironment,
-    database_object_type: DatabaseObject,
-    is_custom: bool = True
+        # Ensure root exists and is a list
+        if 'root' not in data or not isinstance(data['root'], list):
+            raise ValueError("Invalid JSON structure: 'root' key not found or not a list.")
+
+        dependency_names = set()
+        # Iterate through root objects and filter by environment
+        for item in data['root']:
+            if item.get('environment').upper() == environment.name:
+                objects = item.get('objects', [])
+                for obj in objects:
+                    object_type = obj.get("type")
+                    if object_type in ["TABLE"]:
+                        dependencies = obj.get(table_object_type.value, {})
+                        if dependencies:
+                            for dependency in dependencies:
+                                dependency_names.add(dependency.get('name').upper())
+
+        return sorted(dependency_names)
+
+    except FileNotFoundError:
+        raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
+    except json.JSONDecodeError:
+        raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
+
+def extract_unique_dependencies_types_from_data_file(
+        input_file_name: str,
+        environment: DatabaseEnvironment,
+        database_object_type: DatabaseObject,
+        is_custom: bool = True
 ) -> [str]:
     """
     Extracts all unique dependency names from a JSON file filtered by a specific environment and object type.
@@ -84,8 +118,39 @@ def extract_unique_dependencies_from_data_file(
         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
 
 
+def extract_triggers_from_database(connection: cx_Oracle.Connection, unique_triggers: [str]):
+    """
+    Generate a JSON file containing metadata for given tables across all accessible schemas.
 
-def extract_attributes_from_sequences(connection: cx_Oracle.Connection, unique_sequences: [str]):
+    :param unique_triggers:
+    :param connection:
+    """
+    # Fetch metadata
+    triggers = fetch_triggers_elements_from_database(connection, unique_triggers)
+
+    # Construct JSON structure
+    triggers_metadata = []
+    for trigger in triggers:
+        trigger_entry = {
+            "owner": trigger.get("owner"),
+            "name": trigger.get("trigger_name"),
+            "type": "TRIGGER",
+            "table_name": trigger.get("table_name"),
+            "trigger_type": trigger.get("trigger_type"),
+            "triggering_event": trigger.get("triggering_event"),
+            "referencing_names": trigger.get("referencing_names"),
+            "when_clause": trigger.get("when_clause"),
+            "status": trigger.get("status"),
+            "description": trigger.get("description"),
+            "trigger_body": trigger.get("trigger_body"),
+        }
+        triggers_metadata.append(trigger_entry)
+
+    # Return the constructed JSON structure
+    return json.dumps(triggers_metadata, indent=4)
+
+
+def extract_sequences_attributes_from_database(connection: cx_Oracle.Connection, unique_sequences: [str]):
     """
     Generate a JSON file containing metadata for given tables across all accessible schemas.
 
@@ -115,7 +180,8 @@ def extract_attributes_from_sequences(connection: cx_Oracle.Connection, unique_s
     # Return the constructed JSON structure
     return json.dumps(sequence_metadata, indent=4)
 
-def extract_objects_from_json(input_file_name: str) -> List[Dict[str, Optional[str]]]:
+
+def extract_all_objects_from_data_file(input_file_name: str) -> List[Dict[str, Optional[str]]]:
     """
     Extracts a list of objects from the JSON data with the specified structure.
 

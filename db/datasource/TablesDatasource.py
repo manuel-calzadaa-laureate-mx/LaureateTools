@@ -134,3 +134,81 @@ def fetch_indexes_for_tables(connection: cx_Oracle.Connection, table_names: [str
             "pct_free": pct_free
         })
     return grouped_indexes
+
+
+def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names: [str]):
+    """
+    Fetch index details along with column metadata for given tables in a single query.
+
+    :param connection: Database connection object
+    :param table_names: List of table names
+    :return: Dictionary grouped by schema and table name, containing index metadata with column details
+    """
+    cursor = connection.cursor()
+    table_names_upper = [name.upper() for name in table_names]
+
+    # Combined query to fetch index and column details
+    query = f"""
+        SELECT 
+            ai.owner AS schema_name,
+            ai.table_name,
+            ai.index_name,
+            ai.uniqueness,
+            ai.tablespace_name,
+            ai.ini_trans,
+            ai.max_trans,
+            ai.logging,
+            ai.pct_free,
+            aic.column_name,
+            aic.column_position,
+            aic.descend
+        FROM ALL_INDEXES ai
+        LEFT JOIN ALL_IND_COLUMNS aic 
+            ON ai.owner = aic.index_owner AND ai.index_name = aic.index_name
+        WHERE ai.table_name IN ({','.join([':name' + str(i) for i in range(len(table_names))])})
+        ORDER BY ai.owner, ai.table_name, ai.index_name, aic.column_position
+    """
+
+    cursor.execute(query, {f'name{i}': name for i, name in enumerate(table_names_upper)})
+    results = cursor.fetchall()
+    cursor.close()
+
+    # Build the structure
+    grouped_indexes = {}
+    for row in results:
+        (schema, table_name, index_name, uniqueness, tablespace_name, ini_trans, max_trans,
+         logging, pct_free, column_name, column_position, descend) = row
+
+        if schema not in grouped_indexes:
+            grouped_indexes[schema] = {}
+        if table_name not in grouped_indexes[schema]:
+            grouped_indexes[schema][table_name] = []
+
+        # Check if the index already exists in the list
+        index_list = grouped_indexes[schema][table_name]
+        index = next((idx for idx in index_list if idx["name"] == index_name), None)
+
+        if not index:
+            # Add new index entry
+            index = {
+                "name": index_name,
+                "uniqueness": uniqueness,
+                "tablespace": tablespace_name,
+                "ini_trans": ini_trans,
+                "max_trans": max_trans,
+                "logging": logging,
+                "pct_free": pct_free,
+                "columns": []
+            }
+            index_list.append(index)
+
+        # Add column details if available
+        if column_name:
+            index["columns"].append({
+                "column_name": column_name,
+                "column_position": column_position,
+                "descend": descend
+            })
+
+    return grouped_indexes
+

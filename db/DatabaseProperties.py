@@ -9,3 +9,6 @@ class DatabaseObject(Enum):
     SEQUENCE = "sequences"
     PROCEDURE = "procedures"
     FUNCTION = "functions"
+
+class TableObject(Enum):
+    TRIGGER = "triggers"

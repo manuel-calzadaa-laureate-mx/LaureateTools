@@ -1,6 +1,7 @@
 import json
 
 
+
 def write_json_to_file(json_data: dict, output_filename: str) -> None:
     """
     Write a JSON object to a file.

@@ -2,12 +2,14 @@ import json
 
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_connection
-from db.datasource.MappingDatasource import get_full_mapping_by_name_list
+from db.datasource.B7ToB9MappingDatasource import get_full_mapping_by_name_list
+from tools.BusinessRulesTools import generate_new_b9_name
 from tools.MigrationTools import convert_object_to_banner9, ObjectType
-from tools.ObjectDataFileTools import extract_objects_from_json
+from tools.ObjectDataFileTools import extract_all_objects_from_data_file
 import csv
 from typing import List
 import cx_Oracle
+
 
 def create_mapping_json(source_file):
     """
@@ -64,10 +66,21 @@ def create_mapping_json(source_file):
         print(f"Error processing the JSON file: {e}")
         return {}
 
+
+def normalize_value(value : str):
+    """
+    Returns 'none' if the input value is 'N/A' or '[ SE ELIMINA ]',
+    otherwise returns the original value.
+    """
+    if value in {"N/A", "[ SE ELIMINA ]", None, ""}:
+        return "none"
+    return value
+
+
 def write_mapping_to_csv(
-    db_connection,
-    object_data_input_file: str,
-    output_csv: str
+        db_connection,
+        object_data_input_file: str,
+        output_csv: str
 ) -> None:
     """
     Check if names from the JSON file exist in the table and write them into a CSV file.
@@ -81,7 +94,7 @@ def write_mapping_to_csv(
         None: Outputs the CSV file.
     """
     # Extract object data from JSON
-    object_data = extract_objects_from_json(object_data_input_file)
+    object_data = extract_all_objects_from_data_file(object_data_input_file)
 
     # Extract all names from the JSON objects
     names_from_json = [obj["NAME"] for obj in object_data]
@@ -115,12 +128,12 @@ def write_mapping_to_csv(
                     "true",
                     matched_row.get("GZTBTMPEO_B7_TIPO", ""),
                     matched_row.get("GZTBTMPEO_B7_ESQUEMA", ""),
-                    matched_row.get("GZTBTMPEO_B7_PAQUETE", ""),
+                    normalize_value(matched_row.get("GZTBTMPEO_B7_PAQUETE", "")),
                     matched_row.get("GZTBTMPEO_B7_NOMBRE", ""),
                     matched_row.get("GZTBTMPEO_B9_TIPO", ""),
                     matched_row.get("GZTBTMPEO_B9_ESQUEMA", ""),
-                    matched_row.get("GZTBTMPEO_B9_PAQUETE", ""),
-                    matched_row.get("GZTBTMPEO_B9_NOMBRE", "")
+                    normalize_value(matched_row.get("GZTBTMPEO_B9_PAQUETE", "")),
+                    normalize_value(matched_row.get("GZTBTMPEO_B9_NOMBRE", ""))
                 ])
             else:
                 # Use data from object_data if the name is not found
@@ -128,22 +141,22 @@ def write_mapping_to_csv(
                 if obj["CUSTOM"] != False:
                     writer.writerow([
                         "false",
-                        obj.get("TYPE", ""),  # B7_TIPO
+                        obj.get("TYPE", None),  # B7_TIPO
                         obj.get("SCHEMA", ""),  # B7_ESQUEMA
-                        obj.get("PACKAGE", ""),  # B7_PAQUETE
+                        normalize_value(obj.get("PACKAGE", "")),  # B7_PAQUETE
                         obj.get("NAME", ""),  # B7_NOMBRE
-                        "", "", "", ""  # Empty values for B9 columns
+                        obj.get("TYPE", ""),  # B9_TYPE (same as B7)
+                        "UVM",  # B9_SCHEMA
+                        "none",  # B9_PACKAGE
+                        "none"  # B9_NAME
                     ])
-
-
 
 
 if __name__ == "__main__":
     object_data = "../../object_data.json"
     config_file = '../../db_config.json'  # JSON file containing db credentials
-
+    output_csv_tile = 'mapping.out'
     # Load configuration and connect to the db
     connection = get_connection(config_file, DatabaseEnvironment.BANNER9)
-
-    write_mapping_to_csv(db_connection=connection, object_data_input_file=object_data, output_csv="mapeo.csv")
+    write_mapping_to_csv(db_connection=connection, object_data_input_file=object_data, output_csv=output_csv_tile)
     connection.close()
