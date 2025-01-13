@@ -1,3 +1,7 @@
+import csv
+from datetime import datetime
+from typing import List, Dict
+
 import cx_Oracle
 
 def get_full_mapping_by_name_list(b7_names: list, db_connection) -> list:
@@ -50,10 +54,6 @@ def get_full_mapping_by_name_list(b7_names: list, db_connection) -> list:
     cursor.close()
     return result
 
-
-
-
-
 def get_full_mapping_by_name(b7_name: str, db_connection) -> dict:
     """
     Retrieve all fields from the GTTBTMPEO table by GZTBTMPEO_B7_NOMBRE.
@@ -97,3 +97,87 @@ def get_full_mapping_by_name(b7_name: str, db_connection) -> dict:
 
     cursor.close()
     return result
+
+
+
+def insert_data_to_table(rows_to_insert: List[Dict[str, str]], db_connection: cx_Oracle.Connection):
+    """
+    Inserts data into the GZTBTMPEO table with additional default values.
+
+    Args:
+        rows_to_insert (List[Dict[str, str]]): List of dictionaries containing data to insert.
+        db_connection (cx_Oracle.Connection): The Oracle database connection.
+    """
+    if not rows_to_insert:
+        print("No valid rows to insert.")
+        return
+
+    # Define default values
+    default_description = "N/A"
+    default_observation = None
+    default_user = "WIKI-BOT"
+    default_data_origin = "MANUAL"
+    current_date = datetime.now().strftime("%d/%m/%y")
+
+    # Prepare the insert query
+    insert_query = """
+    INSERT INTO GZTBTMPEO (
+        GZTBTMPEO_B7_TIPO,
+        GZTBTMPEO_B7_ESQUEMA,
+        GZTBTMPEO_B7_PAQUETE,
+        GZTBTMPEO_B7_NOMBRE,
+        GZTBTMPEO_B9_TIPO,
+        GZTBTMPEO_B9_ESQUEMA,
+        GZTBTMPEO_B9_PAQUETE,
+        GZTBTMPEO_B9_NOMBRE,
+        GZTBTMPEO_DESCRIPCION,
+        GZTBTMPEO_OBSERVACION,
+        GZTBTMPEO_ACTIVITY_DATE,
+        GZTBTMPEO_USER,
+        GZTBTMPEO_DATA_ORIGIN
+    ) VALUES (
+        :B7_TIPO,
+        :B7_ESQUEMA,
+        :B7_PAQUETE,
+        :B7_NOMBRE,
+        :B9_TIPO,
+        :B9_ESQUEMA,
+        :B9_PAQUETE,
+        :B9_NOMBRE,
+        :DESCRIPCION,
+        :OBSERVACION,
+        TO_DATE(:ACTIVITY_DATE, 'DD/MM/YY'),
+        :USER,
+        :DATA_ORIGIN
+    )"""
+
+    # Add default values to each row
+    for row in rows_to_insert:
+        row.update({
+            "DESCRIPCION": default_description,
+            "OBSERVACION": default_observation,
+            "ACTIVITY_DATE": current_date,
+            "USER": default_user,
+            "DATA_ORIGIN": default_data_origin
+        })
+        # Replace 'none' with None for all keys in the row
+        for key, value in row.items():
+            if value == 'none':
+                row[key] = 'N/A'
+
+    print(insert_query)
+    print(rows_to_insert)
+
+    # Insert the rows into the database
+    cursor = db_connection.cursor()
+    try:
+        cursor.execute(insert_query, rows_to_insert[0])
+        db_connection.commit()
+        print(f"Successfully inserted {len(rows_to_insert)} rows.")
+    except cx_Oracle.DatabaseError as e:
+        print(f"Error inserting rows: {e}")
+        db_connection.rollback()
+    finally:
+        cursor.close()
+
+
