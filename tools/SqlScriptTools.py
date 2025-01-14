@@ -1,48 +1,184 @@
 import json
+from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment
+
+
+def build_create_table_section(obj: Dict) -> str:
+    """
+    Construye la sección CREATE TABLE del script.
+    """
+    script = f"CREATE TABLE {obj['owner']}.{obj['name']}\n(\n"
+    for column in obj["columns"]:
+        col_def = f"  {column['name']} {column['type']}"
+        if column['type'] == "NUMBER":
+            if column['precision'] is not None and column['scale'] is not None:
+                col_def += f"({column['precision']}, {column['scale']})"
+            elif column['precision'] is not None:
+                col_def += f"({column['precision']})"
+        elif column['type'] == "VARCHAR2":
+            col_def += f"({column['length']} CHAR)"
+        col_def += " NOT NULL" if not column['nullable'] else ""
+        col_def += ",\n"
+        script += col_def
+
+    script = script.rstrip(",\n") + "\n)"
+    return script
+
+
+def build_tablespace_section(attributes: Dict) -> str:
+    """
+    Construye la sección de atributos de tablespace.
+    """
+    tablespace = attributes.get("tablespace", "")
+    pct_free = attributes.get("pct_free", 0)
+    pct_used = attributes.get("pct_used", 0)
+    ini_trans = attributes.get("ini_trans", 1)
+    max_trans = attributes.get("max_trans", 255)
+    logging = attributes.get("logging", "YES")
+
+    storage = (
+        "STORAGE    (\n"
+        "            INITIAL          65536\n"
+        "            NEXT             1048576\n"
+        "            MINEXTENTS       1\n"
+        "            MAXEXTENTS       UNLIMITED\n"
+        "            PCTINCREASE      0\n"
+        "            BUFFER_POOL      DEFAULT\n"
+        "           )\n"
+    )
+
+    logging_clause = "LOGGING" if logging == "YES" else "NOLOGGING"
+
+    tablespace_script = (
+        f"TABLESPACE {tablespace}\n"
+        f"PCTUSED    {pct_used}\n"
+        f"PCTFREE    {pct_free}\n"
+        f"INITRANS   {ini_trans}\n"
+        f"MAXTRANS   {max_trans}\n"
+        f"{storage}"
+        f"{logging_clause} \n"
+        "NOCOMPRESS \n"
+        "NOCACHE\n"
+        "NOPARALLEL\n"
+        "MONITORING;"
+    )
+    return tablespace_script
+
+
+def build_comments_section(comments: Dict, table_owner: str, table_name: str) -> str:
+    """
+    Construye la sección de comentarios del script.
+    """
+    comment_script = "--Descripcion de los Campos   --------------------------------------------------\n\n"
+    for column, description in comments.items():
+        if description:
+            comment_script += f"   COMMENT ON COLUMN {table_owner}.{table_name}.{column} IS '{description}';\n"
+    return comment_script
 
 
 def build_create_table_script(object_data_file: str, environment: DatabaseEnvironment, table_name: str):
     try:
         with open(object_data_file, 'r') as file:
             json_data = json.load(file)
-        # Find the correct environment and table in the JSON data
+
         for env in json_data["root"]:
             if env["environment"] == environment.value:
                 for obj in env["objects"]:
                     if obj["name"] == table_name and obj["type"] == "TABLE":
+                        create_table_section = build_create_table_section(obj)
+                        tablespace_section = build_tablespace_section(obj.get("attributes", {}))
+                        comments_section = build_comments_section(
+                            obj.get("comments", {}), obj['owner'], obj['name']
+                        )
+                        index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}), obj['owner'],
+                                                                              table_name)
 
-                        # Start building the CREATE TABLE script
-                        script = f"CREATE TABLE {obj['owner']}.{obj['name']}\n(\n"
+                        return f"{create_table_section}\n{tablespace_section}\n\n{comments_section}\n\n{index_section}"
 
-                        # Add columns to the script
-                        for column in obj["columns"]:
-                            col_def = f"  {column['name']} {column['type']}"
-                            if column['type'] == "NUMBER":
-                                # Include precision and scale for NUMBER type
-                                if column['precision'] is not None and column['scale'] is not None:
-                                    col_def += f"({column['precision']}, {column['scale']})"
-                                elif column['precision'] is not None:
-                                    col_def += f"({column['precision']})"
-                            elif column['type'] == "VARCHAR2":
-                                # Include length for VARCHAR2 type
-                                col_def += f"({column['length']} CHAR)"
-                            # Add nullability constraint
-                            col_def += " NOT NULL" if not column['nullable'] else ""
-                            col_def += ",\n"
-                            script += col_def
+        return f"Table {table_name} in environment {environment.value} not found."
 
-                        # Remove trailing comma and newline, close parentheses
-                        script = script.rstrip(",\n") + "\n)"
-                        return script
-
-        # If no matching environment or table is found
-        return f"Table {table_name} in environment {environment} not found."
     except FileNotFoundError:
         raise FileNotFoundError(f"The file '{object_data_file}' was not found.")
     except json.JSONDecodeError:
         raise ValueError(f"The file '{object_data_file}' is not a valid JSON file.")
+
+
+def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table_name: str) -> str:
+    """
+    Generates the SQL script for primary keys and indexes based on the JSON definition.
+
+    :param indexes: List of index definitions from the JSON file.
+    :param table_owner: Owner of the table.
+    :param table_name: Name of the table.
+    :return: SQL script string.
+    """
+    script = "-- Primary Key\n\n"
+    primary_key = None
+    index_scripts = []
+
+    for index in indexes:
+
+        print(index)
+        # Check if it's the primary key
+        if index.get("uniqueness") == "UNIQUE" and "PK" in index["name"]:
+            primary_key = index
+            continue
+
+        # Skip system-generated indexes
+        if index["name"].startswith("SYS_"):
+            continue
+
+        # Build the column list or expressions
+        columns = []
+        for col in index["columns"]:
+            if col["index_type"] in ["FUNCTION-BASED NORMAL", "FUNCTION-BASED DOMAIN"]:
+                # Use the column_expression if available for function-based indexes
+                if col["column_expression"]:
+                    columns.append(f"{col['column_expression']} {col['descend']}")
+                else:
+                    # Fallback to the column name if expression is missing
+                    columns.append(f"{col['column_name']} {col['descend']}")
+            else:
+                # Normal column reference for other index types
+                columns.append(f"{col['column_name']} {col['descend']}")
+
+        columns_str = ", ".join(columns)
+
+        # Build the CREATE INDEX statement
+        index_script = (
+            f"CREATE {'UNIQUE ' if index.get('uniqueness') == 'UNIQUE' else ''}INDEX {table_owner}.{index['name']} "
+            f"ON {table_owner}.{table_name}\n"
+            f"       ({columns_str})\n"
+            f"       LOGGING\n"
+            f"       TABLESPACE {index['tablespace']}\n"
+            f"       PCTFREE    {index['pct_free']}\n"
+            f"       INITRANS   {index['ini_trans']}\n"
+            f"       MAXTRANS   {index['max_trans']}\n"
+            f"       STORAGE    (\n"
+            f"                   INITIAL          65536\n"
+            f"                   NEXT             1048576\n"
+            f"                   MINEXTENTS       1\n"
+            f"                   MAXEXTENTS       UNLIMITED\n"
+            f"                   PCTINCREASE      0\n"
+            f"                   BUFFER_POOL      DEFAULT\n"
+            f"                  )\n"
+            f"    NOPARALLEL;\n"
+        )
+        index_scripts.append(index_script)
+
+    # Add the primary key constraint if defined
+    if primary_key:
+        pk_columns = ", ".join([col["column_name"] for col in primary_key["columns"]])
+        pk_name = primary_key["name"]
+        script += f"ALTER TABLE {table_owner}.{table_name} ADD CONSTRAINT {pk_name} PRIMARY KEY ({pk_columns});\n\n"
+
+    # Add the index scripts
+    if index_scripts:
+        script += "-- Indices\n\n" + "\n".join(index_scripts)
+
+    return script
+
 
 def build_create_trigger_script(trigger_info: dict) -> str:
     trigger_script = f"""
@@ -61,8 +197,8 @@ def build_create_trigger_script(trigger_info: dict) -> str:
     """
     return trigger_script.strip()
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     # Trigger details
     trigger_info = {
         "owner": "SATURN",
