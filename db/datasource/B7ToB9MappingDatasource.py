@@ -1,8 +1,8 @@
-import csv
 from datetime import datetime
 from typing import List, Dict
 
 import cx_Oracle
+
 
 def get_full_mapping_by_name_list(b7_names: list, db_connection) -> list:
     """
@@ -100,6 +100,8 @@ def get_full_mapping_by_name(b7_name: str, db_connection) -> dict:
 
 
 
+
+
 def insert_data_to_table(rows_to_insert: List[Dict[str, str]], db_connection: cx_Oracle.Connection):
     """
     Inserts data into the GZTBTMPEO table with additional default values.
@@ -136,22 +138,22 @@ def insert_data_to_table(rows_to_insert: List[Dict[str, str]], db_connection: cx
         GZTBTMPEO_USER,
         GZTBTMPEO_DATA_ORIGIN
     ) VALUES (
-        :B7_TIPO,
-        :B7_ESQUEMA,
-        :B7_PAQUETE,
-        :B7_NOMBRE,
-        :B9_TIPO,
-        :B9_ESQUEMA,
-        :B9_PAQUETE,
-        :B9_NOMBRE,
-        :DESCRIPCION,
-        :OBSERVACION,
-        TO_DATE(:ACTIVITY_DATE, 'DD/MM/YY'),
-        :USER,
-        :DATA_ORIGIN
+        '{B7_TIPO}',
+        '{B7_ESQUEMA}',
+        '{B7_PAQUETE}',
+        '{B7_NOMBRE}',
+        '{B9_TIPO}',
+        '{B9_ESQUEMA}',
+        '{B9_PAQUETE}',
+        '{B9_NOMBRE}',
+        '{DESCRIPCION}',
+        '{OBSERVACION}',
+        TO_DATE('{ACTIVITY_DATE}', 'DD/MM/YY'),
+        '{USER}',
+        '{DATA_ORIGIN}'
     )"""
 
-    # Add default values to each row
+    # Add default values to each row and construct the final query with values
     for row in rows_to_insert:
         row.update({
             "DESCRIPCION": default_description,
@@ -160,24 +162,41 @@ def insert_data_to_table(rows_to_insert: List[Dict[str, str]], db_connection: cx
             "USER": default_user,
             "DATA_ORIGIN": default_data_origin
         })
-        # Replace 'none' with None for all keys in the row
+
+        # Replace 'none' with 'N/A' for all keys in the row
         for key, value in row.items():
             if value == 'none':
                 row[key] = 'N/A'
 
-    print(insert_query)
-    print(rows_to_insert)
+        # Create a final query string by replacing placeholders with actual values
+        formatted_query = insert_query.format(
+            B7_TIPO=row['B7_TIPO'],
+            B7_ESQUEMA=row['B7_ESQUEMA'],
+            B7_PAQUETE=row['B7_PAQUETE'],
+            B7_NOMBRE=row['B7_NOMBRE'],
+            B9_TIPO=row['B9_TIPO'],
+            B9_ESQUEMA=row['B9_ESQUEMA'],
+            B9_PAQUETE=row['B9_PAQUETE'],
+            B9_NOMBRE=row['B9_NOMBRE'],
+            DESCRIPCION=row['DESCRIPCION'],
+            OBSERVACION=row['OBSERVACION'] if row['OBSERVACION'] is not None else 'NULL',
+            ACTIVITY_DATE=row['ACTIVITY_DATE'],
+            USER=row['USER'],
+            DATA_ORIGIN=row['DATA_ORIGIN']
+        )
 
-    # Insert the rows into the database
-    cursor = db_connection.cursor()
-    try:
-        cursor.execute(insert_query, rows_to_insert[0])
-        db_connection.commit()
-        print(f"Successfully inserted {len(rows_to_insert)} rows.")
-    except cx_Oracle.DatabaseError as e:
-        print(f"Error inserting rows: {e}")
-        db_connection.rollback()
-    finally:
-        cursor.close()
+        print(f"Executing query: {formatted_query}")
 
+        # Insert the row into the database
+        cursor = db_connection.cursor()
+        try:
+            cursor.execute(formatted_query)
+            db_connection.commit()
+            print("Successfully inserted row.")
+        except cx_Oracle.DatabaseError as e:
+            print(f"Error inserting row: {e}")
+            db_connection.rollback()
+        finally:
+            cursor.close()
 
+    print(f"Successfully inserted {len(rows_to_insert)} rows.")
