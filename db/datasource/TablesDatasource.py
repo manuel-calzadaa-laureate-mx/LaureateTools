@@ -138,7 +138,7 @@ def fetch_indexes_for_tables(connection: cx_Oracle.Connection, table_names: [str
 
 def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names: [str]):
     """
-    Fetch index details along with column metadata for given tables in a single query.
+    Fetch index details along with column metadata and expressions for given tables in a single query.
 
     :param connection: Database connection object
     :param table_names: List of table names
@@ -147,12 +147,13 @@ def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names:
     cursor = connection.cursor()
     table_names_upper = [name.upper() for name in table_names]
 
-    # Combined query to fetch index and column details
+    # Combined query to fetch index, column, and expression details
     query = f"""
         SELECT 
             ai.owner AS schema_name,
             ai.table_name,
             ai.index_name,
+            ai.index_type,
             ai.uniqueness,
             ai.tablespace_name,
             ai.ini_trans,
@@ -161,10 +162,16 @@ def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names:
             ai.pct_free,
             aic.column_name,
             aic.column_position,
-            aic.descend
+            aic.descend,
+            aie.column_expression
         FROM ALL_INDEXES ai
         LEFT JOIN ALL_IND_COLUMNS aic 
-            ON ai.owner = aic.index_owner AND ai.index_name = aic.index_name
+            ON ai.owner = aic.index_owner 
+            AND ai.index_name = aic.index_name
+        LEFT JOIN ALL_IND_EXPRESSIONS aie
+            ON ai.owner = aie.index_owner
+            AND ai.index_name = aie.index_name
+            AND aic.column_position = aie.column_position
         WHERE ai.table_name IN ({','.join([':name' + str(i) for i in range(len(table_names))])})
         ORDER BY ai.owner, ai.table_name, ai.index_name, aic.column_position
     """
@@ -176,8 +183,8 @@ def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names:
     # Build the structure
     grouped_indexes = {}
     for row in results:
-        (schema, table_name, index_name, uniqueness, tablespace_name, ini_trans, max_trans,
-         logging, pct_free, column_name, column_position, descend) = row
+        (schema, table_name, index_name, index_type, uniqueness, tablespace_name, ini_trans, max_trans,
+         logging, pct_free, column_name, column_position, descend, column_expression) = row
 
         if schema not in grouped_indexes:
             grouped_indexes[schema] = {}
@@ -202,13 +209,16 @@ def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names:
             }
             index_list.append(index)
 
-        # Add column details if available
-        if column_name:
+        # Add column or expression details if available
+        if column_name or column_expression:
             index["columns"].append({
                 "column_name": column_name,
                 "column_position": column_position,
-                "descend": descend
+                "descend": descend,
+                "index_type" : index_type,
+                "column_expression": column_expression
             })
 
     return grouped_indexes
+
 
