@@ -10,3 +10,4 @@
 /banner7/phase_one/*.csv
 /banner9/phase_three/*.csv
 /banner9/phase_three/*.out
+!/banner9/phase_three/scripts/

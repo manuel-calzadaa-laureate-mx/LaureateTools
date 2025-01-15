@@ -4,11 +4,18 @@ from typing import Dict
 from db.DatabaseProperties import DatabaseEnvironment
 
 
+def build_header_section(filename: str):
+    return (f"Prompt>>>\n"
+            f"Prompt>>> [INI] ** Ejecutando {filename}\n"
+            f"Prompt>>>\n")
+
+
 def build_create_table_section(obj: Dict) -> str:
     """
     Construye la sección CREATE TABLE del script.
     """
-    script = f"CREATE TABLE {obj['owner']}.{obj['name']}\n(\n"
+    script = (f"-- Creaciones\n\n"
+              f"CREATE TABLE {obj['owner']}.{obj['name']}\n(\n")
     for column in obj["columns"]:
         col_def = f"  {column['name']} {column['type']}"
         if column['type'] == "NUMBER":
@@ -70,33 +77,74 @@ def build_comments_section(comments: Dict, table_owner: str, table_name: str) ->
     """
     Construye la sección de comentarios del script.
     """
-    comment_script = "--Descripcion de los Campos   --------------------------------------------------\n\n"
+    comment_script = "-- Descripcion de los Campos\n\n"
     for column, description in comments.items():
         if description:
             comment_script += f"   COMMENT ON COLUMN {table_owner}.{table_name}.{column} IS '{description}';\n"
     return comment_script
 
 
-def build_create_table_script(object_data_file: str, environment: DatabaseEnvironment, table_name: str):
+def build_drop_section(object_type: str, object_owner: str, object_name: str):
+    return (f"-- Eliminaciones\n"
+            f"-- DROP TABLE {object_owner}.{object_name}\n")
+
+def build_footer_section(filename):
+    return (f"COMMIT;\n"
+            f"\n"
+            f"Prompt>>>\n"
+            f"Prompt>>> [FIN] ** Creando {filename}\n"
+            f"Prompt>>>\n"
+            f"\n"
+            f"Begin\n"
+            f"  Null;\n"
+            f"End;\n"
+            f"\n"
+            f"/\n"
+            f"\n"
+            f"Show Errors;\n")
+
+
+def build_create_table_script(object_data_file: str, environment: DatabaseEnvironment, table_names: [str]) -> dict:
     try:
         with open(object_data_file, 'r') as file:
             json_data = json.load(file)
 
+        scripts = {}
+
         for env in json_data["root"]:
             if env["environment"] == environment.value:
                 for obj in env["objects"]:
-                    if obj["name"] == table_name and obj["type"] == "TABLE":
+                    if obj["name"] in table_names and obj["type"] == "TABLE":
                         create_table_section = build_create_table_section(obj)
                         tablespace_section = build_tablespace_section(obj.get("attributes", {}))
                         comments_section = build_comments_section(
                             obj.get("comments", {}), obj['owner'], obj['name']
                         )
                         index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}), obj['owner'],
-                                                                              table_name)
+                                                                              obj["name"])
 
-                        return f"{create_table_section}\n{tablespace_section}\n\n{comments_section}\n\n{index_section}"
+                        filename = "CREATE_TABLE_" + obj["name"] + "." + obj['owner'] + ".TB.IDX." + "sql"
+                        header_section = build_header_section(filename)
+                        drop_object_section = build_drop_section(obj["type"], obj['owner'], obj["name"])
+                        footer_section = build_footer_section(filename)
 
-        return f"Table {table_name} in environment {environment.value} not found."
+                        script = (f"{header_section}"
+                                  f"\n"
+                                  f"{drop_object_section}"
+                                  f"\n"
+                                  f"{create_table_section}\n"
+                                  f"{tablespace_section}\n"
+                                  f"\n"
+                                  f"{comments_section}\n"
+                                  f"\n"
+                                  f"{index_section}\n"
+                                  f"\n"
+                                  f"{footer_section}")
+
+                        # Add the script to the dictionary with the table name as the key
+                        scripts[filename] = script
+
+        return scripts
 
     except FileNotFoundError:
         raise FileNotFoundError(f"The file '{object_data_file}' was not found.")
@@ -119,7 +167,6 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
 
     for index in indexes:
 
-        print(index)
         # Check if it's the primary key
         if index.get("uniqueness") == "UNIQUE" and "PK" in index["name"]:
             primary_key = index
@@ -177,6 +224,8 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
     if index_scripts:
         script += "-- Indices\n\n" + "\n".join(index_scripts)
 
+    script += (f"\n"
+               f"SHOW ERRORS;\n")
     return script
 
 
