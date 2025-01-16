@@ -1,0 +1,105 @@
+{
+  "root": {
+    "fields": [
+      {
+        "name": "{table}_ACTIVITY_DATE",
+        "type": "DATE",
+        "comment": "This field identifies the most current date record was created or updated."
+      },
+      {
+        "name": "{table}_USER",
+        "type": "VARCHAR2",
+        "length": 30,
+        "comment": "USER: The ID for the user that most recently updated the record."
+      },
+      {
+        "name": "{table}_DATA_ORIGIN",
+        "type": "VARCHAR2",
+        "length": 30,
+        "comment": "DATA SOURCE: Source system that generated the data"
+      },
+      {
+        "name": "{table}_CAMPUS_CODE",
+        "type": "VARCHAR2",
+        "length": 3,
+        "comment": "Clave del Campus en STVCAMP_CODE"
+      },
+      {
+        "name": "{table}_SCPC_CODE",
+        "type": "VARCHAR2",
+        "length": 6,
+        "comment": "STUDENT CENTRIC PERIOD CYCLE CODE: Cycle Code for the student centric period."
+      },
+      {
+        "name": "{table}_GUID",
+        "type": "VARCHAR2",
+        "length": 36,
+        "comment": "GUID: Global Unique Identifier to uniquely identify the record of a resource for integration."
+      },
+      {
+        "name": "{table}_SURROGATE_ID",
+        "type": "NUMBER",
+        "length": 19,
+        "comment": "SURROGATE ID: Immutable unique key"
+      },
+      {
+        "name": "{table}_VERSION",
+        "type": "NUMBER",
+        "length": 19,
+        "comment": "VERSION: Optimistic lock token."
+      },
+      {
+        "name": "{table}_VPDI_CODE",
+        "type": "VARCHAR2",
+        "length": 6,
+        "comment": "VPDI CODE: Multi-entity processing code."
+      }
+    ],
+    "indexes": [
+      {
+        "name": "{owner}.{prefix}UK{base}_SURROGATE_ID",
+        "uniqueness": "Y",
+        "columns": [
+          {
+            "column_name": "{table}_SURROGATE_ID",
+            "column_position": 1,
+            "descend": "ASC",
+            "index_type": "NORMAL",
+            "column_expression": null
+          }
+        ]
+      },
+      {
+        "name": "{owner}.{prefix}IX{base}_GUID",
+        "uniqueness": "N",
+        "columns": [
+          {
+            "column_name": "{table}_GUID",
+            "column_position": 1,
+            "descend": "ASC",
+            "index_type": "NORMAL",
+            "column_expression": null
+          }
+        ]
+      }
+    ],
+    "sequences": [
+      {
+        "name": "{table}_SURROGATE_ID_SEQUENCE",
+        "increment_by": 1,
+        "start_with": 1,
+        "max_value": 999999999999,
+        "cycle": false,
+        "cache": 20
+      }
+    ],
+    "triggers": [
+      {
+        "name": "{prefix}TR{base}_SURROGATE_ID",
+        "table": "{table}",
+        "event": "BEFORE INSERT OR UPDATE",
+        "body": "Create Or Replace Trigger {owner}.ST_{table}_SURROGATE_ID\n    Before Insert Or Update\n    On {owner}.{table}\n    For Each Row\nBegin\n    If INSERTING\n    Then\n        If GFKSJPA.GETID( ) Is Not Null\n        Then\n            :NEW.{table}_SURROGATE_ID  := GFKSJPA.GETID( );\n            GFKSJPA.SETID( Null );\n        Else\n            :NEW.{table}_SURROGATE_ID  := {table}_SURROGATE_ID_SEQUENCE.NEXTVAL;\n        End If;\n        If GFKSJPA.GETVERSION( ) Is Not Null\n        Then\n            :NEW.{table}_VERSION  := GFKSJPA.GETVERSION( );\n            GFKSJPA.SETVERSION( Null );\n        Else\n            :NEW.{table}_VERSION  := 0;\n        End If;\n    Else\n        If GFKSJPA.GETVERSION( ) Is Not Null\n        Then\n            :NEW.{table}_VERSION  := GFKSJPA.GETVERSION( );\n            GFKSJPA.SETVERSION( Null );\n        Elsif :NEW.{table}_VERSION = :OLD.{table}_VERSION\n        Then\n            :NEW.{table}_VERSION  := :OLD.{table}_VERSION + 1;\n        End If;\n    End If;\nEnd;"
+      }
+    ]
+  }
+}
