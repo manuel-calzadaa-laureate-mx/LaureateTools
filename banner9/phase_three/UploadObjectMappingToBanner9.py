@@ -50,7 +50,7 @@ def load_mapping_file(mapping_file_name: str) -> List[Dict[str, str]]:
 
 
 if __name__ == "__main__":
-    mapping_input_file = "mapping.csv"
+    mapping_input_file = "../mapping.csv"
     db_config = '../../db_config.json'
     db_connection = get_connection(database_name=DatabaseEnvironment.BANNER9, config_file=db_config)
     mapping = load_mapping_file(mapping_file_name=mapping_input_file)

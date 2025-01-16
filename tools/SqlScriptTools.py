@@ -14,6 +14,7 @@ def build_create_table_section(obj: Dict) -> str:
     """
     Construye la sección CREATE TABLE del script.
     """
+
     script = (f"-- Creaciones\n\n"
               f"CREATE TABLE {obj['owner']}.{obj['name']}\n(\n")
     for column in obj["columns"]:
@@ -77,6 +78,7 @@ def build_comments_section(comments: Dict, table_owner: str, table_name: str) ->
     """
     Construye la sección de comentarios del script.
     """
+
     comment_script = "-- Descripcion de los Campos\n\n"
     for column, description in comments.items():
         if description:
@@ -122,6 +124,8 @@ def build_create_table_script(object_data_file: str, environment: DatabaseEnviro
                         )
                         index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}), obj['owner'],
                                                                               obj["name"])
+                        #custom_sequence_section = build_custom_sequence(obj.get("sequences",{})
+                        #custom_trigger_section = build_custom_trigger(obj.get("triggers",{})
 
                         filename = "CREATE_TABLE_" + obj["name"] + "." + obj['owner'] + ".TB.IDX." + "sql"
                         header_section = build_header_section(filename)

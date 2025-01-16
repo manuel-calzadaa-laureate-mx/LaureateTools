@@ -33,7 +33,7 @@ def save_scripts_to_files(scripts: dict, output_directory: str):
 
 if __name__ == "__main__":
     object_data = "../../object_data.json"
-    output_dir = "scripts"
+    output_dir = "../scripts"
     table_name = "TZRAPPL"
     environment = DatabaseEnvironment.BANNER7
     scripts = build_create_table_script(object_data_file=object_data, table_names=[table_name], environment=environment)

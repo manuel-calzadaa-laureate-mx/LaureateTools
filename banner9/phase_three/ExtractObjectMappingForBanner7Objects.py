@@ -156,7 +156,7 @@ def create_mapping_from_database(
 if __name__ == "__main__":
     object_data = "../../object_data.json"
     config_file = '../../db_config.json'  # JSON file containing db credentials
-    output_csv_tile = 'mapping.csv'
+    output_csv_tile = '../mapping.csv'
     # Load configuration and connect to the db
     connection = get_connection(config_file, DatabaseEnvironment.BANNER9)
     create_mapping_from_database(db_connection=connection, object_data_input_file=object_data, output_csv=output_csv_tile)
