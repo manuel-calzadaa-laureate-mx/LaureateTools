@@ -14,3 +14,12 @@ def write_json_to_file(json_data: dict, output_filename: str) -> None:
         json.dump(json_data, jsonfile, indent=4)
 
     print(f'Successfully wrote JSON data to {output_filename}')
+
+def read_json_file(input_filename: str) -> dict:
+    try:
+        with open(input_filename, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"The file '{input_filename}' was not found.")
+    except json.JSONDecodeError:
+        raise ValueError(f"The file '{input_filename}' is not a valid JSON file.")

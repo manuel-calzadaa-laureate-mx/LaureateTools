@@ -4,61 +4,90 @@
       {
         "name": "{table}_ACTIVITY_DATE",
         "type": "DATE",
+        "length": 7,
+        "precision": null,
+        "scale": null,
+        "nullable": false,
         "comment": "This field identifies the most current date record was created or updated."
       },
       {
         "name": "{table}_USER",
         "type": "VARCHAR2",
         "length": 30,
+        "precision": null,
+        "scale": null,
+        "nullable": false,
         "comment": "USER: The ID for the user that most recently updated the record."
       },
       {
         "name": "{table}_DATA_ORIGIN",
         "type": "VARCHAR2",
         "length": 30,
+        "precision": null,
+        "scale": null,
+        "nullable": true,
         "comment": "DATA SOURCE: Source system that generated the data"
       },
       {
         "name": "{table}_CAMPUS_CODE",
         "type": "VARCHAR2",
         "length": 3,
+        "precision": null,
+        "scale": null,
+        "nullable": true,
         "comment": "Clave del Campus en STVCAMP_CODE"
       },
       {
         "name": "{table}_SCPC_CODE",
         "type": "VARCHAR2",
         "length": 6,
+        "precision": null,
+        "scale": null,
+        "nullable": true,
         "comment": "STUDENT CENTRIC PERIOD CYCLE CODE: Cycle Code for the student centric period."
       },
       {
         "name": "{table}_GUID",
         "type": "VARCHAR2",
         "length": 36,
+        "precision": null,
+        "scale": null,
+        "nullable": true,
         "comment": "GUID: Global Unique Identifier to uniquely identify the record of a resource for integration."
       },
       {
         "name": "{table}_SURROGATE_ID",
         "type": "NUMBER",
         "length": 19,
+        "precision": null,
+        "scale": null,
+        "nullable": false,
         "comment": "SURROGATE ID: Immutable unique key"
       },
       {
         "name": "{table}_VERSION",
         "type": "NUMBER",
         "length": 19,
+        "precision": null,
+        "scale": null,
+        "nullable": false,
         "comment": "VERSION: Optimistic lock token."
       },
       {
         "name": "{table}_VPDI_CODE",
         "type": "VARCHAR2",
         "length": 6,
+        "precision": null,
+        "scale": null,
+        "nullable": true,
         "comment": "VPDI CODE: Multi-entity processing code."
       }
     ],
     "indexes": [
       {
         "name": "{owner}.{prefix}UK{base}_SURROGATE_ID",
-        "uniqueness": "Y",
+        "uniqueness": "UNIQUE",
+        "tablespace": "DEVELOPMENT",
         "columns": [
           {
             "column_name": "{table}_SURROGATE_ID",
@@ -71,7 +100,8 @@
       },
       {
         "name": "{owner}.{prefix}IX{base}_GUID",
-        "uniqueness": "N",
+        "uniqueness": "NONUNIQUE",
+        "tablespace": "DEVELOPMENT",
         "columns": [
           {
             "column_name": "{table}_GUID",

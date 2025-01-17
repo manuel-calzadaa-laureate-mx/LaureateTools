@@ -172,7 +172,7 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
     for index in indexes:
 
         # Check if it's the primary key
-        if index.get("uniqueness") == "UNIQUE" and "PK" in index["name"]:
+        if index.get("uniqueness") == "UNIQUE":
             primary_key = index
             continue
 

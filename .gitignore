@@ -11,3 +11,5 @@
 /banner9/phase_three/*.csv
 /banner9/phase_three/*.out
 !/banner9/scripts/
+/banner9/scripts/*.sql
+/banner9/*.csv

@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict, List, Optional
 
 import cx_Oracle
@@ -8,18 +9,18 @@ from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database
 
 
-def add_new_object_element_to_object_data_file(input_file: str, environment: DatabaseEnvironment, metadata_json):
+def add_new_object_to_data_file(object_data_file: str, environment: DatabaseEnvironment, new_json_data: dict):
     """
     Append metadata JSON to the specified environment in the input JSON file.
 
-    :param input_file: Path to the input JSON file
+    :param object_data_file: Path to the input JSON file
     :param environment: Environment name to append the metadata to
-    :param metadata_json: JSON string to append
+    :param new_json_data: JSON string to append
     """
-    with open(input_file, "r") as file:
+    with open(object_data_file, "r") as file:
         data = json.load(file)
 
-    new_metadata = json.loads(metadata_json)
+    new_metadata = json.loads(new_json_data)
 
     # Find the correct environment and append metadata
     for env in data.get("root", []):
@@ -30,8 +31,9 @@ def add_new_object_element_to_object_data_file(input_file: str, environment: Dat
             break
 
     # Write back to the file
-    with open(input_file, "w") as file:
+    with open(object_data_file, "w") as file:
         json.dump(data, file, indent=4)
+
 
 def extract_table_unique_dependencies_types_from_data_file(
         input_file_name: str,
@@ -65,6 +67,7 @@ def extract_table_unique_dependencies_types_from_data_file(
         raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
     except json.JSONDecodeError:
         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
+
 
 def extract_unique_dependencies_types_from_data_file(
         input_file_name: str,
@@ -180,6 +183,27 @@ def extract_sequences_attributes_from_database(connection: cx_Oracle.Connection,
     # Return the constructed JSON structure
     return json.dumps(sequence_metadata, indent=4)
 
+
+def add_new_environment(file_path: str, new_environment: DatabaseEnvironment):
+    """
+    Reads a JSON file, checks if an environment exists, and adds it if it doesn't.
+
+    :param file_path: Path to the JSON file.
+    :param new_environment: The environment to add (e.g., "banner9").
+    """
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+    else:
+        # Initialize the structure if the file doesn't exist
+        data = {"root": []}
+
+    environment_exists = any(obj["environment"] == new_environment.value for obj in data["root"])
+    if not environment_exists:
+        data["root"].append({"environment": new_environment.value, "objects": []})
+
+    with open(file_path, 'w') as f:
+        json.dump(data, f, indent=4)
 
 def extract_all_objects_from_data_file(input_file_name: str) -> List[Dict[str, Optional[str]]]:
     """

@@ -8,6 +8,29 @@ class ObjectType(Enum):
     SEQUENCE = "SEQUENCE"
 
 
+def extract_table_info(table_name: str) -> dict:
+    # Extract prefix: first two characters, where the second character must be "Z"
+    if len(table_name) >= 2 and table_name[1] == "Z":
+        prefix = table_name[:2]
+    else:
+        raise ValueError(f"Invalid table name: {table_name} does not meet the criteria.")
+
+    # Extract base: check if "TB" exists, and use the part after it
+    if "TB" in table_name:
+        base_start = table_name.index("TB") + 2
+        base = table_name[base_start:]
+    else:
+        # If "TB" is not present, use the part after the prefix
+        base = table_name[2:]
+
+    # Return the extracted values
+    return {
+        "prefix": prefix,
+        "base": base,
+        "table_name": table_name
+    }
+
+
 def convert_object_owner(object_owner: str) -> str:
     """
     Converts the object owner to the appropriate format for Banner 9.
