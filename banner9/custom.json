@@ -1,5 +1,55 @@
 {
   "root": {
+    "synonyms" : "CREATE PUBLIC SYNONYM {table} FOR UVM.{table};"
+    }
+    ,
+    "grants": [
+      {
+        "table": {
+          "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{table} TO {owner};",
+          "owner": [
+            "BANINST1",
+            "SATURN",
+            "TAISMGR",
+            "BANSECR",
+            "TIBCO01",
+            "TIBCO02",
+            "TIBCO03",
+            "TIBCO04"
+          ]
+        }
+      },
+      {
+        "packages": {
+          "script": "GRANT EXECUTE, DEBUG ON UVM.{package} TO {owner};",
+          "owner": [
+            "BANINST1",
+            "SATURN",
+            "TAISMGR",
+            "BANSECR",
+            "TIBCO01",
+            "TIBCO02",
+            "TIBCO03",
+            "TIBCO04"
+          ]
+        }
+      },
+      {
+        "sequences": {
+          "script": "GRANT ALTER, SELECT ON UVM.{sequence} TO {owner} WITH GRANT OPTION;",
+          "owner": [
+            "BANINST1",
+            "SATURN",
+            "TAISMGR",
+            "BANSECR",
+            "TIBCO01",
+            "TIBCO02",
+            "TIBCO03",
+            "TIBCO04"
+          ]
+        }
+      }
+    ],
     "fields": [
       {
         "name": "{table}_ACTIVITY_DATE",
