@@ -1,8 +1,6 @@
 {
   "root": {
-    "synonyms" : "CREATE PUBLIC SYNONYM {table} FOR UVM.{table};"
-    }
-    ,
+    "synonyms": "CREATE PUBLIC SYNONYM {table} FOR UVM.{table};",
     "grants": [
       {
         "table": {
@@ -57,8 +55,7 @@
         "length": 7,
         "precision": null,
         "scale": null,
-        "nullable": false,
-        "comment": "This field identifies the most current date record was created or updated."
+        "nullable": false
       },
       {
         "name": "{table}_USER",
@@ -66,8 +63,7 @@
         "length": 30,
         "precision": null,
         "scale": null,
-        "nullable": false,
-        "comment": "USER: The ID for the user that most recently updated the record."
+        "nullable": false
       },
       {
         "name": "{table}_DATA_ORIGIN",
@@ -75,8 +71,7 @@
         "length": 30,
         "precision": null,
         "scale": null,
-        "nullable": true,
-        "comment": "DATA SOURCE: Source system that generated the data"
+        "nullable": true
       },
       {
         "name": "{table}_CAMPUS_CODE",
@@ -84,8 +79,7 @@
         "length": 3,
         "precision": null,
         "scale": null,
-        "nullable": true,
-        "comment": "Clave del Campus en STVCAMP_CODE"
+        "nullable": true
       },
       {
         "name": "{table}_SCPC_CODE",
@@ -93,8 +87,7 @@
         "length": 6,
         "precision": null,
         "scale": null,
-        "nullable": true,
-        "comment": "STUDENT CENTRIC PERIOD CYCLE CODE: Cycle Code for the student centric period."
+        "nullable": true
       },
       {
         "name": "{table}_GUID",
@@ -102,8 +95,7 @@
         "length": 36,
         "precision": null,
         "scale": null,
-        "nullable": true,
-        "comment": "GUID: Global Unique Identifier to uniquely identify the record of a resource for integration."
+        "nullable": true
       },
       {
         "name": "{table}_SURROGATE_ID",
@@ -111,8 +103,7 @@
         "length": 19,
         "precision": null,
         "scale": null,
-        "nullable": false,
-        "comment": "SURROGATE ID: Immutable unique key"
+        "nullable": false
       },
       {
         "name": "{table}_VERSION",
@@ -120,8 +111,7 @@
         "length": 19,
         "precision": null,
         "scale": null,
-        "nullable": false,
-        "comment": "VERSION: Optimistic lock token."
+        "nullable": false
       },
       {
         "name": "{table}_VPDI_CODE",
@@ -129,7 +119,44 @@
         "length": 6,
         "precision": null,
         "scale": null,
-        "nullable": true,
+        "nullable": true
+      }
+    ],
+    "comments": [
+      {
+        "name": "{table}_ACTIVITY_DATE",
+        "comment": "This field identifies the most current date record was created or updated."
+      },
+      {
+        "name": "{table}_USER",
+        "comment": "USER: The ID for the user that most recently updated the record."
+      },
+      {
+        "name": "{table}_DATA_ORIGIN",
+        "comment": "DATA SOURCE: Source system that generated the data"
+      },
+      {
+        "name": "{table}_CAMPUS_CODE",
+        "comment": "Clave del Campus en STVCAMP_CODE"
+      },
+      {
+        "name": "{table}_SCPC_CODE",
+        "comment": "STUDENT CENTRIC PERIOD CYCLE CODE: Cycle Code for the student centric period."
+      },
+      {
+        "name": "{table}_GUID",
+        "comment": "GUID: Global Unique Identifier to uniquely identify the record of a resource for integration."
+      },
+      {
+        "name": "{table}_SURROGATE_ID",
+        "comment": "SURROGATE ID: Immutable unique key"
+      },
+      {
+        "name": "{table}_VERSION",
+        "comment": "VERSION: Optimistic lock token."
+      },
+      {
+        "name": "{table}_VPDI_CODE",
         "comment": "VPDI CODE: Multi-entity processing code."
       }
     ],
