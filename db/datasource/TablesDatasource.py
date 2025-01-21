@@ -19,7 +19,12 @@ def fetch_table_columns_for_tables(connection: cx_Oracle.Connection, table_names
     """, {f'name{i}': name for i, name in enumerate(table_names_upper)})
     results = cursor.fetchall()
     cursor.close()
+    return results
 
+
+def fetch_table_columns_for_tables_grouped_by_schema_and_table_name(connection: cx_Oracle.Connection,
+                                                                    table_names: [str]):
+    results = fetch_table_columns_for_tables(connection=connection, table_names=table_names)
     grouped_columns = {}
     for row in results:
         schema, table_name, column_name, data_type, data_length, data_precision, data_scale, nullable = row
@@ -36,6 +41,7 @@ def fetch_table_columns_for_tables(connection: cx_Oracle.Connection, table_names
             "nullable": nullable == "Y"
         })
     return grouped_columns
+
 
 def fetch_table_attributes_for_tables(connection: cx_Oracle.Connection, table_names: [str]):
     """
@@ -54,7 +60,12 @@ def fetch_table_attributes_for_tables(connection: cx_Oracle.Connection, table_na
     """, {f'name{i}': name for i, name in enumerate(table_names_upper)})
     results = cursor.fetchall()
     cursor.close()
+    return results
 
+
+def fetch_table_attributes_for_tables_grouped_by_schema_and_table_name(connection: cx_Oracle.Connection,
+                                                                       table_names: [str]):
+    results = fetch_table_attributes_for_tables(connection=connection, table_names=table_names)
     grouped_attributes = {}
     for row in results:
         schema, table_name, pct_free, pct_used, ini_trans, max_trans, logging, tablespace_name = row
@@ -70,7 +81,9 @@ def fetch_table_attributes_for_tables(connection: cx_Oracle.Connection, table_na
         }
     return grouped_attributes
 
-def fetch_column_comments_for_tables(connection: cx_Oracle.Connection, table_names: [str]):
+
+def fetch_column_comments_for_tables_grouped_by_schema_and_table_name(connection: cx_Oracle.Connection,
+                                                                      table_names: [str]):
     """
     Fetch column comments for given tables across all accessible schemas.
 
@@ -98,7 +111,8 @@ def fetch_column_comments_for_tables(connection: cx_Oracle.Connection, table_nam
         grouped_comments[schema][table_name][column_name] = comments
     return grouped_comments
 
-def fetch_indexes_for_tables(connection: cx_Oracle.Connection, table_names: [str]):
+
+def fetch_indexes_for_tables_grouped_by_schema_and_table_name(connection: cx_Oracle.Connection, table_names: [str]):
     """
     Fetch index details for given tables across all accessible schemas.
 
@@ -136,7 +150,8 @@ def fetch_indexes_for_tables(connection: cx_Oracle.Connection, table_names: [str
     return grouped_indexes
 
 
-def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names: [str]):
+def fetch_full_indexes_for_tables_grouped_by_schema_and_table_name(connection: cx_Oracle.Connection,
+                                                                   table_names: [str]):
     """
     Fetch index details along with column metadata and expressions for given tables in a single query.
 
@@ -215,10 +230,8 @@ def fetch_full_indexes_for_tables(connection: cx_Oracle.Connection, table_names:
                 "column_name": column_name,
                 "column_position": column_position,
                 "descend": descend,
-                "index_type" : index_type,
+                "index_type": index_type,
                 "column_expression": column_expression
             })
 
     return grouped_indexes
-
-

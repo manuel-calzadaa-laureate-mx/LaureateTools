@@ -2,15 +2,15 @@ from tools.MigrationTools import extract_table_info
 
 
 def get_custom_comments(json_data, b9_table_name: str):
-    comments = {}
-    fields = json_data["root"]["fields"]
-
+    comments = []
+    fields = json_data["root"]["comments"]
     for field in fields:
         # Replace "{table}" in the field name with the table_name
         field_name = field["name"].replace("{table}", b9_table_name)
         # Add the comment to the comments dictionary
-        comments[field_name] = field["comment"]
-
+        comments.append({
+            "name" : field_name, "comment" : field["comment"]
+        })
     # Return the comments structure
     return {"comments": comments}
 

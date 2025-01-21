@@ -9,8 +9,8 @@ import cx_Oracle
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_connection, is_oracle_built_in_object
 from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
-from db.datasource.TablesDatasource import fetch_table_columns_for_tables, fetch_table_attributes_for_tables, \
-    fetch_column_comments_for_tables, fetch_full_indexes_for_tables
+from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \
+    fetch_column_comments_for_tables_grouped_by_schema_and_table_name, fetch_full_indexes_for_tables_grouped_by_schema_and_table_name
 from db.datasource.TriggersDatasource import fetch_triggers_for_tables
 from tools.BusinessRulesTools import is_custom_table
 from tools.PatternMatchingTools import extract_select_tables, extract_update_tables, extract_delete_tables, \
@@ -341,20 +341,24 @@ def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table
     :param table_names: List of table names (e.g., ["SZTBLAN", "ANOTHER_TABLE"])
     :param output_file: The output file to save the generated JSON
     """
-
     # Fetch metadata
-    columns = fetch_table_columns_for_tables(connection, table_names)
-    attributes = fetch_table_attributes_for_tables(connection, table_names)
-    comments = fetch_column_comments_for_tables(connection, table_names)
-    indexes = fetch_full_indexes_for_tables(connection, table_names)
+    columns = fetch_table_columns_for_tables_grouped_by_schema_and_table_name(connection, table_names)
+    attributes = fetch_table_attributes_for_tables_grouped_by_schema_and_table_name(connection, table_names)
+    comments = fetch_column_comments_for_tables_grouped_by_schema_and_table_name(connection, table_names)
+    indexes = fetch_full_indexes_for_tables_grouped_by_schema_and_table_name(connection, table_names)
     triggers = fetch_triggers_for_tables(connection, table_names)
-
     # sequences = fetch_sequences_names_for_tables(connection,table_names)
 
     # Construct JSON structure
     table_metadata = []
     for schema in columns.keys():
         for table_name in columns[schema].keys():
+            raw_comments = comments[schema].get(table_name, {})
+            transformed_comments = [
+                {"name": column_name, "comment": comment}
+                for column_name, comment in raw_comments.items()
+            ]
+
             table_entry = {
                 "name": table_name,
                 "type": "TABLE",
@@ -362,7 +366,7 @@ def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table
                 "custom": is_custom_table(table_name),
                 "columns": columns[schema].get(table_name, []),
                 "attributes": attributes[schema].get(table_name, {}),
-                "comments": comments[schema].get(table_name, {}),
+                "comments": transformed_comments,
                 "indexes": indexes[schema].get(table_name, []),
                 "sequences": [],
                 "triggers": get_trigger_names_and_status(triggers=triggers, schema=schema, table_name=table_name )

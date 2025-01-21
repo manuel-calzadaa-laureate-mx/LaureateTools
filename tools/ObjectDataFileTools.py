@@ -35,6 +35,45 @@ def add_new_object_to_data_file(object_data_file: str, environment: DatabaseEnvi
         json.dump(data, file, indent=4)
 
 
+def add_or_update_object_in_data_file(object_data_file: str, environment: DatabaseEnvironment, new_object: Dict):
+    """
+    Add a new object to the specified environment in the JSON file, or update it if it already exists.
+
+    :param object_data_file: Path to the input JSON file
+    :param environment: Environment name to append or update the object in
+    :param new_object: The new object to add or update
+    """
+    # Read the existing data from the file
+    with open(object_data_file, "r") as file:
+        data = json.load(file)
+
+    # Find the target environment
+    for env in data.get("root", []):
+        if env.get("environment", "") == environment.value:
+            env_objects = env.setdefault("objects", [])
+
+            # Check if the object already exists by matching the "name" field
+            for obj in env_objects:
+                if obj.get("name") == new_object.get("name"):
+                    # Update the existing object
+                    obj.update(new_object)
+                    break
+            else:
+                # If the object does not exist, add it
+                env_objects.append(new_object)
+            break
+    else:
+        # If the environment does not exist, add it
+        data.setdefault("root", []).append({
+            "environment": environment,
+            "objects": [new_object]
+        })
+
+    # Write the updated data back to the file
+    with open(object_data_file, "w") as file:
+        json.dump(data, file, indent=4)
+
+
 def extract_table_unique_dependencies_types_from_data_file(
         input_file_name: str,
         environment: DatabaseEnvironment,

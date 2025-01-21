@@ -34,12 +34,8 @@ def save_scripts_to_files(scripts: dict, output_directory: str):
 if __name__ == "__main__":
     object_data = "../../object_data.json"
     output_dir = "../scripts"
-    table_name = "TZRAPPL"
-    environment = DatabaseEnvironment.BANNER7
+    table_name = "TZTBRCIBK"
+    environment = DatabaseEnvironment.BANNER9
     scripts = build_create_table_script(object_data_file=object_data, table_names=[table_name], environment=environment)
-    print(scripts)
     save_scripts_to_files(scripts=scripts, output_directory=output_dir)
-    # db_connection = get_connection(config_file="../../db_config.json", database_name= DatabaseEnvironment.BANNER7)
-    # indexes = fetch_full_indexes_for_tables(connection=db_connection, table_names=["TZRFACC"])
-    # print(indexes)
-    # db_connection.close()
+

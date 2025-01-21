@@ -14,7 +14,6 @@ def build_create_table_section(obj: Dict) -> str:
     """
     Construye la sección CREATE TABLE del script.
     """
-
     script = (f"-- Creaciones\n\n"
               f"CREATE TABLE {obj['owner']}.{obj['name']}\n(\n")
     for column in obj["columns"]:
@@ -80,9 +79,9 @@ def build_comments_section(comments: Dict, table_owner: str, table_name: str) ->
     """
 
     comment_script = "-- Descripcion de los Campos\n\n"
-    for column, description in comments.items():
-        if description:
-            comment_script += f"   COMMENT ON COLUMN {table_owner}.{table_name}.{column} IS '{description}';\n"
+    for comment in comments:
+        if comment["comment"]:
+            comment_script += f"   COMMENT ON COLUMN {table_owner}.{table_name}.{comment["name"]} IS '{comment["comment"]}';\n"
     return comment_script
 
 
