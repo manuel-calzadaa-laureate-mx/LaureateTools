@@ -162,8 +162,9 @@
     ],
     "indexes": [
       {
-        "name": "{owner}.{prefix}UK{base}_SURROGATE_ID",
+        "name": "{prefix}UK{base}_SURROGATE_ID",
         "uniqueness": "UNIQUE",
+        "constraint_type": null,
         "tablespace": "DEVELOPMENT",
         "columns": [
           {
@@ -176,8 +177,9 @@
         ]
       },
       {
-        "name": "{owner}.{prefix}IX{base}_GUID",
+        "name": "{prefix}IX{base}_GUID",
         "uniqueness": "NONUNIQUE",
+        "constraint_type": null,
         "tablespace": "DEVELOPMENT",
         "columns": [
           {

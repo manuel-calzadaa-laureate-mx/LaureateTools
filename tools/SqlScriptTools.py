@@ -169,11 +169,10 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
     index_scripts = []
 
     for index in indexes:
-
-        # Check if it's the primary key
-        if index.get("uniqueness") == "UNIQUE":
+        # Determine if this is the primary key
+        if index.get("uniqueness") == "UNIQUE" and index.get("constraint_type") == "P" and primary_key is None:
             primary_key = index
-            continue
+            continue  # Skip processing as a regular index
 
         # Skip system-generated indexes
         if index["name"].startswith("SYS_"):
@@ -187,10 +186,8 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
                 if col["column_expression"]:
                     columns.append(f"{col['column_expression']} {col['descend']}")
                 else:
-                    # Fallback to the column name if expression is missing
                     columns.append(f"{col['column_name']} {col['descend']}")
             else:
-                # Normal column reference for other index types
                 columns.append(f"{col['column_name']} {col['descend']}")
 
         columns_str = ", ".join(columns)
@@ -202,9 +199,9 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
             f"       ({columns_str})\n"
             f"       LOGGING\n"
             f"       TABLESPACE {index['tablespace']}\n"
-            f"       PCTFREE    {index['pct_free']}\n"
-            f"       INITRANS   {index['ini_trans']}\n"
-            f"       MAXTRANS   {index['max_trans']}\n"
+            f"       PCTFREE    {index.get('pct_free', 0)}\n"
+            f"       INITRANS   {index.get('ini_trans', 0)}\n"
+            f"       MAXTRANS   {index.get('max_trans', 0)}\n"
             f"       STORAGE    (\n"
             f"                   INITIAL          65536\n"
             f"                   NEXT             1048576\n"
@@ -227,8 +224,7 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
     if index_scripts:
         script += "-- Indices\n\n" + "\n".join(index_scripts)
 
-    script += (f"\n"
-               f"SHOW ERRORS;\n")
+    script += "\nSHOW ERRORS;\n"
     return script
 
 

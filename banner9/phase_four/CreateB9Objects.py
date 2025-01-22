@@ -1,5 +1,5 @@
 from db.DatabaseProperties import DatabaseObject, DatabaseEnvironment
-from tools.CustomFileTools import get_custom_table_columns, get_custom_comments
+from tools.CustomFileTools import get_custom_table_columns, get_custom_comments, get_custom_indexes
 from tools.FileTools import read_json_file
 from tools.MappingFileTools import csv_to_json
 from tools.ObjectDataFileTools import add_new_environment, add_or_update_object_in_data_file
@@ -40,6 +40,7 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
 
     columns = refactor_table_columns(original_table.get("columns", []), b7_table_name, b9_table_name)
     comments = refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
+    indexes = refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
     # Create the new table object
     new_table = {
         "name": b9_table_name,
@@ -49,7 +50,7 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
         , "columns": columns["columns"]
         , "attributes": original_table.get("attributes", {})
         , "comments": comments["comments"]
-        # ,        "indexes": original_table.get("indexes", [])
+        , "indexes": indexes["indexes"]
         # ,        "sequences": original_table.get("sequences", [])
         # ,        "triggers": original_table.get("triggers", [])
         ,
@@ -70,19 +71,42 @@ def read_custom_table_comments(b9_table_name: str):
     return get_custom_comments(json_custom_data, b9_table_name=b9_table_name)
 
 
+def read_custom_table_indexes(b9_table_name):
+    custom_addons_file = "../custom.json"
+    json_custom_data = read_json_file(custom_addons_file)
+    return get_custom_indexes(json_custom_data, b9_table_name=b9_table_name)
+
+
+def refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
+    updated_indexes = []
+
+    for one_index in b7_table_indexes:
+        updated_index = one_index.copy()
+        updated_index["name"] = one_index.get("name").replace(b7_table_name, b9_table_name),
+        updated_index["columns"] = []
+
+        updated_index_columns = []
+        columns = one_index.get("columns", [])
+        for one_column in columns:
+            updated_index_column = one_column.copy()
+            updated_index_column["column_name"] = refactor_column_name(one_column.get("column_name"),
+                                                                       b7_table_name=b7_table_name,
+                                                                       b9_table_name=b9_table_name)
+            updated_index_columns.append(updated_index_column)
+        updated_index["columns"] = updated_index_columns
+        updated_indexes.append(updated_index)
+    custom_table_indexes = read_custom_table_indexes(b9_table_name=b9_table_name)
+
+    combined_indexes = updated_indexes + custom_table_indexes['indexes']
+    result = {"indexes": combined_indexes}
+    return result
+
+
 def refactor_table_comments(b7_table_comments: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
     updated_comments = []
 
     for comments in b7_table_comments:
-        column_name = comments['name']
-
-        # Check if the name starts with old_table_name
-        if not column_name.startswith(b7_table_name):
-            # Prepend old_table_name if it does not start with it
-            column_name = f"{b7_table_name}_{column_name}"
-
-        # Replace old_table_name with new_table_name
-        column_name = column_name.replace(b7_table_name, b9_table_name, 1)
+        column_name = refactor_column_name(comments['name'], b7_table_name, b9_table_name)
 
         # Update the comments dictionary
         updated_comment = comments.copy()
@@ -95,6 +119,16 @@ def refactor_table_comments(b7_table_comments: [dict], b7_table_name: str, b9_ta
     combined_comments = updated_comments + custom_table_comments['comments']
     result = {"comments": combined_comments}
     return result
+
+
+def refactor_column_name(column_name: str, b7_table_name: str, b9_table_name: str) -> str:
+    # Check if the name starts with old_table_name
+    if not column_name.startswith(b7_table_name):
+        # Prepend old_table_name if it does not start with it
+        column_name = f"{b7_table_name}_{column_name}"
+    # Replace old_table_name with new_table_name
+    column_name = column_name.replace(b7_table_name, b9_table_name, 1)
+    return column_name
 
 
 def refactor_table_columns(b7_table_columns: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
@@ -158,36 +192,37 @@ if __name__ == "__main__":
     add_new_environment(file_path=object_data, new_environment=DatabaseEnvironment.BANNER9)
 
     migration_data = read_mapping_data()
-    first_key, *_ = migration_data
-    first_key_data = migration_data.get(first_key)
-    b9_table_name = first_key_data.get("B9_NOMBRE")
-    b9_owner_name = first_key_data.get("B9_ESQUEMA")
+    for table_name_key in migration_data:
+        b9_mapping_data = migration_data.get(table_name_key, {})
+        b9_paquete = b9_mapping_data.get("B9_PAQUETE")
+        b9_nombre = b9_mapping_data.get("B9_NOMBRE")
+        b9_esquema = b9_mapping_data.get("B9_ESQUEMA")
 
-    json_object_data = read_json_file(object_data)
-    converted_table_data = migrate_b7_table_to_b9(json_data=json_object_data, b7_table_name=first_key,
-                                                  b9_table_name=b9_table_name, b9_owner=b9_owner_name)
+        json_object_data = read_json_file(object_data)
+        converted_table_data = migrate_b7_table_to_b9(json_data=json_object_data, b7_table_name=table_name_key,
+                                                      b9_table_name=b9_nombre, b9_owner=b9_esquema)
 
-    print(converted_table_data)
-    add_or_update_object_in_data_file(object_data_file=object_data, new_object=converted_table_data,
-                                      environment=DatabaseEnvironment.BANNER9)
+        add_or_update_object_in_data_file(object_data_file=object_data, new_object=converted_table_data,
+                                          environment=DatabaseEnvironment.BANNER9)
 
-    # #
-    # # table_name = "TZTBRCIBK"
-    # custom_addons_file = "../custom.json"
-    # json_custom_data = read_json_file(custom_addons_file)
 
-    # custom_columns_addon = get_custom_table_columns(json_data, table_name)
-    # print(json.dumps(custom_columns_addon, indent=4))
-    # custom_indexes_addon = get_custom_indexes(json_data, table_name)
-    # print(json.dumps(custom_indexes_addon, indent=4))
+        # #
+        # # table_name = "TZTBRCIBK"
+        # custom_addons_file = "../custom.json"
+        # json_custom_data = read_json_file(custom_addons_file)
 
-    # read all the table data
-    # if field doesn't start with table name append it
-    # add fields + new fields
-    # add comments + add new comments
-    # add indexes + add new indexes
+        # custom_columns_addon = get_custom_table_columns(json_data, table_name)
+        # print(json.dumps(custom_columns_addon, indent=4))
+        # custom_indexes_addon = get_custom_indexes(json_data, table_name)
+        # print(json.dumps(custom_indexes_addon, indent=4))
 
-    # add new sequence object
-    # add new trigger object
+        # read all the table data
+        # if field doesn't start with table name append it
+        # add fields + new fields
+        # add comments + add new comments
+        # add indexes + add new indexes
 
-    # if ...
+        # add new sequence object
+        # add new trigger object
+
+        # if ...
