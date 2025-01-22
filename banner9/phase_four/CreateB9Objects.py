@@ -60,19 +60,19 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
 
 
 def read_custom_table_columns(b9_table_name: str):
-    custom_addons_file = "../custom.json"
+    custom_addons_file = "../object_addons.json"
     json_custom_data = read_json_file(custom_addons_file)
     return get_custom_table_columns(json_custom_data, b9_table_name=b9_table_name)
 
 
 def read_custom_table_comments(b9_table_name: str):
-    custom_addons_file = "../custom.json"
+    custom_addons_file = "../object_addons.json"
     json_custom_data = read_json_file(custom_addons_file)
     return get_custom_comments(json_custom_data, b9_table_name=b9_table_name)
 
 
 def read_custom_table_indexes(b9_table_name):
-    custom_addons_file = "../custom.json"
+    custom_addons_file = "../object_addons.json"
     json_custom_data = read_json_file(custom_addons_file)
     return get_custom_indexes(json_custom_data, b9_table_name=b9_table_name)
 
@@ -208,7 +208,7 @@ if __name__ == "__main__":
 
         # #
         # # table_name = "TZTBRCIBK"
-        # custom_addons_file = "../custom.json"
+        # custom_addons_file = "../object_addons.json"
         # json_custom_data = read_json_file(custom_addons_file)
 
         # custom_columns_addon = get_custom_table_columns(json_data, table_name)
