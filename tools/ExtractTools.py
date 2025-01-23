@@ -9,8 +9,10 @@ import cx_Oracle
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_connection, is_oracle_built_in_object
 from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
-from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \
-    fetch_column_comments_for_tables_grouped_by_schema_and_table_name, fetch_full_indexes_for_tables_grouped_by_schema_and_table_name
+from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, \
+    fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \
+    fetch_column_comments_for_tables_grouped_by_schema_and_table_name, \
+    fetch_full_indexes_for_tables_grouped_by_schema_and_table_name
 from db.datasource.TriggersDatasource import fetch_triggers_for_tables
 from tools.BusinessRulesTools import is_custom_table
 from tools.PatternMatchingTools import extract_select_tables, extract_update_tables, extract_delete_tables, \
@@ -323,7 +325,8 @@ def convert_dependencies_file_to_json_object(input_filename: str) -> dict:
             elif dep_type == "FUNCTION":
                 objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name, "local": False})
             elif dep_type == "SEQUENCE":
-                objects_dict[obj_name]["dependencies"]["sequences"].append({"name": dep_name})
+                objects_dict[obj_name]["dependencies"]["sequences"].append({"name": dep_name, "deployment": "external",
+                                                                            })
             elif dep_type == "PROCEDURE":
                 objects_dict[obj_name]["dependencies"]["procedures"].append({"name": dep_name})
 
@@ -369,7 +372,7 @@ def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table
                 "comments": transformed_comments,
                 "indexes": indexes[schema].get(table_name, []),
                 "sequences": [],
-                "triggers": get_trigger_names_and_status(triggers=triggers, schema=schema, table_name=table_name )
+                "triggers": get_trigger_names_and_status(triggers=triggers, schema=schema, table_name=table_name)
             }
             table_metadata.append(table_entry)
 
@@ -394,7 +397,7 @@ def get_trigger_names_and_status(triggers: dict, schema: str, table_name: str):
 
     # Extract the trigger name and status for each trigger
     return [
-        {"name": trigger["trigger_name"], "status": trigger["status"]}
+        {"name": trigger["trigger_name"], "status": trigger["status"], "deployment": "external"}
         for trigger in table_triggers
     ]
 
