@@ -9,13 +9,14 @@ def get_custom_comments(json_data, b9_table_name: str):
         field_name = field["name"].replace("{table}", b9_table_name)
         # Add the comment to the comments dictionary
         comments.append({
-            "name" : field_name, "comment" : field["comment"]
+            "name": field_name, "comment": field["comment"]
         })
     # Return the comments structure
     return {"comments": comments}
 
+
 def get_custom_table_columns(json_data: dict, b9_table_name: str):
-    fields = json_data["root"]["fields"]
+    fields = json_data["root"]["columns"]
 
     columns = [
         {
@@ -31,8 +32,25 @@ def get_custom_table_columns(json_data: dict, b9_table_name: str):
 
     return {"columns": columns}
 
-def get_custom_indexes(input_json : dict, b9_table_name: str, owner: str = "UVM"):
 
+def get_custom_sequences(json_data: dict, b9_table_name: str):
+    fields = json_data["root"]["sequences"]
+
+    sequences = [
+        {
+            "name": field["name"].replace("{table}", b9_table_name),
+            "increment_by": field["increment_by"],
+            "start_with": field["start_with"],
+            "max_value": field["max_value"],
+            "cycle": field["cycle"],
+            "cache": field["cache"]
+        }
+        for field in fields
+    ]
+    return {"sequences": sequences}
+
+
+def get_custom_indexes(input_json: dict, b9_table_name: str, owner: str = "UVM"):
     table_info = extract_table_info(table_name=b9_table_name)
     indexes = input_json["root"]["indexes"]
     transformed_indexes = []
@@ -40,9 +58,9 @@ def get_custom_indexes(input_json : dict, b9_table_name: str, owner: str = "UVM"
     for index in indexes:
         transformed_index = {
             "name": index["name"]
-                .replace("{owner}", owner)
-                .replace("{prefix}", table_info.get("prefix"))
-                .replace("{base}", table_info.get("base")),
+            .replace("{owner}", owner)
+            .replace("{prefix}", table_info.get("prefix"))
+            .replace("{base}", table_info.get("base")),
             "uniqueness": index["uniqueness"],
             "tablespace": "DEVELOPMENT",
             "columns": [

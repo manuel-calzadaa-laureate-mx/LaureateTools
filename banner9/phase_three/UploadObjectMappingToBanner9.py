@@ -2,7 +2,7 @@ import csv
 from typing import List, Dict
 
 from db.DatabaseProperties import DatabaseEnvironment
-from db.OracleDatabaseTools import get_connection
+from db.OracleDatabaseTools import get_db_connection
 from db.datasource.B7ToB9MappingDatasource import insert_data_to_table
 
 
@@ -52,7 +52,7 @@ def load_mapping_file(mapping_file_name: str) -> List[Dict[str, str]]:
 if __name__ == "__main__":
     mapping_input_file = "../mapping.csv"
     db_config = '../../db_config.json'
-    db_connection = get_connection(database_name=DatabaseEnvironment.BANNER9, config_file=db_config)
+    db_connection = get_db_connection(database_name=DatabaseEnvironment.BANNER9)
     mapping = load_mapping_file(mapping_file_name=mapping_input_file)
     print(mapping)
     insert_data_to_table(rows_to_insert=mapping, db_connection=db_connection)

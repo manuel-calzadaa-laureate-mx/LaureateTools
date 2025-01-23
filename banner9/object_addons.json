@@ -48,7 +48,7 @@
         }
       }
     ],
-    "fields": [
+    "columns": [
       {
         "name": "{table}_ACTIVITY_DATE",
         "type": "DATE",

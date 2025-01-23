@@ -4,7 +4,7 @@ import logging
 
 from FindAllObjectsSourceCode import extract_source_code_from_procedures
 from db.DatabaseProperties import DatabaseEnvironment
-from db.OracleDatabaseTools import get_connection
+from db.OracleDatabaseTools import get_db_connection
 from tools.DependencyFileTools import extract_unique_existing_functions, extract_unique_dependency_function, \
     extract_unique_existing_objects, extract_unique_dependency_objects
 from tools.ExtractTools import extract_all_dependencies_from_source_file_folder
@@ -43,7 +43,7 @@ def main():
         print(f"Remaining functions to process: {remaining_objects}")
 
         # Step 2: Update the procedures file
-        db_connection = get_connection(config_file=config_file, database_name=database_name)
+        db_connection = get_db_connection(database_name=database_name)
         update_procedures_file(remaining_objects, db_connection, procedures_out_file)
 
         # Step 3: Execute FindAllObjectsSourceCode functionality

@@ -7,7 +7,7 @@ from collections import defaultdict
 import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment
-from db.OracleDatabaseTools import get_connection, is_oracle_built_in_object
+from db.OracleDatabaseTools import get_db_connection, is_oracle_built_in_object
 from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
 from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, \
     fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \
@@ -409,7 +409,7 @@ if __name__ == "__main__":
     output_csv = "procedures.out"
 
     # Load configuration and connect to the db
-    connection = get_connection(config_file, DatabaseEnvironment.BANNER7)
+    connection = get_db_connection(DatabaseEnvironment.BANNER7)
 
     # Find the missing procedures
     find_missing_procedures_from_csv_file(input_csv, output_csv, connection)

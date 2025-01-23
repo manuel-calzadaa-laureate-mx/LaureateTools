@@ -1,4 +1,5 @@
 import json
+import os
 
 import cx_Oracle
 
@@ -22,7 +23,10 @@ def _build_connection_string(config):
     """Construct the Oracle connection string from configuration."""
     return f"{config['username']}/{config['password']}@{config['host']}:{config['port']}/{config['service_name']}"
 
-def get_connection(config_file : str, database_name: DatabaseEnvironment) -> cx_Oracle.Connection:
+def get_db_connection(database_name: DatabaseEnvironment) -> cx_Oracle.Connection:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_file = os.path.join(script_dir, "../db_config.json")  # Move one directory up
+
     configs = _load_config(config_file)
     database_config = _get_config_for_database(configs, database_name)
     connection_config = _build_connection_string(database_config)

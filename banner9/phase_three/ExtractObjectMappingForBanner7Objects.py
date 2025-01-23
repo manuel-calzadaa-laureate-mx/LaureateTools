@@ -4,7 +4,7 @@ import json
 import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment
-from db.OracleDatabaseTools import get_connection
+from db.OracleDatabaseTools import get_db_connection
 from db.datasource.B7ToB9MappingDatasource import get_full_mapping_by_name_list
 from tools.MigrationTools import convert_object_to_banner9, ObjectType
 from tools.ObjectDataFileTools import extract_all_objects_from_data_file
@@ -158,6 +158,6 @@ if __name__ == "__main__":
     config_file = '../../db_config.json'  # JSON file containing db credentials
     output_csv_tile = '../mapping.csv'
     # Load configuration and connect to the db
-    connection = get_connection(config_file, DatabaseEnvironment.BANNER9)
+    connection = get_db_connection(DatabaseEnvironment.BANNER9)
     create_mapping_from_database(db_connection=connection, object_data_input_file=object_data, output_csv=output_csv_tile)
     connection.close()

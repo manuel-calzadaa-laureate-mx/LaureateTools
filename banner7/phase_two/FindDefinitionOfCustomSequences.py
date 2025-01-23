@@ -1,5 +1,5 @@
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
-from db.OracleDatabaseTools import get_connection
+from db.OracleDatabaseTools import get_db_connection
 from tools.ObjectDataFileTools import add_new_object_to_data_file, extract_sequences_attributes_from_database, \
      extract_unique_dependencies_types_from_data_file
 
@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # Check if the list is not empty
     if unique_sequences:
         # Proceed only if unique_sequences is not empty
-        connection = get_connection("../../db_config.json", DatabaseEnvironment.BANNER7)
+        connection = get_db_connection(DatabaseEnvironment.BANNER7)
         json_attributes_from_sequences = extract_sequences_attributes_from_database(connection, unique_sequences)
         add_new_object_to_data_file(object_data, DatabaseEnvironment.BANNER7,
                                     json_attributes_from_sequences)

@@ -1,5 +1,6 @@
 from db.DatabaseProperties import DatabaseObject, DatabaseEnvironment
-from tools.CustomFileTools import get_custom_table_columns, get_custom_comments, get_custom_indexes
+from tools.CustomFileTools import get_custom_table_columns, get_custom_comments, get_custom_indexes, \
+    get_custom_sequences
 from tools.FileTools import read_json_file
 from tools.MappingFileTools import csv_to_json
 from tools.ObjectDataFileTools import add_new_environment, add_or_update_object_in_data_file
@@ -41,6 +42,7 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     columns = refactor_table_columns(original_table.get("columns", []), b7_table_name, b9_table_name)
     comments = refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
     indexes = refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
+    sequence = get_custom_sequences(b9_table_name)
     # Create the new table object
     new_table = {
         "name": b9_table_name,
