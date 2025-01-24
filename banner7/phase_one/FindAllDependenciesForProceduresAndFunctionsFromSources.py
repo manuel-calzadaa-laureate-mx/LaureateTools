@@ -17,7 +17,7 @@ def main():
     output_csv = "../dependencies.out"
     source_code_output = "src"
     procedures_out_file = "../procedures.out"
-    config_file = "../../db_config.json"
+    config_file = "../../config/db_config.json"
     database_name = DatabaseEnvironment.BANNER7
 
     while True:

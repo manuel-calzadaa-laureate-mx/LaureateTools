@@ -7,16 +7,19 @@ import cx_Oracle
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject, TableObject
 from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database
+from tools.FileTools import read_json_file
+
+OBJECT_DATA_JSON = "../object_data.json"
 
 
-def add_new_object_to_data_file(object_data_file: str, environment: DatabaseEnvironment, new_json_data: dict):
+def add_new_object_to_data_file(environment: DatabaseEnvironment, new_json_data: dict):
     """
     Append metadata JSON to the specified environment in the input JSON file.
 
-    :param object_data_file: Path to the input JSON file
     :param environment: Environment name to append the metadata to
     :param new_json_data: JSON string to append
     """
+    object_data_file = get_object_data_file_path()
     with open(object_data_file, "r") as file:
         data = json.load(file)
 
@@ -35,15 +38,15 @@ def add_new_object_to_data_file(object_data_file: str, environment: DatabaseEnvi
         json.dump(data, file, indent=4)
 
 
-def add_or_update_object_in_data_file(object_data_file: str, environment: DatabaseEnvironment, new_object: Dict):
+def add_or_update_object_in_data_file(environment: DatabaseEnvironment, new_object: Dict):
     """
     Add a new object to the specified environment in the JSON file, or update it if it already exists.
 
-    :param object_data_file: Path to the input JSON file
     :param environment: Environment name to append or update the object in
     :param new_object: The new object to add or update
     """
-    # Read the existing data from the file
+    add_new_environment(new_environment=environment)
+    object_data_file = get_object_data_file_path()
     with open(object_data_file, "r") as file:
         data = json.load(file)
 
@@ -75,10 +78,10 @@ def add_or_update_object_in_data_file(object_data_file: str, environment: Databa
 
 
 def extract_table_unique_dependencies_types_from_data_file(
-        input_file_name: str,
         environment: DatabaseEnvironment,
         table_object_type: TableObject
 ) -> [str]:
+    input_file_name = get_object_data_file_path()
     try:
         with open(input_file_name, 'r') as file:
             data = json.load(file)
@@ -109,7 +112,6 @@ def extract_table_unique_dependencies_types_from_data_file(
 
 
 def extract_unique_dependencies_types_from_data_file(
-        input_file_name: str,
         environment: DatabaseEnvironment,
         database_object_type: DatabaseObject,
         is_custom: bool = True
@@ -126,6 +128,7 @@ def extract_unique_dependencies_types_from_data_file(
     Returns:
         list: A sorted list of unique dependency names.
     """
+    input_file_name = get_object_data_file_path()
     try:
         with open(input_file_name, 'r') as file:
             data = json.load(file)
@@ -177,7 +180,7 @@ def extract_triggers_from_database(connection: cx_Oracle.Connection, unique_trig
             "owner": trigger.get("owner"),
             "name": trigger.get("trigger_name"),
             "type": "TRIGGER",
-            "deployment" : "external",
+            "deployment": "external",
             "table_name": trigger.get("table_name"),
             "trigger_type": trigger.get("trigger_type"),
             "triggering_event": trigger.get("triggering_event"),
@@ -210,7 +213,7 @@ def extract_sequences_attributes_from_database(connection: cx_Oracle.Connection,
             "owner": sequence.get("sequence_owner"),
             "name": sequence.get("sequence_name"),
             "type": "SEQUENCE",
-            "deployment" : "external",
+            "deployment": "external",
             "min_value": sequence.get("min_value"),
             "max_value": sequence.get("max_value"),
             "increment_by": sequence.get("increment_by"),
@@ -225,13 +228,14 @@ def extract_sequences_attributes_from_database(connection: cx_Oracle.Connection,
     return json.dumps(sequence_metadata, indent=4)
 
 
-def add_new_environment(file_path: str, new_environment: DatabaseEnvironment):
+def add_new_environment(new_environment: DatabaseEnvironment):
     """
     Reads a JSON file, checks if an environment exists, and adds it if it doesn't.
 
     :param file_path: Path to the JSON file.
     :param new_environment: The environment to add (e.g., "banner9").
     """
+    file_path = get_object_data_file_path()
     if os.path.exists(file_path):
         with open(file_path, 'r') as f:
             data = json.load(f)
@@ -245,6 +249,7 @@ def add_new_environment(file_path: str, new_environment: DatabaseEnvironment):
 
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=4)
+
 
 def extract_all_objects_from_data_file(input_file_name: str) -> List[Dict[str, Optional[str]]]:
     """
@@ -281,3 +286,13 @@ def extract_all_objects_from_data_file(input_file_name: str) -> List[Dict[str, O
         raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
     except json.JSONDecodeError:
         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
+
+
+def load_object_data_to_json() -> dict:
+    config_file = get_object_data_file_path()
+    return read_json_file(config_file)
+
+
+def get_object_data_file_path() -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, OBJECT_DATA_JSON)  # Move one directory up

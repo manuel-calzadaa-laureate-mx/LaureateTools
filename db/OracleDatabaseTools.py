@@ -5,6 +5,8 @@ import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment
 
+DB_CONFIG_FILE = "../config/db_config.json"
+
 
 def _load_config(config_file):
     """Load db configuration from a JSON file."""
@@ -25,7 +27,7 @@ def _build_connection_string(config):
 
 def get_db_connection(database_name: DatabaseEnvironment) -> cx_Oracle.Connection:
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_file = os.path.join(script_dir, "../db_config.json")  # Move one directory up
+    config_file = os.path.join(script_dir, DB_CONFIG_FILE)  # Move one directory up
 
     configs = _load_config(config_file)
     database_config = _get_config_for_database(configs, database_name)

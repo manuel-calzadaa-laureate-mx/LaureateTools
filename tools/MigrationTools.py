@@ -1,34 +1,15 @@
 from enum import Enum
 
+from db.DatabaseProperties import DatabaseEnvironment
+from tools.CustomFileTools import refactor_table_columns, refactor_table_comments, refactor_table_indexes, \
+    read_custom_table_data, ObjectAddonType
+
 
 class ObjectType(Enum):
     TABLE = "TABLE"
     PROCEDURE = "PROCEDURE"
     FUNCTION = "FUNCTION"
     SEQUENCE = "SEQUENCE"
-
-
-def extract_table_info(table_name: str) -> dict:
-    # Extract prefix: first two characters, where the second character must be "Z"
-    if len(table_name) >= 2 and table_name[1] == "Z":
-        prefix = table_name[:2]
-    else:
-        raise ValueError(f"Invalid table name: {table_name} does not meet the criteria.")
-
-    # Extract base: check if "TB" exists, and use the part after it
-    if "TB" in table_name:
-        base_start = table_name.index("TB") + 2
-        base = table_name[base_start:]
-    else:
-        # If "TB" is not present, use the part after the prefix
-        base = table_name[2:]
-
-    # Return the extracted values
-    return {
-        "prefix": prefix,
-        "base": base,
-        "table_name": table_name
-    }
 
 
 def convert_object_owner(object_owner: str) -> str:
@@ -123,3 +104,58 @@ def convert_object_to_banner9(object_type: ObjectType, object_owner: str, object
 if __name__ == "__main__":
     result = convert_object_to_banner9(ObjectType.TABLE, "SATURN", "GZXBLABLA")
     print(result)
+
+
+def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: str,
+                           b9_owner: str = "UVM"):
+    """
+    Adds a new table object to the specified environment in the JSON data.
+
+    Args:
+        json_data (dict): The JSON data as a Python dictionary.
+        b7_table_name (str): The name of the original table to copy.
+        b9_owner (str): The owner of the new table.
+        b9_table_name (str): The name of the new table.
+        new_environment (str): The target environment to add the new table to.
+
+    Returns:
+        dict: Updated JSON data.
+        :param b9_table_name:
+        :param b7_table_name:
+        :param json_data:
+        :param b9_owner:
+    """
+    # Find the original table
+    original_table = None
+    for env in json_data.get("root", []):
+        for obj in env.get("objects", []):
+            if obj.get("name") == b7_table_name:
+                original_table = obj
+                break
+        if original_table:
+            break
+
+    if not original_table:
+        raise ValueError(f"Original table '{b7_table_name}' not found in the JSON data.")
+
+    columns = refactor_table_columns(original_table.get("columns", []), b7_table_name, b9_table_name)
+    comments = refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
+    indexes = refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
+    sequences = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.SEQUENCES)
+    triggers = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.TRIGGERS)
+    # Create the new table object
+    new_table = {
+        "name": b9_table_name,
+        "type": "TABLE",
+        "owner": b9_owner,
+        "custom": original_table.get("custom", True)
+        , "columns": columns["columns"]
+        , "attributes": original_table.get("attributes", {})
+        , "comments": comments["comments"]
+        , "indexes": indexes["indexes"]
+        , "sequences": sequences["sequences"]
+        , "triggers": triggers["triggers"]
+        ,
+    }
+
+    return new_table

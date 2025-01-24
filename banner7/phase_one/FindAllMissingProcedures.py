@@ -3,7 +3,7 @@ from db.OracleDatabaseTools import get_db_connection
 from tools.ExtractTools import find_missing_procedures_from_csv_file
 
 if __name__ == "__main__":
-    config_file = '../../db_config.json'  # JSON file containing db credentials
+    config_file = '../../config/db_config.json'  # JSON file containing db credentials
 
     input_csv = "procedures.csv"
     output_csv = "../procedures.out"

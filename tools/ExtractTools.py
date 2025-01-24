@@ -403,7 +403,7 @@ def get_trigger_names_and_status(triggers: dict, schema: str, table_name: str):
 
 
 if __name__ == "__main__":
-    config_file = '../db_config.json'  # JSON file containing db credentials
+    config_file = '../config/db_config.json'  # JSON file containing db credentials
 
     input_csv = "procedures.csv"
     output_csv = "procedures.out"

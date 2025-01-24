@@ -89,6 +89,7 @@ def build_drop_section(object_type: str, object_owner: str, object_name: str):
     return (f"-- Eliminaciones\n"
             f"-- DROP TABLE {object_owner}.{object_name}\n")
 
+
 def build_footer_section(filename):
     return (f"COMMIT;\n"
             f"\n"
@@ -105,7 +106,46 @@ def build_footer_section(filename):
             f"Show Errors;\n")
 
 
-def build_create_table_script(object_data_file: str, environment: DatabaseEnvironment, table_names: [str]) -> dict:
+def build_sequence_section(sequences: list) -> str:
+    """
+    Builds the section of the script for creating sequences.
+    """
+    sequences_script = "-- Secuencias asignadas a esta tabla\n\n"
+    for sequence in sequences:
+        sequences_script += (
+            f"CREATE SEQUENCE {sequence['name']}\n"
+            f"   INCREMENT BY {sequence['increment_by']}\n"
+            f"   START WITH {sequence['start_with']}\n"
+            f"   MAXVALUE {sequence['max_value']}\n"
+            f"   {'CYCLE' if sequence['cycle'] else 'NOCYCLE'}\n"
+            f"   CACHE {sequence['cache']};\n\n"
+        )
+    sequences_script += "\nSHOW ERRORS;\n"
+    return sequences_script
+
+
+def build_trigger_section(triggers: list) -> str:
+    """
+    Builds the section of the script for creating triggers.
+    """
+    triggers_script = "-- Triggers asignados a esta tabla\n\n"
+    for trigger in triggers:
+        triggers_script += (
+            f"CREATE OR REPLACE TRIGGER {trigger['name']}\n"
+            f"   {trigger['event']}\n"
+            f"   ON {trigger['table']}\n"
+            f"   FOR EACH ROW\n"
+            f"BEGIN\n"
+            f"{trigger['body']}\n"
+            f"END;\n/\n\n"
+        )
+    triggers_script += "\nSHOW ERRORS;\n"
+    return triggers_script
+
+
+def build_create_table_script_data(object_data_file: str,
+                                   table_names: [str],
+                                   environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
     try:
         with open(object_data_file, 'r') as file:
             json_data = json.load(file)
@@ -116,19 +156,36 @@ def build_create_table_script(object_data_file: str, environment: DatabaseEnviro
             if env["environment"] == environment.value:
                 for obj in env["objects"]:
                     if obj["name"] in table_names and obj["type"] == "TABLE":
+                        table_name = obj["name"]
+                        object_type = obj["type"]
+                        object_owner = obj['owner']
                         create_table_section = build_create_table_section(obj)
                         tablespace_section = build_tablespace_section(obj.get("attributes", {}))
                         comments_section = build_comments_section(
-                            obj.get("comments", {}), obj['owner'], obj['name']
+                            obj.get("comments", {}), object_owner, table_name
                         )
-                        index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}), obj['owner'],
-                                                                              obj["name"])
-                        #custom_sequence_section = build_custom_sequence(obj.get("sequences",{})
-                        #custom_trigger_section = build_custom_trigger(obj.get("triggers",{})
+                        index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}),
+                                                                              object_owner,
+                                                                              table_name)
+                        custom_sequences_section = build_sequence_section(sequences=obj.get("sequences", {}))
+                        custom_trigger_section = build_trigger_section(triggers=obj.get("triggers", {}))
 
-                        filename = "CREATE_TABLE_" + obj["name"] + "." + obj['owner'] + ".TB.IDX." + "sql"
+                        # Start with the fixed parts of the filename
+                        filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
+
+                        # Conditionally add "IDX", "SEQ", and "TR" based on sections
+                        if index_section.strip():  # Ensure there's meaningful content in the index section
+                            filename_parts.append("IDX")
+                        if custom_sequences_section.strip():  # Check if the sequences section has data
+                            filename_parts.append("SEQ")
+                        if custom_trigger_section.strip():  # Check if the triggers section has data
+                            filename_parts.append("TR")
+
+                        # Join all parts with a dot and add the file extension
+                        filename = ".".join(filename_parts) + ".sql"
+
                         header_section = build_header_section(filename)
-                        drop_object_section = build_drop_section(obj["type"], obj['owner'], obj["name"])
+                        drop_object_section = build_drop_section(object_type, object_owner, table_name)
                         footer_section = build_footer_section(filename)
 
                         script = (f"{header_section}"
@@ -141,6 +198,10 @@ def build_create_table_script(object_data_file: str, environment: DatabaseEnviro
                                   f"{comments_section}\n"
                                   f"\n"
                                   f"{index_section}\n"
+                                  f"\n"
+                                  f"{custom_sequences_section}\n"
+                                  f"\n"
+                                  f"{custom_trigger_section}\n"
                                   f"\n"
                                   f"{footer_section}")
 
