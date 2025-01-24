@@ -1,6 +1,5 @@
 from enum import Enum
 
-from db.DatabaseProperties import DatabaseEnvironment
 from tools.CustomFileTools import refactor_table_columns, refactor_table_comments, refactor_table_indexes, \
     read_custom_table_data, ObjectAddonType
 
@@ -101,11 +100,6 @@ def convert_object_to_banner9(object_type: ObjectType, object_owner: str, object
     }
 
 
-if __name__ == "__main__":
-    result = convert_object_to_banner9(ObjectType.TABLE, "SATURN", "GZXBLABLA")
-    print(result)
-
-
 def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: str,
                            b9_owner: str = "UVM"):
     """
@@ -143,19 +137,23 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     indexes = refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
     sequences = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.SEQUENCES)
     triggers = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.TRIGGERS)
-    # Create the new table object
+
     new_table = {
         "name": b9_table_name,
         "type": "TABLE",
         "owner": b9_owner,
-        "custom": original_table.get("custom", True)
-        , "columns": columns["columns"]
-        , "attributes": original_table.get("attributes", {})
-        , "comments": comments["comments"]
-        , "indexes": indexes["indexes"]
-        , "sequences": sequences["sequences"]
-        , "triggers": triggers["triggers"]
-        ,
+        "custom": original_table.get("custom", True),
+        "columns": columns["columns"],
+        "attributes": original_table.get("attributes", {}),
+        "comments": comments["comments"],
+        "indexes": indexes["indexes"],
+        "sequences": sequences["sequences"],
+        "triggers": triggers["triggers"],
     }
 
     return new_table
+
+
+if __name__ == "__main__":
+    result = convert_object_to_banner9(ObjectType.TABLE, "SATURN", "GZXBLABLA")
+    print(result)

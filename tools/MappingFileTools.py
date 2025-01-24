@@ -2,7 +2,6 @@ import csv
 import json
 import os
 from typing import Optional, List
-
 from db.DatabaseProperties import DatabaseObject
 
 

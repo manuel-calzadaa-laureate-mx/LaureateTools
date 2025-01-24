@@ -1,12 +1,9 @@
-from logging import Logger
-
 import logging
 
 from FindAllObjectsSourceCode import extract_source_code_from_procedures
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_db_connection
-from tools.DependencyFileTools import extract_unique_existing_functions, extract_unique_dependency_function, \
-    extract_unique_existing_objects, extract_unique_dependency_objects
+from tools.DependencyFileTools import extract_unique_existing_objects, extract_unique_dependency_objects
 from tools.ExtractTools import extract_all_dependencies_from_source_file_folder
 from tools.ProcedureFileTools import update_procedures_file, normalize_object_names
 
@@ -47,7 +44,7 @@ def main():
         update_procedures_file(remaining_objects, db_connection, procedures_out_file)
 
         # Step 3: Execute FindAllObjectsSourceCode functionality
-        extract_source_code_from_procedures(db_connection, procedures_out_file, source_code_output)
+        extract_source_code_from_procedures(procedures_out_file, source_code_output)
 
         db_connection.close()
 

@@ -1,10 +1,14 @@
 import cx_Oracle
 
+from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import get_db_connection
 
-def query_all_procedures_by_owner_and_package(connection, owner, package=None):
+
+def query_all_procedures_by_owner_and_package(owner, package=None):
     """
     Query the ALL_PROCEDURES table to get procedures for the given owner and package.
     """
+    connection = get_db_connection(database_name=DatabaseEnvironment.BANNER7)
     cursor = connection.cursor()
     if package:
         cursor.execute("""
@@ -19,7 +23,9 @@ def query_all_procedures_by_owner_and_package(connection, owner, package=None):
             WHERE OWNER = :owner AND OBJECT_TYPE = 'PROCEDURE'
         """, {'owner': owner})
     procedures = [row[0] for row in cursor.fetchall()]
+
     cursor.close()
+    connection.close()
     return procedures
 
 
@@ -39,7 +45,8 @@ def query_all_procedures_by_package(connection, package):
     return procedures
 
 
-def query_all_procedures_by_owner_and_list_of_procedures(connection: cx_Oracle.Connection, owner : str, list_of_procedures: [str]):
+def query_all_procedures_by_owner_and_list_of_procedures(connection: cx_Oracle.Connection, owner: str,
+                                                         list_of_procedures: [str]):
     """
     Query the ALL_PROCEDURES table to get procedures for the given owner and procedure.
     """
@@ -67,7 +74,8 @@ def query_all_procedures_by_owner_and_list_of_procedures(connection: cx_Oracle.C
     return procedures
 
 
-def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, package: str, procedure: str, function: str):
+def extract_object_source_code(owner: str, package: str = None, procedure: str = None,
+                               function: str = None):
     """
     Extracts the source code of a procedure or a package body from the ALL_SOURCE table.
 
@@ -82,9 +90,9 @@ def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, pac
         :param procedure:
         :param package:
         :param owner:
-        :param connection:
         :param function:
     """
+    connection = get_db_connection(database_name=DatabaseEnvironment.BANNER7)
     cursor = connection.cursor()
 
     if package:
@@ -127,4 +135,5 @@ def extract_object_source_code(connection: cx_Oracle.Connection, owner: str, pac
     rows = cursor.fetchall()
     source_code = [row[0] for row in rows]
     cursor.close()
+    connection.close()
     return source_code

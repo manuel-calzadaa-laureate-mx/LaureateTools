@@ -20,10 +20,12 @@ def extract_update_tables(source_code):
     update_pattern = re.compile(r"update\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return [match.group(1) for match in update_pattern.finditer(source_code)]
 
+
 def extract_delete_tables(source_code):
     # Matches table names in DELETE statements
     delete_pattern = re.compile(r"delete\s+from\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return [match.group(1) for match in delete_pattern.finditer(source_code)]
+
 
 def extract_type_declarations(source_code):
     # Matches table names used in `%TYPE` declarations
@@ -91,6 +93,7 @@ def extract_procedures(source_code: str):
 
     return valid_procedures
 
+
 def extract_insert_into(source_code):
     insert_pattern = re.compile(r"\bINSERT\s+INTO\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return set(match.group(1) for match in insert_pattern.finditer(source_code))
@@ -100,13 +103,16 @@ def extract_procedures_names_at_first_line(source_code):
     procedure_pattern = re.compile(r"\bPROCEDURE\s+([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in procedure_pattern.finditer(source_code))
 
-def extract_cursors(source_code):
+
+def extract_cursors(source_code: str):
     cursor_pattern = re.compile(r"\bCURSOR\s+([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in cursor_pattern.finditer(source_code))
+
 
 def extract_generic_functions(source_code):
     function_pattern = re.compile(r"\b([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in function_pattern.finditer(source_code))
+
 
 def extract_local_functions(source_code):
     """
@@ -135,10 +141,12 @@ def extract_local_functions(source_code):
 
     return local_functions
 
+
 def extract_sequences(source_code):
     """Extracts sequences used in the source code."""
     sequence_pattern = re.compile(r"\b([a-zA-Z0-9_]+)\.NEXTVAL", re.IGNORECASE)
     return sequence_pattern.findall(source_code)
+
 
 def extract_functions(source_code):
     """
@@ -199,6 +207,7 @@ def extract_functions(source_code):
         logging.info(f"Valid function found: {full_name.upper()}")
 
     return valid_functions
+
 
 if __name__ == "__main__":
     source_code = """

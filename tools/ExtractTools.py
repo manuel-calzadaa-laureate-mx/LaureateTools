@@ -23,7 +23,7 @@ from tools.SourceCodeTools import clean_comments_and_whitespace
 logging.basicConfig(level=logging.INFO)
 
 
-def find_missing_procedures_from_csv_file(input_file: str, output_file: str, connection: cx_Oracle.Connection):
+def find_missing_procedures_from_csv_file(input_file: str, output_file: str):
     """
     Read the input CSV, query missing procedures, and generate a new CSV.
     """
@@ -39,19 +39,18 @@ def find_missing_procedures_from_csv_file(input_file: str, output_file: str, con
 
             if not procedure:
                 # Query missing procedures
-                procedures = query_all_procedures_by_owner_and_package(connection, owner, package)
+                procedures = query_all_procedures_by_owner_and_package(owner, package)
                 for proc in procedures:
                     writer.writerow([owner, package, proc, ""])
             else:
                 writer.writerow([owner, package, procedure, ""])
 
 
-def extract_source_code_from_procedures(connection: cx_Oracle.Connection, input_file: str, output_dir: str):
+def extract_source_code_from_procedures(input_file: str, output_dir: str):
     """
     Process the source code extraction for each row in the input CSV.
 
     Args:
-        connection (cx_Oracle.Connection): Oracle DB connection.
         input_file (str): Path to the input CSV file.
         output_dir (str): Path to the directory where the output files will be saved.
     """
@@ -78,11 +77,8 @@ def extract_source_code_from_procedures(connection: cx_Oracle.Connection, input_
             package_source_code = None
             if package:
                 package_source_code = extract_object_source_code(
-                    connection=connection,
                     owner=owner,
-                    package=package,
-                    procedure=None,
-                    function=None
+                    package=package
                 )
 
             # Process each row in the group
@@ -107,9 +103,7 @@ def extract_source_code_from_procedures(connection: cx_Oracle.Connection, input_
                     logging.info(
                         f"Extracting individual source code: Owner={owner}, Procedure={procedure}, Function={function}")
                     source_code_lines = extract_object_source_code(
-                        connection=connection,
                         owner=owner,
-                        package=None,
                         procedure=procedure,
                         function=function
                     )
@@ -412,13 +406,13 @@ if __name__ == "__main__":
     connection = get_db_connection(DatabaseEnvironment.BANNER7)
 
     # Find the missing procedures
-    find_missing_procedures_from_csv_file(input_csv, output_csv, connection)
+    find_missing_procedures_from_csv_file(input_csv, output_csv)
 
     procedures_list = "procedures.out"
     source_code_output = "../src"
 
     # Extract source code of procedures
-    extract_source_code_from_procedures(procedures_list, source_code_output)
+    extract_source_code_from_procedures(source_code_output)
 
     requirements_output = "requirements.out"
 

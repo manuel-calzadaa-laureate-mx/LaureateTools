@@ -8,10 +8,6 @@ if __name__ == "__main__":
     input_csv = "procedures.csv"
     output_csv = "../procedures.out"
 
-    # Load configuration and connect to the db
-    connection = get_db_connection(DatabaseEnvironment.BANNER7)
-
     # Find the missing procedures
-    find_missing_procedures_from_csv_file(input_file=input_csv, output_file=output_csv, connection=connection)
+    find_missing_procedures_from_csv_file(input_file=input_csv, output_file=output_csv)
 
-    connection.close()

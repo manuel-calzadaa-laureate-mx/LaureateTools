@@ -97,13 +97,13 @@ def build_footer_section(filename):
             f"Prompt>>> [FIN] ** Creando {filename}\n"
             f"Prompt>>>\n"
             f"\n"
-            f"Begin\n"
-            f"  Null;\n"
-            f"End;\n"
+            f"BEGIN\n"
+            f"  NULL;\n"
+            f"END;\n"
             f"\n"
             f"/\n"
             f"\n"
-            f"Show Errors;\n")
+            f"SHOW ERRORS;\n")
 
 
 def build_sequence_section(sequences: list) -> str:
@@ -128,7 +128,7 @@ def build_trigger_section(triggers: list) -> str:
     """
     Builds the section of the script for creating triggers.
     """
-    triggers_script = "-- Triggers asignados a esta tabla\n\n"
+    triggers_script = "-- TRIGGERS ASIGNADOS A ESTA TABLA\n\n"
     for trigger in triggers:
         triggers_script += (
             f"CREATE OR REPLACE TRIGGER {trigger['name']}\n"
