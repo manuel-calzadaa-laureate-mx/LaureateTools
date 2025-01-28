@@ -25,23 +25,4 @@ if __name__ == "__main__":
                                           environment=DatabaseEnvironment.BANNER9)
 
 
-        # #
-        # # table_name = "TZTBRCIBK"
-        # custom_addons_file = "../object_addons.json"
-        # json_custom_data = read_json_file(custom_addons_file)
 
-        # custom_columns_addon = get_custom_table_columns(json_data, table_name)
-        # print(json.dumps(custom_columns_addon, indent=4))
-        # custom_indexes_addon = get_custom_indexes(json_data, table_name)
-        # print(json.dumps(custom_indexes_addon, indent=4))
-
-        # read all the table data
-        # if field doesn't start with table name append it
-        # add fields + new fields
-        # add comments + add new comments
-        # add indexes + add new indexes
-
-        # add new sequence object
-        # add new trigger object
-
-        # if ...

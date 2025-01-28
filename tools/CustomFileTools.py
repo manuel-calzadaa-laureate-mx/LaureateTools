@@ -10,10 +10,15 @@ class ObjectAddonType(Enum):
     COMMENTS = "comments"
     INDEXES = "indexes"
     SEQUENCES = "sequences"
+    GRANTS = "grants"
+    SYNONYMS = "synonyms"
 
+class GrantType(Enum):
+    TABLE = "table"
+    PACKAGE = "package"
+    SEQUENCE = "sequence"
 
 OBJECT_ADDONS_JSON = "../config/object_addons.json"
-
 
 def extract_table_info(table_name: str) -> dict:
     # Extract prefix: first two characters, where the second character must be "Z"
@@ -115,6 +120,47 @@ def _get_custom_indexes(json_data: dict, b9_table_name: str, owner: str = "UVM")
 
     return {"indexes": transformed_indexes}
 
+def _get_custom_all_table_grants(json_data: dict, object_name: str):
+    table_grants = _get_custom_grants(json_data=json_data, object_name=object_name)
+
+    ## Get the sequence names:
+    custom_sequences = _get_custom_sequences(json_data=json_data, b9_table_name=object_name)
+    sequence_names = [sequence['name'] for sequence in custom_sequences['sequences']]
+    sequence_grants = _get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names)
+    merged_grants = table_grants.get("grants", []) + sequence_grants.get("grants", [])
+    return {"grants": merged_grants}
+
+def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType = GrantType.TABLE):
+    # Navigate to the grant type within the JSON structure
+    fields = json_data["root"]["grants"][0][grant_type.value]
+    script_template = fields["script"]
+    owners = fields["owner"]
+
+    grants = [
+        script_template.replace("{object}", object_name).replace("{owner}", owner)
+        for owner in owners
+    ]
+
+    return {"grants": grants}
+
+def _get_custom_grants_multiple_objects(
+    json_data: dict,
+    object_names: list,
+    grant_type: GrantType = GrantType.TABLE
+):
+    # Navigate to the grant type within the JSON structure
+    fields = json_data["root"]["grants"][0][grant_type.value]
+    script_template = fields["script"]
+    owners = fields["owner"]
+
+    all_grants = [
+        script_template.replace("{object}", object_name).replace("{owner}", owner)
+        for object_name in object_names
+        for owner in owners
+    ]
+
+    return {"grants": all_grants}
+
 
 def _get_custom_triggers(json_data: dict, b9_table_name: str):
     fields = json_data["root"]["triggers"]
@@ -134,7 +180,7 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
     return {"triggers": triggers}
 
 
-def read_custom_table_data(b9_table_name: str, addon_type: ObjectAddonType):
+def read_custom_table_data(b9_table_name: str, object_addon_type: ObjectAddonType):
     """
     Generalized function to read custom table data based on addon type.
     """
@@ -143,18 +189,20 @@ def read_custom_table_data(b9_table_name: str, addon_type: ObjectAddonType):
     json_custom_data = read_json_file(custom_addons_file)
 
     # Route to the appropriate function based on the addon type
-    if addon_type == ObjectAddonType.COLUMNS:
+    if object_addon_type == ObjectAddonType.COLUMNS:
         return _get_custom_table_columns(json_data=json_custom_data, b9_table_name=b9_table_name)
-    elif addon_type == ObjectAddonType.COMMENTS:
+    elif object_addon_type == ObjectAddonType.COMMENTS:
         return _get_custom_comments(json_data=json_custom_data, b9_table_name=b9_table_name)
-    elif addon_type == ObjectAddonType.INDEXES:
+    elif object_addon_type == ObjectAddonType.INDEXES:
         return _get_custom_indexes(json_data=json_custom_data, b9_table_name=b9_table_name)
-    elif addon_type == ObjectAddonType.SEQUENCES:
+    elif object_addon_type == ObjectAddonType.SEQUENCES:
         return _get_custom_sequences(json_data=json_custom_data, b9_table_name=b9_table_name)
-    elif addon_type == ObjectAddonType.TRIGGERS:
+    elif object_addon_type == ObjectAddonType.TRIGGERS:
         return _get_custom_triggers(json_data=json_custom_data,b9_table_name=b9_table_name)
+    elif object_addon_type == ObjectAddonType.GRANTS:
+        return _get_custom_all_table_grants(json_data=json_custom_data, object_name=b9_table_name)
     else:
-        raise ValueError(f"Unsupported addon type: {addon_type}")
+        raise ValueError(f"Unsupported addon type: {object_addon_type}")
 
 
 def refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
@@ -175,7 +223,7 @@ def refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tabl
             updated_index_columns.append(updated_index_column)
         updated_index["columns"] = updated_index_columns
         updated_indexes.append(updated_index)
-    custom_table_indexes = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.INDEXES)
+    custom_table_indexes = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.INDEXES)
 
     combined_indexes = updated_indexes + custom_table_indexes['indexes']
     result = {"indexes": combined_indexes}
@@ -194,7 +242,7 @@ def refactor_table_comments(b7_table_comments: [dict], b7_table_name: str, b9_ta
 
         updated_comments.append(updated_comment)
 
-    custom_table_comments = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.COMMENTS)
+    custom_table_comments = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.COMMENTS)
 
     combined_comments = updated_comments + custom_table_comments['comments']
     result = {"comments": combined_comments}
@@ -242,7 +290,7 @@ def refactor_table_columns(b7_table_columns: [dict], b7_table_name: str, b9_tabl
 
         updated_columns.append(updated_column)
 
-    custom_table_columns = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.COLUMNS)
+    custom_table_columns = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.COLUMNS)
     combined_columns = updated_columns + custom_table_columns['columns']
     result = {"columns": combined_columns}
     return result

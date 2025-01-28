@@ -135,8 +135,9 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     columns = refactor_table_columns(original_table.get("columns", []), b7_table_name, b9_table_name)
     comments = refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
     indexes = refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
-    sequences = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.SEQUENCES)
-    triggers = read_custom_table_data(b9_table_name=b9_table_name, addon_type=ObjectAddonType.TRIGGERS)
+    sequences = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
+    triggers = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
+    grants = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
 
     new_table = {
         "name": b9_table_name,
@@ -149,6 +150,7 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
         "indexes": indexes["indexes"],
         "sequences": sequences["sequences"],
         "triggers": triggers["triggers"],
+        "grants" : grants["grants"],
     }
 
     return new_table

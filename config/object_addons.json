@@ -4,7 +4,7 @@
     "grants": [
       {
         "table": {
-          "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{table} TO UVM;",
+          "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{object} TO {owner};",
           "owner": [
             "BANINST1",
             "SATURN",
@@ -19,7 +19,7 @@
       },
       {
         "packages": {
-          "script": "GRANT EXECUTE, DEBUG ON UVM.{package} TO UVM;",
+          "script": "GRANT EXECUTE, DEBUG ON UVM.{object} TO {owner};",
           "owner": [
             "BANINST1",
             "SATURN",
@@ -34,7 +34,7 @@
       },
       {
         "sequences": {
-          "script": "GRANT ALTER, SELECT ON UVM.{sequence} TO UVM WITH GRANT OPTION;",
+          "script": "GRANT ALTER, SELECT ON UVM.{object} TO {owner} WITH GRANT OPTION;",
           "owner": [
             "BANINST1",
             "SATURN",
