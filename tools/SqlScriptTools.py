@@ -2,6 +2,8 @@ import json
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment
+from tools.MappingFileTools import read_mapping_data
+from tools.ObjectDataTools import load_object_data_to_json
 
 
 def build_header_section(filename: str):
@@ -143,77 +145,75 @@ def build_trigger_section(triggers: list) -> str:
     return triggers_script
 
 
-def build_create_table_script_data(object_data_file: str,
-                                   table_names: [str],
-                                   environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
-    try:
-        with open(object_data_file, 'r') as file:
-            json_data = json.load(file)
+def build_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
+    mapping_data = read_mapping_data()
+    table_names = [
+        value["B9_NOMBRE"]
+        for value in mapping_data.values()
+        if value.get("B9_NOMBRE") not in (None, "", [])
+    ]
 
-        scripts = {}
+    json_data = load_object_data_to_json()
+    scripts = {}
 
-        for env in json_data["root"]:
-            if env["environment"] == environment.value:
-                for obj in env["objects"]:
-                    if obj["name"] in table_names and obj["type"] == "TABLE":
-                        table_name = obj["name"]
-                        object_type = obj["type"]
-                        object_owner = obj['owner']
-                        create_table_section = build_create_table_section(obj)
-                        tablespace_section = build_tablespace_section(obj.get("attributes", {}))
-                        comments_section = build_comments_section(
-                            obj.get("comments", {}), object_owner, table_name
-                        )
-                        index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}),
-                                                                              object_owner,
-                                                                              table_name)
-                        custom_sequences_section = build_sequence_section(sequences=obj.get("sequences", {}))
-                        custom_trigger_section = build_trigger_section(triggers=obj.get("triggers", {}))
+    for env in json_data["root"]:
+        environment = env["environment"]
+        if environment == requested_environment.value:
+            for obj in env["objects"]:
+                if obj["name"] in table_names and obj["type"] == "TABLE":
+                    table_name = obj["name"]
+                    object_type = obj["type"]
+                    object_owner = obj['owner']
+                    create_table_section = build_create_table_section(obj)
+                    tablespace_section = build_tablespace_section(obj.get("attributes", {}))
+                    comments_section = build_comments_section(
+                        obj.get("comments", {}), object_owner, table_name
+                    )
+                    index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}),
+                                                                          object_owner,
+                                                                          table_name)
+                    custom_sequences_section = build_sequence_section(sequences=obj.get("sequences", {}))
+                    custom_trigger_section = build_trigger_section(triggers=obj.get("triggers", {}))
 
-                        # Start with the fixed parts of the filename
-                        filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
+                    # Start with the fixed parts of the filename
+                    filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
 
-                        # Conditionally add "IDX", "SEQ", and "TR" based on sections
-                        if index_section.strip():  # Ensure there's meaningful content in the index section
-                            filename_parts.append("IDX")
-                        if custom_sequences_section.strip():  # Check if the sequences section has data
-                            filename_parts.append("SEQ")
-                        if custom_trigger_section.strip():  # Check if the triggers section has data
-                            filename_parts.append("TR")
+                    # Conditionally add "IDX", "SEQ", and "TR" based on sections
+                    if index_section.strip():  # Ensure there's meaningful content in the index section
+                        filename_parts.append("IDX")
+                    if custom_sequences_section.strip():  # Check if the sequences section has data
+                        filename_parts.append("SEQ")
+                    if custom_trigger_section.strip():  # Check if the triggers section has data
+                        filename_parts.append("TR")
 
-                        # Join all parts with a dot and add the file extension
-                        filename = ".".join(filename_parts) + ".sql"
+                    # Join all parts with a dot and add the file extension
+                    filename = ".".join(filename_parts) + ".sql"
 
-                        header_section = build_header_section(filename)
-                        drop_object_section = build_drop_section(object_type, object_owner, table_name)
-                        footer_section = build_footer_section(filename)
+                    header_section = build_header_section(filename)
+                    drop_object_section = build_drop_section(object_type, object_owner, table_name)
+                    footer_section = build_footer_section(filename)
 
-                        script = (f"{header_section}"
-                                  f"\n"
-                                  f"{drop_object_section}"
-                                  f"\n"
-                                  f"{create_table_section}\n"
-                                  f"{tablespace_section}\n"
-                                  f"\n"
-                                  f"{comments_section}\n"
-                                  f"\n"
-                                  f"{index_section}\n"
-                                  f"\n"
-                                  f"{custom_sequences_section}\n"
-                                  f"\n"
-                                  f"{custom_trigger_section}\n"
-                                  f"\n"
-                                  f"{footer_section}")
+                    script = (f"{header_section}"
+                              f"\n"
+                              f"{drop_object_section}"
+                              f"\n"
+                              f"{create_table_section}\n"
+                              f"{tablespace_section}\n"
+                              f"\n"
+                              f"{comments_section}\n"
+                              f"\n"
+                              f"{index_section}\n"
+                              f"\n"
+                              f"{custom_sequences_section}\n"
+                              f"\n"
+                              f"{custom_trigger_section}\n"
+                              f"\n"
+                              f"{footer_section}")
 
-                        # Add the script to the dictionary with the table name as the key
-                        scripts[filename] = script
+                    # Add the script to the dictionary with the table name as the key
+                    scripts[filename] = script
 
-        return scripts
-
-    except FileNotFoundError:
-        raise FileNotFoundError(f"The file '{object_data_file}' was not found.")
-    except json.JSONDecodeError:
-        raise ValueError(f"The file '{object_data_file}' is not a valid JSON file.")
+    return scripts
 
 
 def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table_name: str) -> str:

@@ -4,6 +4,8 @@ import os
 from typing import Optional, List
 from db.DatabaseProperties import DatabaseObject
 
+MAPPING_FILE_PATH = "../banner9/mapping.csv"
+
 
 def load_mapping_file_to_json(mapping_file_path: str, json_file_path: Optional[str] = None) -> List[dict]:
     """
@@ -34,7 +36,7 @@ def load_mapping_file_to_json(mapping_file_path: str, json_file_path: Optional[s
 
 def read_mapping_data(database_object: DatabaseObject = DatabaseObject.TABLE) -> [dict]:
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    mapping_file_path = os.path.join(script_dir, "../banner9/mapping.csv")
+    mapping_file_path = os.path.join(script_dir, MAPPING_FILE_PATH)
     all_mapped_records = load_mapping_file_to_json(mapping_file_path=mapping_file_path)
     mapping_data = {}
     for one_record in all_mapped_records:
@@ -47,3 +49,4 @@ def read_mapping_data(database_object: DatabaseObject = DatabaseObject.TABLE) ->
                 "B9_NOMBRE": one_record["B9_NOMBRE"]
             }
     return mapping_data
+

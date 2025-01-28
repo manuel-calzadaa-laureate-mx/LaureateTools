@@ -295,4 +295,4 @@ def load_object_data_to_json() -> dict:
 
 def get_object_data_file_path() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(script_dir, OBJECT_DATA_JSON)  # Move one directory up
+    return os.path.join(script_dir, OBJECT_DATA_JSON)

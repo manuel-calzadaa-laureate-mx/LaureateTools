@@ -162,7 +162,7 @@ def refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tabl
 
     for one_index in b7_table_indexes:
         updated_index = one_index.copy()
-        updated_index["name"] = one_index.get("name").replace(b7_table_name, b9_table_name),
+        updated_index["name"] = one_index.get("name").replace(b7_table_name, b9_table_name)
         updated_index["columns"] = []
 
         updated_index_columns = []
