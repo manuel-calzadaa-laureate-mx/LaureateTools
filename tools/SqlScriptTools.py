@@ -144,7 +144,8 @@ def build_trigger_section(triggers: list) -> str:
     triggers_script += "\nSHOW ERRORS;\n"
     return triggers_script
 
-def build_grant_section(grants: list)-> str:
+
+def build_grant_section(grants: list) -> str:
     """
     Builds the section of the script for creating grants.
     """
@@ -155,6 +156,19 @@ def build_grant_section(grants: list)-> str:
         )
     grants_script += "\nSHOW ERRORS;\n"
     return grants_script
+
+
+def build_synonym_section(synonym: str) -> str:
+    """
+    Builds the section of the script for creating synonym.
+    """
+    synonym_script = "-- SYNONYM ASIGNADO A ESTA TABLA\n\n"
+    synonym_script += (
+        f"{synonym}\n"
+        f"\nSHOW ERRORS;\n"
+    )
+    return synonym_script
+
 
 def build_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
     mapping_data = read_mapping_data()
@@ -187,6 +201,8 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
                     custom_trigger_section = build_trigger_section(triggers=obj.get("triggers", {}))
 
                     custom_grant_section = build_grant_section(grants=obj.get("grants", {}))
+                    custom_synonym_section = build_synonym_section(synonym=obj.get("synonym"))
+
                     # Start with the fixed parts of the filename
                     filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
 
@@ -199,6 +215,8 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
                         filename_parts.append("TR")
                     if custom_grant_section.strip():
                         filename_parts.append("GNT")
+                    if custom_synonym_section.strip():
+                        filename_parts.append("SYN")
 
                     # Join all parts with a dot and add the file extension
                     filename = ".".join(filename_parts) + ".sql"
@@ -223,6 +241,8 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
                               f"{custom_trigger_section}\n"
                               f"\n"
                               f"{custom_grant_section}\n"
+                              f"\n"
+                              f"{custom_synonym_section}\n"
                               f"\n"                              
                               f"{footer_section}")
 

@@ -138,7 +138,7 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     sequences = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
     triggers = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
     grants = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
-
+    synonym = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
     new_table = {
         "name": b9_table_name,
         "type": "TABLE",
@@ -151,6 +151,7 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
         "sequences": sequences["sequences"],
         "triggers": triggers["triggers"],
         "grants" : grants["grants"],
+        "synonym" : synonym,
     }
 
     return new_table

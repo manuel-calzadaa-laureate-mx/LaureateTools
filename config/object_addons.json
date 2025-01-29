@@ -1,6 +1,6 @@
 {
   "root": {
-    "synonyms": "CREATE PUBLIC SYNONYM {table} FOR UVM.{table};",
+    "synonym": "CREATE PUBLIC SYNONYM {table} FOR UVM.{table};",
     "grants": [
       {
         "table": {
