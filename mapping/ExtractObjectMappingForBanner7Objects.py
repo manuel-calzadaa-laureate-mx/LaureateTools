@@ -7,7 +7,7 @@ from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_db_connection
 from db.datasource.B7ToB9MappingDatasource import get_full_mapping_by_name_list
 from tools.MigrationTools import convert_object_to_banner9, ObjectType
-from tools.ObjectDataTools import extract_all_objects_from_data_file
+from files.ObjectDataFile import extract_all_objects_from_data_file
 
 
 def create_mapping_json(source_file):
@@ -155,7 +155,7 @@ def create_mapping_from_database(
 
 if __name__ == "__main__":
     object_data = "../../object_data.json"
-    config_file = '../../config/db_config.json'  # JSON file containing db credentials
+    config_file = '../config/db_config.json'  # JSON file containing db credentials
     output_csv_tile = '../mapping.csv'
     # Load configuration and connect to the db
     connection = get_db_connection(DatabaseEnvironment.BANNER9)

@@ -8,7 +8,7 @@ import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_db_connection, is_oracle_built_in_object
-from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package, extract_object_source_code
+from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package, query_sources
 from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, \
     fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \
     fetch_column_comments_for_tables_grouped_by_schema_and_table_name, \
@@ -76,7 +76,7 @@ def extract_source_code_from_procedures(input_file: str, output_dir: str):
             # Extract source code for the package if it exists
             package_source_code = None
             if package:
-                package_source_code = extract_object_source_code(
+                package_source_code = query_sources(
                     owner=owner,
                     package=package
                 )
@@ -102,7 +102,7 @@ def extract_source_code_from_procedures(input_file: str, output_dir: str):
                 if not package:
                     logging.info(
                         f"Extracting individual source code: Owner={owner}, Procedure={procedure}, Function={function}")
-                    source_code_lines = extract_object_source_code(
+                    source_code_lines = query_sources(
                         owner=owner,
                         procedure=procedure,
                         function=function
@@ -424,3 +424,4 @@ if __name__ == "__main__":
     connection.close()
 
     # Send the info to json file
+

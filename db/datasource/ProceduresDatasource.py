@@ -74,8 +74,8 @@ def query_all_procedures_by_owner_and_list_of_procedures(connection: cx_Oracle.C
     return procedures
 
 
-def extract_object_source_code(owner: str, package: str = None, procedure: str = None,
-                               function: str = None):
+def query_sources(owner: str, package: str = None, procedure: str = None,
+                  function: str = None, database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     """
     Extracts the source code of a procedure or a package body from the ALL_SOURCE table.
 
@@ -87,12 +87,13 @@ def extract_object_source_code(owner: str, package: str = None, procedure: str =
 
     Returns:
         str: The concatenated source code.
+        :param database_environment:
         :param procedure:
         :param package:
         :param owner:
         :param function:
     """
-    connection = get_db_connection(database_name=DatabaseEnvironment.BANNER7)
+    connection = get_db_connection(database_name=database_environment)
     cursor = connection.cursor()
 
     if package:

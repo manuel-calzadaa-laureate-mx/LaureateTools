@@ -1,6 +1,6 @@
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
 from db.OracleDatabaseTools import get_db_connection
-from tools.ObjectDataTools import add_new_object_to_data_file, extract_sequences_attributes_from_database, \
+from files.ObjectDataFile import add_new_object_to_data_file, extract_sequences_attributes_from_database, \
     extract_unique_dependencies_types_from_data_file
 
 if __name__ == "__main__":

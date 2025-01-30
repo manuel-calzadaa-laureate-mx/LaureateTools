@@ -1,8 +1,7 @@
 from db.DatabaseProperties import DatabaseEnvironment
-from tools.FileTools import read_json_file
-from tools.MappingFileTools import read_mapping_data
+from files.MappingFile import read_mapping_data
 from tools.MigrationTools import migrate_b7_table_to_b9
-from tools.ObjectDataTools import add_new_environment, add_or_update_object_in_data_file, load_object_data_to_json
+from files.ObjectDataFile import add_or_update_object_in_data_file, load_object_data_to_json
 
 if __name__ == "__main__":
     object_data = "../../object_data.json"

@@ -3,7 +3,7 @@ import logging
 from FindAllObjectsSourceCode import extract_source_code_from_procedures
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_db_connection
-from tools.DependencyFileTools import extract_unique_existing_objects, extract_unique_dependency_objects
+from files.DependencyFile import extract_unique_existing_objects, extract_unique_dependency_objects
 from tools.ExtractTools import extract_all_dependencies_from_source_file_folder
 from tools.ProcedureFileTools import update_procedures_file, normalize_object_names
 

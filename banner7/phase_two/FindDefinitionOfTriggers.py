@@ -1,6 +1,6 @@
 from db.DatabaseProperties import DatabaseEnvironment, TableObject
 from db.OracleDatabaseTools import get_db_connection
-from tools.ObjectDataTools import extract_table_unique_dependencies_types_from_data_file, \
+from files.ObjectDataFile import extract_table_unique_dependencies_types_from_data_file, \
     extract_triggers_from_database, add_new_object_to_data_file
 
 if __name__ == "__main__":

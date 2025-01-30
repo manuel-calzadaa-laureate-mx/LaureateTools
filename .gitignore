@@ -1,15 +1,10 @@
-# Default ignored files
-/shelf/
-/workspace.xml
-/laureateTools.iml
+!/.venv/
+!/config/db_config.json
+/input/
+!/workfiles/
+!/workfiles/b7_sources/
+!/workfiles/b9_sources/
+/workfiles/b7_sources/
 /.idea/
-/banner7/phase_one/src/
-/banner7/*.out
-/banner7/*.csv
-/*.json
-/banner7/phase_one/*.csv
-/banner9/phase_three/*.csv
-/banner9/phase_three/*.out
-!/banner9/scripts/
-/banner9/scripts/*.sql
-/banner9/*.csv
+/.idea/.gitignore
+/workfiles/

@@ -1,9 +1,8 @@
-import json
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment
-from tools.MappingFileTools import read_mapping_data
-from tools.ObjectDataTools import load_object_data_to_json
+from files.MappingFile import read_mapping_data
+from files.ObjectDataFile import load_object_data_to_json
 
 
 def build_header_section(filename: str):

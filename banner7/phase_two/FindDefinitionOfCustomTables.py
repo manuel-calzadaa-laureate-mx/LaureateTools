@@ -1,7 +1,7 @@
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
 from db.OracleDatabaseTools import get_db_connection
 from tools.ExtractTools import extract_table_metadata_from_database
-from tools.ObjectDataTools import add_new_object_to_data_file, \
+from files.ObjectDataFile import add_new_object_to_data_file, \
     extract_unique_dependencies_types_from_data_file
 
 if __name__ == "__main__":

@@ -28,10 +28,10 @@ This consist in several use phases:
 ## Phase Three - Migration
 
 ### Tables
-[] Create name mapping of tables in banner9
-[] Create new objects required for migration (triggers, sequences, indexes)
-[] Create table definition with new fields in json
-[] Create triggers, sequences and indexes in json
+[x] Create name mapping of tables in banner9
+[x] Create new objects required for migration (triggers, sequences, indexes, grants, synonyms)
+[x] Create table definition with new fields in json
+[x] Create triggers, sequences and indexes in json
 
 ### Functions
 [] Create name mapping of functions in banner9

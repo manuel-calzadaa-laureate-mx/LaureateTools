@@ -1,6 +1,5 @@
+import csv
 import json
-
-
 
 def write_json_to_file(json_data: dict, output_filename: str) -> None:
     """
@@ -23,3 +22,15 @@ def read_json_file(input_filename: str) -> dict:
         raise FileNotFoundError(f"The file '{input_filename}' was not found.")
     except json.JSONDecodeError:
         raise ValueError(f"The file '{input_filename}' is not a valid JSON file.")
+
+def read_csv_file(input_file: str):
+    """Read the input CSV file into memory as a list of dictionaries."""
+    with open(input_file, mode='r', newline='', encoding='utf-8') as infile:
+        reader = csv.DictReader(infile)
+        return [row for row in reader]
+
+def write_csv_file(output_file: str, data):
+    """Write the processed data into a CSV file."""
+    with open(output_file, mode='w', newline='') as outfile:
+        writer = csv.writer(outfile)
+        writer.writerows(data)

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from tools.CustomFileTools import refactor_table_columns, refactor_table_comments, refactor_table_indexes, \
+from files.ObjectAddonsFile import refactor_table_columns, refactor_table_comments, refactor_table_indexes, \
     read_custom_table_data, ObjectAddonType
 
 
