@@ -1,8 +1,15 @@
-from files.CompletedProceduresFile import extract_source_code_from_completed_procedures_file
-from files.IncompleteProceduresFile import find_missing_procedures_from_input_file
+import logging
 
+from files.CompletedProceduresFile import extract_source_code_manager
+from files.DependencyFile import find_all_dependencies_manager
+from files.IncompleteProceduresFile import find_missing_procedures_manager
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 if __name__ == "__main__":
-    find_missing_procedures_from_input_file()
-    extract_source_code_from_completed_procedures_file()
-    ##find drill down dependencies
+    find_missing_procedures_manager()
+    extract_source_code_manager()
+    find_all_dependencies_manager()

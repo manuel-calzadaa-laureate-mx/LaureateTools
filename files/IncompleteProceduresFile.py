@@ -1,29 +1,41 @@
+import logging
 import os
 
+from db.DatabaseProperties import DatabaseEnvironment
 from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package
+from files.CompletedProceduresFile import get_completed_procedures_file_path
 from tools.FileTools import read_csv_file, write_csv_file
 
-OUTPUT_CSV_FILE = "../workfiles/completed_procedures.csv"
+INCOMPLETE_PROCEDURES_FILE_PATH = "../input/incomplete_procedures.csv"
 
-INPUT_CSV_FILE = "../input/incomplete_procedures.csv"
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-
-def find_missing_procedures_from_input_file():
-    """Read, process, and write missing procedures."""
+def get_incomplete_procedures_file_path():
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, INCOMPLETE_PROCEDURES_FILE_PATH)
 
-    input_csv_file_path = os.path.join(script_dir, INPUT_CSV_FILE)
-    csv_rows = read_csv_file(input_csv_file_path)
 
+def get_incomplete_procedures() -> list[dict]:
+    return read_csv_file(get_incomplete_procedures_file_path())
+
+
+def find_missing_procedures_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+    """This process takes the input csv file Incomplete_Procedures.csv
+    and finds all the procedures and functions that belong to a package.
+    Then it creates a new file called Complete_Procedures.csv with the full data"""
+    logging.info("Starting: looking for missing procedures")
+    csv_rows = read_csv_file(get_incomplete_procedures_file_path())
     processed_data = _process_missing_procedures(csv_rows)
-
-    output_csv_file_path = os.path.join(script_dir, OUTPUT_CSV_FILE)
-    write_csv_file(output_csv_file_path, processed_data)
+    write_csv_file(get_completed_procedures_file_path(), processed_data)
+    logging.info("Ending: looking for missing procedures")
 
 
 def _process_missing_procedures(rows):
     """Process the data, querying missing procedures where needed."""
-    processed_data = [['Owner', 'Package', 'Procedure', 'Function']]  # Include header
+    processed_data = [['Owner', 'Package', 'Procedure', 'Function']]
 
     for row in rows:
         owner = row["Owner"].strip()
@@ -39,5 +51,6 @@ def _process_missing_procedures(rows):
 
     return processed_data
 
+
 if __name__ == "__main__":
-    find_missing_procedures_from_input_file()
+    find_missing_procedures_manager()

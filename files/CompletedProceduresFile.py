@@ -1,12 +1,107 @@
 import logging
 import os
 
+from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import get_db_connection
+from db.datasource.FunctionsDatasource import get_packaged_object_owner, get_independent_object_owners
 from db.datasource.ProceduresDatasource import query_sources
-from tools.FileTools import read_csv_file
+from tools.CommonTools import get_all_current_owners, parse_object_name
+from tools.FileTools import read_csv_file, write_csv_file
+from tools.SourceCodeTools import get_source_code_folder
 
-B7_SOURCE_CODE = "../workfiles/b7_sources"
+COMPLETED_PROCEDURES_FILE_PATH = "../workfiles/completed_procedures.csv"
 
-COMPLETED_PROCEDURES_FILE = "../workfiles/completed_procedures.csv"
+
+def _is_packaged_object(object_name: str) -> bool:
+    """Check if the function follows the PACKAGE.FUNCTION_NAME pattern."""
+    return '.' in object_name
+
+
+def _normalize_object_names(objects: list) -> set:
+    """
+    Normalize objects names to ensure consistency.
+    Extracts only the object name from PACKAGE.OBJECT patterns.
+    """
+    return {object.split('.')[-1] for object in objects}
+
+
+def _get_only_new_entries(to_append: list[dict], already_in_the_file: list[dict]) -> list[dict]:
+    """Return the list of dicts from to_append that are not in already_in_the_file."""
+
+    # Normalize already_in_the_file and convert to a set for quick lookup
+    already_in_set = {
+        ("" if obj['Function'] is None else obj['Function'], obj['Owner'], obj['Package'], obj['Procedure'])
+        for obj in already_in_the_file
+    }
+
+    # Filter out items from to_append that exist in already_in_the_file
+    filtered_to_append = [
+        obj for obj in to_append
+        if ("" if obj['Function'] is None else obj['Function'], obj['Owner'], obj['Package'],
+            obj['Procedure']) not in already_in_set
+    ]
+
+    return filtered_to_append
+
+def _write_completed_procedures_data(completed_data_to_append):
+    completed_procedures = get_completed_procedures()
+    only_new_entries = _get_only_new_entries(to_append=completed_data_to_append, already_in_the_file=completed_procedures)
+    if only_new_entries:
+        write_csv_file(output_file=get_completed_procedures_file_path(), data_to_write=only_new_entries,
+                   is_append=True)
+
+
+def update_missing_procedures_to_add_manager(objects: list[dict],
+                                             database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> None:
+    logging.info("Starting: update missing procedures to add")
+    object_data_to_append = _find_missing_data_to_add(objects=objects, database_environment=database_environment)
+    logging.info(f"this is the data to be added: {object_data_to_append}")
+    _write_completed_procedures_data(completed_data_to_append=object_data_to_append)
+
+
+def _find_missing_data_to_add(objects: list[dict],
+                              database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> \
+        list[list]:
+    """Update the procedures file based on whether the function is packaged or independent."""
+    db_connection = get_db_connection(database_name=database_environment)
+    hidden_dependencies = []
+    for one_object in objects:
+        logging.info(f"Processing function: {one_object}")
+        if one_object["PACKAGE"]:
+            result = get_packaged_object_owner(one_object, db_connection)
+            logging.info(f"packaged object: {result}")
+            if result is None:
+                logging.info(f"Could not retrieve owner/package/procedure for {one_object}")
+                # check if package is really the owner
+                all_owners = get_all_current_owners()
+                # retrieve the "package" value
+                supposed_owner, object_name = parse_object_name(one_object)
+                if supposed_owner in all_owners:
+                    hidden_dependencies.append([supposed_owner, None, object_name, None])
+                    logging.info(f"Success! it was the owner {one_object}")
+                continue
+            owner, package, procedure = result
+            hidden_dependencies.append(
+                {"Owner": owner, "Package": package, "Procedure": procedure, "Function": None})
+
+        else:
+            if one_object["OWNER"]:
+                owner = one_object["OWNER"]
+                procedure = one_object["NAME"]
+                hidden_dependencies.append(
+                    {"Owner": owner, "Package": None, "Procedure": procedure, "Function": None})
+            else:
+                result = get_independent_object_owners(one_object, db_connection)
+                logging.info(f"non-packaged object: {result}")
+                if result is None:
+                    logging.info(f"Could not retrieve owner/procedure for {one_object}")
+                    continue
+                for owner, procedure in result:
+                    hidden_dependencies.append(
+                        {"Owner": owner, "Package": None, "Procedure": procedure, "Function": None})
+
+    db_connection.close()
+    return hidden_dependencies
 
 
 def _extract_package_body_specific_object_from_source_code_data(source_code_lines: str, procedure_name: str):
@@ -60,22 +155,28 @@ def _group_data_into_packages(csv_data):
 def _write_extracted_data_to_source_code_files(extracted_data: dict, source_code_folder: str):
     for entry in extracted_data['source_codes']:
         file_name = entry['file_name']
-        source_code_lines = entry['source_code']
         full_file_path = os.path.join(source_code_folder, file_name)
+
+        if os.path.exists(full_file_path):
+            logging.info(f"skipping {file_name} creation")
+            continue
+
+        # Write the new file
         with open(full_file_path, 'w', encoding='utf-8') as sql_file:
-            for line in source_code_lines:
-                sql_file.write(line)
+            sql_file.writelines(entry['source_code'])
 
 
-def extract_source_code_from_completed_procedures_file():
+def extract_source_code_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     """Read, process, and write extracted source code."""
+    logging.info("Starting: extract source code")
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    completed_procedures_csv_file_path = os.path.join(script_dir, COMPLETED_PROCEDURES_FILE)
+    completed_procedures_csv_file_path = os.path.join(script_dir, get_completed_procedures_file_path())
     csv_data = read_csv_file(completed_procedures_csv_file_path)
     grouped_data = _group_data_into_packages(csv_data)
     extracted_data = _process_source_code_extraction(grouped_data)
-    source_code_folder = os.path.join(script_dir, B7_SOURCE_CODE)
+    source_code_folder = os.path.join(script_dir, get_source_code_folder())
     _write_extracted_data_to_source_code_files(extracted_data, source_code_folder)
+    logging.info("Ending: extract source code")
 
 
 def _process_source_code_extraction(data: dict) -> dict:
@@ -98,7 +199,6 @@ def _process_source_code_extraction(data: dict) -> dict:
                 procedure = row['Procedure'].strip()
                 function = row['Function'].strip() if row['Function'] else None
 
-                file_name = f"{owner}.{local_package}.{function}.sql" if function else f"{owner}.{local_package}.{procedure}.sql"
 
                 source_code_lines = package_source_code
                 if not package:
@@ -111,6 +211,9 @@ def _process_source_code_extraction(data: dict) -> dict:
                     )
 
                 specific_source_code = _process_source_code(source_code_lines, package, procedure, function)
+
+                file_extension = ".sql.missing" if not specific_source_code else ".sql"
+                file_name = f"{owner}.{local_package}.{function}{file_extension}" if function else f"{owner}.{local_package}.{procedure}{file_extension}"
 
                 # Append the expected JSON structure
                 source_codes.append({
@@ -156,5 +259,15 @@ def _process_source_code(source_code_lines: str,
     return specific_source_code
 
 
+def get_completed_procedures_file_path():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    source_folder = os.path.join(script_dir, COMPLETED_PROCEDURES_FILE_PATH)
+    return source_folder
+
+
+def get_completed_procedures() -> list[dict]:
+    return read_csv_file(get_completed_procedures_file_path())
+
+
 if __name__ == "__main__":
-    extract_source_code_from_completed_procedures_file()
+    extract_source_code_manager()
