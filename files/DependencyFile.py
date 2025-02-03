@@ -213,7 +213,7 @@ def _write_dependencies_file(dependencies_data: list[dict]):
     dependency_file = get_dependency_file_path()
     is_append = os.path.exists(dependency_file)  # Check if file exists
 
-    write_csv_file(output_file=dependency_file, data_to_write=dependencies_data)
+    write_csv_file(output_file=dependency_file, data_to_write=dependencies_data, is_append=is_append)
 
 
 def find_all_dependencies_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
