@@ -175,7 +175,6 @@ logging.basicConfig(level=logging.INFO)
 #     return procedure_code
 
 
-
 def convert_dependencies_file_to_json_object(input_filename: str) -> dict:
     """
     Extract data from a CSV file and format it into a JSON-compatible dictionary.
@@ -205,6 +204,11 @@ def convert_dependencies_file_to_json_object(input_filename: str) -> dict:
 
         # Process each row in the CSV
         for row in reader:
+            obj_status = row['STATUS']
+
+            if obj_status != "OK":
+                continue
+
             obj_owner = row['OBJECT_OWNER']
             obj_type = row['OBJECT_TYPE']
             obj_package = row['OBJECT_PACKAGE']
@@ -313,6 +317,3 @@ def get_trigger_names_and_status(triggers: dict, schema: str, table_name: str):
         {"name": trigger["trigger_name"], "status": trigger["status"], "deployment": "external"}
         for trigger in table_triggers
     ]
-
-
-
