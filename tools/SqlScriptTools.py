@@ -2,7 +2,7 @@ from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment
 from files.MappingFile import read_mapping_data
-from files.ObjectDataFile import load_object_data_to_json
+from files.ObjectDataFile import get_object_data
 
 
 def build_header_section(filename: str):
@@ -177,7 +177,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
         if value.get("B9_NOMBRE") not in (None, "", [])
     ]
 
-    json_data = load_object_data_to_json()
+    json_data = get_object_data()
     scripts = {}
 
     for env in json_data["root"]:

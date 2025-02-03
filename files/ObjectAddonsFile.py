@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 
+from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file
 
 
@@ -20,7 +21,17 @@ class GrantType(Enum):
     SEQUENCE = "sequence"
 
 
-OBJECT_ADDONS_JSON = "../config/object_addons.json"
+OBJECT_ADDONS_DATA_JSON = "../config/object_addons.json"
+
+
+def get_object_addons_data() -> dict:
+    config_file = get_object_addons_file_path()
+    return read_json_file(config_file)
+
+
+def get_object_addons_file_path() -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, OBJECT_ADDONS_DATA_JSON)
 
 
 def extract_table_info(table_name: str) -> dict:
@@ -194,9 +205,8 @@ def read_custom_table_data(b9_table_name: str, object_addon_type: ObjectAddonTyp
     """
     Generalized function to read custom table data based on addon type.
     """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    custom_addons_file = os.path.join(script_dir, OBJECT_ADDONS_JSON)
-    json_custom_data = read_json_file(custom_addons_file)
+
+    json_custom_data = get_object_addons_data()
 
     # Route to the appropriate function based on the addon type
     if object_addon_type == ObjectAddonType.COLUMNS:

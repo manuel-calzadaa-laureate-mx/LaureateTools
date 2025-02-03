@@ -7,9 +7,82 @@ import cx_Oracle
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject, TableObject
 from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database
-from tools.FileTools import read_json_file
+from files.DependencyFile import get_dependencies_data
+from tools.BusinessRulesTools import is_custom_table
+from tools.FileTools import read_json_file, write_json_file
 
 OBJECT_DATA_JSON = "../object_data.json"
+
+
+def create_object_base_manager():
+    dependencies_data = get_dependencies_data()
+    object_data = _convert_dependencies_file_to_json_object(dependencies_data=dependencies_data)
+    write_json_file(json_data=object_data, output_filename=get_object_data_file_path())
+
+
+def _convert_dependencies_file_to_json_object(dependencies_data: list[dict]) -> dict:
+    # Initialize the structure for the JSON output
+    json_data = {
+        "root": [
+            {
+                "environment": "banner7",
+                "objects": []
+            }
+        ]
+    }
+
+    # Temporary storage for objects
+    objects_dict = {}
+
+    # Process each row in the CSV
+    for row in dependencies_data:
+        obj_status = row['STATUS']
+
+        if obj_status != "OK":
+            continue
+
+        obj_owner = row['OBJECT_OWNER']
+        obj_type = row['OBJECT_TYPE']
+        obj_package = row['OBJECT_PACKAGE']
+        obj_name = row['OBJECT_NAME']
+        dep_type = row['DEPENDENCY_TYPE']
+        dep_name = row['DEPENDENCY_NAME']
+
+        # Initialize the object if it doesn't exist
+        if obj_name not in objects_dict:
+            objects_dict[obj_name] = {
+                "type": obj_type,
+                "owner": obj_owner,
+                "package": obj_package,
+                "name": obj_name,
+                "dependencies": {
+                    "tables": [],
+                    "functions": [],
+                    "sequences": [],
+                    "procedures": []
+                }
+            }
+
+        # Add the dependency name to the appropriate list
+        if dep_type == "TABLE":
+            if is_custom_table(dep_name):
+                objects_dict[obj_name]["dependencies"]["tables"].append({"name": dep_name, "custom": True})
+            else:
+                objects_dict[obj_name]["dependencies"]["tables"].append({"name": dep_name, "custom": False})
+        elif dep_type == "LOCAL_FUNCTION":
+            objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name, "local": True})
+        elif dep_type == "FUNCTION":
+            objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name, "local": False})
+        elif dep_type == "SEQUENCE":
+            objects_dict[obj_name]["dependencies"]["sequences"].append({"name": dep_name, "deployment": "external",
+                                                                        })
+        elif dep_type == "PROCEDURE":
+            objects_dict[obj_name]["dependencies"]["procedures"].append({"name": dep_name})
+
+    # Convert the dictionary to a list and add it to json_data
+    json_data["root"][0]["objects"] = list(objects_dict.values())
+
+    return json_data
 
 
 def add_new_object_to_data_file(environment: DatabaseEnvironment, new_json_data: dict):
@@ -288,7 +361,7 @@ def extract_all_objects_from_data_file(input_file_name: str) -> List[Dict[str, O
         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
 
 
-def load_object_data_to_json() -> dict:
+def get_object_data() -> dict:
     config_file = get_object_data_file_path()
     return read_json_file(config_file)
 
