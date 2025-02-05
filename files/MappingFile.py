@@ -2,9 +2,10 @@ import csv
 import json
 import os
 from typing import Optional, List
-from db.DatabaseProperties import DatabaseObject
 
-MAPPING_FILE_PATH = "../banner9/mapping.csv"
+from tools.FileTools import read_csv_file
+
+MAPPING_FILE_PATH = "../workfiles/mapping.csv"
 
 
 def load_mapping_file_to_json(mapping_file_path: str, json_file_path: Optional[str] = None) -> List[dict]:
@@ -33,20 +34,23 @@ def load_mapping_file_to_json(mapping_file_path: str, json_file_path: Optional[s
 
     return data
 
+def get_mapping_file_path()-> str:
+    mapping_path = os.path.dirname(os.path.abspath(__file__))
+    mapping_file_path = os.path.join(mapping_path, MAPPING_FILE_PATH)
+    return mapping_file_path
 
-def read_mapping_data(database_object: DatabaseObject = DatabaseObject.TABLE) -> [dict]:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    mapping_file_path = os.path.join(script_dir, MAPPING_FILE_PATH)
-    all_mapped_records = load_mapping_file_to_json(mapping_file_path=mapping_file_path)
-    mapping_data = {}
-    for one_record in all_mapped_records:
-        if (one_record["IS_MAPPED"]
-                and one_record["B7_TIPO"] == database_object.name
-                and one_record["B9_NOMBRE"] != 'none'):
-            mapping_data[one_record["B7_NOMBRE"]] = {
-                "B9_ESQUEMA": one_record["B9_ESQUEMA"],
-                "B9_PAQUETE": one_record["B9_PAQUETE"],
-                "B9_NOMBRE": one_record["B9_NOMBRE"]
-            }
-    return mapping_data
+def get_mapping_data() -> list[dict]:
+    return read_csv_file(get_mapping_file_path())
 
+def write_mapping_file(mapping_data: list[dict]) -> None:
+    mapping_file_path = get_mapping_file_path()
+
+    with open(mapping_file_path, mode="w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=[
+            "IS_MAPPED",
+            "B7_TIPO", "B7_ESQUEMA", "B7_PAQUETE", "B7_NOMBRE",
+            "B9_TIPO", "B9_ESQUEMA", "B9_PAQUETE", "B9_NOMBRE"
+        ])
+
+        writer.writeheader()
+        writer.writerows(mapping_data)

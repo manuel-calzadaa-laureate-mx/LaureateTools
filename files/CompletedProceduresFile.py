@@ -166,7 +166,7 @@ def _write_extracted_data_to_source_code_files(extracted_data: dict, source_code
             sql_file.writelines(entry['source_code'])
 
 
-def extract_source_code_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+def create_source_code_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     """Read, process, and write extracted source code."""
     logging.info("Starting: extract source code")
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -270,4 +270,4 @@ def get_completed_procedures() -> list[dict]:
 
 
 if __name__ == "__main__":
-    extract_source_code_manager()
+    create_source_code_manager()

@@ -1,10 +1,11 @@
 import os
 
-from tools.SqlScriptTools import build_create_table_script_data
+from tools.SqlScriptTools import find_create_table_script_data
+from tools.SqlScriptTools import write_table_scripts
 
 if __name__ == "__main__":
     output_dir = "../scripts"
-    scripts_data = build_create_table_script_data()
+    scripts_data = find_create_table_script_data()
 
     for filename, script in scripts_data.items():
         # Construct the file name

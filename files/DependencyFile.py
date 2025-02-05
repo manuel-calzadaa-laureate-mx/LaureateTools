@@ -2,7 +2,7 @@ import logging
 import os
 
 from db.DatabaseProperties import DatabaseEnvironment
-from files.CompletedProceduresFile import update_missing_procedures_to_add_manager, extract_source_code_manager
+from files.CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
 from files.SourceCodeFile import extract_all_dependencies_from_one_source_code_data, get_source_code_folder
 from tools.CommonTools import get_all_current_owners, parse_object_name
 from tools.FileTools import write_csv_file, read_csv_file
@@ -235,7 +235,7 @@ def find_all_dependencies_manager(database_environment: DatabaseEnvironment = Da
                                                  database_environment=DatabaseEnvironment.BANNER7)
 
         # Step 4: Find the source code for missing objects
-        extract_source_code_manager()
+        create_source_code_manager()
 
 def resolve_dependency(owners: list, obj_name: str) -> dict:
     """

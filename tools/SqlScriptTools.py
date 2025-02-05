@@ -1,8 +1,11 @@
+import os
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment
-from files.MappingFile import read_mapping_data
+from files.MappingFile import get_mapping_data
 from files.ObjectDataFile import get_object_data
+
+SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"
 
 
 def build_header_section(filename: str):
@@ -169,8 +172,8 @@ def build_synonym_section(synonym: str) -> str:
     return synonym_script
 
 
-def build_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
-    mapping_data = read_mapping_data()
+def find_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
+    mapping_data = get_mapping_data()
     table_names = [
         value["B9_NOMBRE"]
         for value in mapping_data.values()
@@ -342,6 +345,24 @@ def build_create_trigger_script(trigger_info: dict) -> str:
     return trigger_script.strip()
 
 
+def write_table_scripts(scripts_data: list[dict]):
+    output_dir = get_scripts_folder_path()
+    for filename, script in scripts_data:
+        # Construct the file name
+        file_path = os.path.join(output_dir, filename)
+
+        # Write the script to the file
+        with open(file_path, 'w') as file:
+            file.write(script)
+
+        print(f"Saved script for table '{filename}' to '{file_path}'")
+
+
+def get_scripts_folder_path() -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    source_folder = os.path.join(script_dir, SCRIPT_FOLDER_PATH)
+    return source_folder
+
 if __name__ == "__main__":
     # Trigger details
     trigger_info = {
@@ -398,5 +419,5 @@ if __name__ == "__main__":
 
     print(type(trigger_info))
 
-    # Generate the script
-    # print(build_create_trigger_script(trigger_info))
+
+
