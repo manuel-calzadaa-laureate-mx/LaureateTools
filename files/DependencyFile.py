@@ -262,25 +262,26 @@ def resolve_dependency(owners: list, obj_name: str) -> dict:
 def _is_dependency_object_exist(data: list[dict], object_owner: str, object_package: str, object_name: str) -> bool:
     """
     Checks if an object exists in the given list of dictionaries based on OBJECT_OWNER, OBJECT_PACKAGE, and OBJECT_NAME.
+    If OBJECT_OWNER is empty ('') or None, it is ignored in the comparison.
 
     Args:
         data (list[dict]): The list of dictionaries representing the CSV data.
-        object_owner (str): The OBJECT_OWNER value to search for.
+        object_owner (str): The OBJECT_OWNER value to search for (ignored if empty or None).
         object_package (str): The OBJECT_PACKAGE value to search for.
         object_name (str): The OBJECT_NAME value to search for.
 
     Returns:
         bool: True if the object exists, False otherwise.
     """
-    if data:
-        return any(
-            row["OBJECT_OWNER"] == object_owner and
-            row["OBJECT_PACKAGE"] == object_package and
-            row["OBJECT_NAME"] == object_name
-            for row in data
-        )
-    else:
+    if not data:
         return False
+
+    return any(
+        (not object_owner or not row.get("OBJECT_OWNER") or row["OBJECT_OWNER"] == object_owner) and
+        row.get("OBJECT_PACKAGE") == object_package and
+        row.get("OBJECT_NAME") == object_name
+        for row in data
+    )
 
 
 def _extract_missing_dependencies_from_source_files() -> list[dict]:
@@ -303,18 +304,20 @@ def _extract_missing_dependencies_from_source_files() -> list[dict]:
     for filename in os.listdir(source_folder):
         logging.info("Reading this source code file: %s", filename)
 
+        # Determine the object type (PROCEDURE/FUNCTION) and object name
+        object_owner = filename.split('.')[0]
+        object_package = filename.split('.')[1]
+        object_name = filename.split('.')[2]  # Assuming the file name is the object name
+
+        if _is_dependency_object_exist(data=dependencies_data,
+                                       object_owner=object_owner,
+                                       object_package=object_package,
+                                       object_name=object_name):
+            continue
+
         if filename.endswith(".sql"):
             file_path = os.path.join(source_folder, filename)
 
-            # Determine the object type (PROCEDURE/FUNCTION) and object name
-            object_owner = filename.split('.')[0]
-            object_package = filename.split('.')[1]
-            object_name = filename.split('.')[2]  # Assuming the file name is the object name
-            if _is_dependency_object_exist(data=dependencies_data,
-                                           object_owner=object_owner,
-                                           object_package=object_package,
-                                           object_name=object_name):
-                continue
 
             # Read the source code from the SQL file
             with open(file_path, mode='r', encoding='utf-8') as file:
