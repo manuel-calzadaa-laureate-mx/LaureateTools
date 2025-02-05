@@ -15,6 +15,8 @@ class MappingObjectTypes(Enum):
     VIEW = 'VIEW'
     TABLE = 'TABLE'
 
+
+
 def get_mapping_data_for_one_type_mapped_by_b7_object_name(mapping_object_type: MappingObjectTypes) -> dict:
     mapped_data = {}
     if mapping_object_type:

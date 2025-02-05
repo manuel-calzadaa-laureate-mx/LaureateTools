@@ -5,9 +5,9 @@ from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_db_connection
 from db.datasource.FunctionsDatasource import get_packaged_object_owner, get_independent_object_owners
 from db.datasource.ProceduresDatasource import query_sources
+from files.SourceCodeFile import get_source_code_folder
 from tools.CommonTools import get_all_current_owners, parse_object_name
 from tools.FileTools import read_csv_file, write_csv_file
-from tools.SourceCodeTools import get_source_code_folder
 
 COMPLETED_PROCEDURES_FILE_PATH = "../workfiles/completed_procedures.csv"
 
@@ -43,12 +43,14 @@ def _get_only_new_entries(to_append: list[dict], already_in_the_file: list[dict]
 
     return filtered_to_append
 
+
 def _write_completed_procedures_data(completed_data_to_append):
     completed_procedures = get_completed_procedures()
-    only_new_entries = _get_only_new_entries(to_append=completed_data_to_append, already_in_the_file=completed_procedures)
+    only_new_entries = _get_only_new_entries(to_append=completed_data_to_append,
+                                             already_in_the_file=completed_procedures)
     if only_new_entries:
         write_csv_file(output_file=get_completed_procedures_file_path(), data_to_write=only_new_entries,
-                   is_append=True)
+                       is_append=True)
 
 
 def update_missing_procedures_to_add_manager(objects: list[dict],
@@ -198,7 +200,6 @@ def _process_source_code_extraction(data: dict) -> dict:
             for row in rows:
                 procedure = row['Procedure'].strip()
                 function = row['Function'].strip() if row['Function'] else None
-
 
                 source_code_lines = package_source_code
                 if not package:

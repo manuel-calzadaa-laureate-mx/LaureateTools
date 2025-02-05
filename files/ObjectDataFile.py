@@ -1,6 +1,7 @@
 import json
+import logging
 import os
-from typing import Dict
+from enum import Enum
 
 import cx_Oracle
 
@@ -13,12 +14,21 @@ from db.datasource.TablesDatasource import fetch_table_columns_for_tables_groupe
     fetch_full_indexes_for_tables_grouped_by_schema_and_table_name
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database, fetch_triggers_for_tables
 from files.DependencyFile import get_dependencies_data
-from files.MappingFile import get_mapping_data
+from files.MappingFile import MappingFileTypes, \
+    get_filtered_mapping_data_by_type_and_is_mapped
 from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file, write_json_file
 from tools.MigrationTools import migrate_b7_table_to_b9
 
 OBJECT_DATA_JSON = "../workfiles/object_data.json"
+
+
+class ObjectDataTypes(Enum):
+    TABLE = "TABLE"
+    SEQUENCE = "SEQUENCE"
+    TRIGGER = "TRIGGER"
+    PROCEDURE = "PROCEDURE"
+    FUNCTION = "FUNCTION"
 
 
 def create_object_base_manager():
@@ -100,59 +110,81 @@ def add_new_object_to_data_file(environment: DatabaseEnvironment, new_json_data:
     :param new_json_data: JSON string to append
     """
     object_data_file = get_object_data_file_path()
-    with open(object_data_file, "r") as file:
-        data = json.load(file)
 
-    new_metadata = json.loads(new_json_data)
+    # Ensure file exists and has valid JSON
+    if os.path.exists(object_data_file) and os.path.getsize(object_data_file) > 0:
+        with open(object_data_file, "r") as file:
+            try:
+                data = json.load(file)
+            except json.JSONDecodeError:
+                data = {"root": []}
+    else:
+        data = {"root": []}
 
-    # Find the correct environment and append metadata
-    for env in data.get("root", []):
+    new_metadata = new_json_data if isinstance(new_json_data, dict) else json.loads(new_json_data)
+
+    # Find or create environment entry
+    for env in data["root"]:
         if env.get("environment").upper() == environment.name:
-            env_objects = env.get("objects", [])
-            env_objects.extend(new_metadata)
-            env["objects"] = env_objects
+            if "objects" not in env:
+                env["objects"] = []
+            env["objects"].extend(new_metadata if isinstance(new_metadata, list) else [new_metadata])
             break
+    else:
+        # Environment doesn't exist, add it
+        data["root"].append({
+            "environment": environment.name,
+            "objects": new_metadata if isinstance(new_metadata, list) else [new_metadata]
+        })
 
     # Write back to the file
     with open(object_data_file, "w") as file:
         json.dump(data, file, indent=4)
 
 
-def add_or_update_object_in_data_file(environment: DatabaseEnvironment, new_object: Dict):
+def add_or_update_object_data_file(environment: DatabaseEnvironment, new_json_data: dict):
     """
-    Add a new object to the specified environment in the JSON file, or update it if it already exists.
+    Add new metadata or update an existing object within the specified environment.
 
-    :param environment: Environment name to append or update the object in
-    :param new_object: The new object to add or update
+    :param environment: Environment name to append/update metadata
+    :param new_json_data: JSON string to append/update
     """
-    add_new_environment(new_environment=environment)
     object_data_file = get_object_data_file_path()
-    with open(object_data_file, "r") as file:
-        data = json.load(file)
 
-    # Find the target environment
-    for env in data.get("root", []):
-        if env.get("environment", "") == environment.value:
-            env_objects = env.setdefault("objects", [])
+    # Ensure file exists and has valid JSON
+    if os.path.exists(object_data_file) and os.path.getsize(object_data_file) > 0:
+        with open(object_data_file, "r") as file:
+            try:
+                data = json.load(file)
+            except json.JSONDecodeError:
+                data = {"root": []}
+    else:
+        data = {"root": []}
 
-            # Check if the object already exists by matching the "name" field
-            for obj in env_objects:
-                if obj.get("name") == new_object.get("name"):
-                    # Update the existing object
-                    obj.update(new_object)
+    new_metadata = new_json_data if isinstance(new_json_data, dict) else json.loads(new_json_data)
+    object_name = new_metadata.get("name")  # Assuming objects have a unique "name" field
+
+    for env in data["root"]:
+        if env.get("environment").upper() == environment.name:
+            if "objects" not in env:
+                env["objects"] = []
+
+            # Check if object already exists, update it
+            for obj in env["objects"]:
+                if obj.get("name") == object_name:
+                    obj.update(new_metadata)
                     break
             else:
-                # If the object does not exist, add it
-                env_objects.append(new_object)
+                env["objects"].append(new_metadata)  # If not found, add new object
             break
     else:
-        # If the environment does not exist, add it
-        data.setdefault("root", []).append({
-            "environment": environment,
-            "objects": [new_object]
+        # Environment doesn't exist, add it with the new object
+        data["root"].append({
+            "environment": environment.value,
+            "objects": [new_metadata]
         })
 
-    # Write the updated data back to the file
+    # Write back to the file
     with open(object_data_file, "w") as file:
         json.dump(data, file, indent=4)
 
@@ -276,7 +308,7 @@ def extract_triggers_from_database(connection: cx_Oracle.Connection, unique_trig
     return json.dumps(triggers_metadata, indent=4)
 
 
-def extract_sequences_attributes_from_database(connection: cx_Oracle.Connection, unique_sequences: [str]):
+def extract_sequences_attributes_from_database(connection: cx_Oracle.Connection, unique_sequences: [str]) -> dict:
     """
     Generate a JSON file containing metadata for given tables across all accessible schemas.
 
@@ -331,41 +363,21 @@ def add_new_environment(new_environment: DatabaseEnvironment):
         json.dump(data, f, indent=4)
 
 
-# def extract_all_objects_from_data_file(input_file_name: str) -> List[Dict[str, Optional[str]]]:
-#     """
-#     Extracts a list of objects from the JSON data with the specified structure.
-#
-#     Args:
-#         json_data (dict): The JSON data containing the objects to be extracted.
-#
-#     Returns:
-#         List[Dict[str, Optional[str]]]: A list of dictionaries with the extracted data.
-#         :param input_file_name:
-#     """
-#     try:
-#         with open(input_file_name, 'r') as file:
-#             json_data = json.load(file)
-#         objects_list = []
-#
-#         # Navigate through the JSON structure
-#         for root_entry in json_data.get("root", []):
-#             for obj in root_entry.get("objects", []):
-#                 # Build the dictionary for each object
-#                 obj_dict = {
-#                     "NAME": obj.get("name"),
-#                     "TYPE": obj.get("type"),
-#                     "PACKAGE": obj.get("package", None),  # Default to None if not present
-#                     "SCHEMA": obj.get("owner"),
-#                     "CUSTOM": obj.get("custom", None)  # Default to None if not present
-#                 }
-#                 objects_list.append(obj_dict)
-#
-#         return objects_list
-#
-#     except FileNotFoundError:
-#         raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
-#     except json.JSONDecodeError:
-#         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
+def get_object_data_mapped_by_names_by_environment_and_type(object_data_type: str = "table",
+                                                            database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> dict:
+    object_data_dictionary = {}
+    object_data = get_object_data()  # Fetch JSON data
+
+    for one_root in object_data.get("root", []):  # Ensure "root" exists
+        if one_root.get("environment") == database_environment.value:
+            for one_object in one_root.get("objects", []):
+                if one_object.get("type") == object_data_type:
+                    name = one_object.get("name")
+                    if name:
+                        object_data_dictionary[name] = one_object
+
+    return object_data_dictionary
+
 
 def get_object_data_mapped_by_names_by_environment(
         database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> dict:
@@ -473,6 +485,7 @@ def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table
 
 
 def add_base_tables_manager():
+    logging.info("Starting: add base tables to object data")
     unique_tables = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.TABLE,
                                                                      environment=DatabaseEnvironment.BANNER7,
                                                                      is_custom=False)
@@ -482,11 +495,16 @@ def add_base_tables_manager():
         json_attributes_from_tables = extract_table_metadata_from_database(connection, unique_tables)
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER7, new_json_data=
         json_attributes_from_tables)
+        logging.info(f"Added {len(unique_tables)} base tables to object data")
+
     else:
         print("No unique base tables found. Skipping db operations.")
+    logging.info("Ending: add base tables to object data")
 
 
 def add_custom_sequences_manager():
+    logging.info("Starting: add custom sequences to object data")
+
     unique_sequences = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.SEQUENCE,
                                                                         environment=DatabaseEnvironment.BANNER7)
 
@@ -497,11 +515,16 @@ def add_custom_sequences_manager():
         json_attributes_from_sequences = extract_sequences_attributes_from_database(connection, unique_sequences)
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER7, new_json_data=
         json_attributes_from_sequences)
+        logging.info(f"Added {len(unique_sequences)} custom sequences to object data")
+
     else:
         print("No unique sequences found. Skipping db operations.")
+    logging.info("Ending: add custom sequences to object data")
 
 
 def add_custom_tables_manager():
+    logging.info("Starting: add custom tables to object data")
+
     unique_tables = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.TABLE,
                                                                      environment=DatabaseEnvironment.BANNER7,
                                                                      is_custom=True)
@@ -513,9 +536,12 @@ def add_custom_tables_manager():
         json_attributes_from_tables)
     else:
         print("No unique custom tables found. Skipping db operations.")
+    logging.info("Ending: add custom tables to object data")
 
 
 def add_custom_triggers_manager():
+    logging.info("Starting: add custom tables to object data")
+
     unique_triggers = extract_table_unique_dependencies_types_from_data_file(table_object_type=TableObject.TRIGGER,
                                                                              environment=DatabaseEnvironment.BANNER7)
     # Check if the list is not empty
@@ -529,19 +555,21 @@ def add_custom_triggers_manager():
         json_attributes_from_triggers)
     else:
         print("No unique triggers found. Skipping db operations.")
+    logging.info("Ending: add custom tables to object data")
 
 
 def migrate_table_manager():
-    migration_data = get_mapping_data()
-    for table_name_key in migration_data:
-        b9_mapping_data = migration_data.get(table_name_key, {})
-        b9_paquete = b9_mapping_data.get("B9_PAQUETE")
-        b9_nombre = b9_mapping_data.get("B9_NOMBRE")
-        b9_esquema = b9_mapping_data.get("B9_ESQUEMA")
+    filtered_migration_data = get_filtered_mapping_data_by_type_and_is_mapped(
+        mapping_object_types=MappingFileTypes.TABLE)
+    for one_migration_data in filtered_migration_data:
+        b7_table_name = one_migration_data.get("B7_NOMBRE")
+        b9_paquete = one_migration_data.get("B9_PAQUETE")
+        b9_nombre = one_migration_data.get("B9_NOMBRE")
+        b9_esquema = one_migration_data.get("B9_ESQUEMA")
 
-        json_object_data = get_object_data()
-        converted_table_data = migrate_b7_table_to_b9(json_data=json_object_data, b7_table_name=table_name_key,
+        object_data = get_object_data()
+        converted_table_data = migrate_b7_table_to_b9(json_data=object_data, b7_table_name=b7_table_name,
                                                       b9_table_name=b9_nombre, b9_owner=b9_esquema)
 
-        add_or_update_object_in_data_file(new_object=converted_table_data,
-                                          environment=DatabaseEnvironment.BANNER9)
+        add_or_update_object_data_file(new_json_data=converted_table_data,
+                                       environment=DatabaseEnvironment.BANNER9)

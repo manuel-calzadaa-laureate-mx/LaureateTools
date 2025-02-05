@@ -1,11 +1,17 @@
+import logging
 import os
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment
-from files.MappingFile import get_mapping_data
-from files.ObjectDataFile import get_object_data
+from files.ObjectDataFile import get_object_data_mapped_by_names_by_environment, ObjectDataTypes, \
+    get_object_data_mapped_by_names_by_environment_and_type
 
 SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 def build_header_section(filename: str):
@@ -172,84 +178,78 @@ def build_synonym_section(synonym: str) -> str:
     return synonym_script
 
 
-def find_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
-    mapping_data = get_mapping_data()
-    table_names = [
-        value["B9_NOMBRE"]
-        for value in mapping_data.values()
-        if value.get("B9_NOMBRE") not in (None, "", [])
-    ]
+def build_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> list[
+    dict]:
+    object_data = get_object_data_mapped_by_names_by_environment_and_type(database_environment=requested_environment,
+                                                                          object_data_type=ObjectDataTypes.TABLE.value)
+    scripts = []
 
-    json_data = get_object_data()
-    scripts = {}
+    for key, value in object_data.items():
+        if value["name"]:
+            table_name = value["name"]
+            object_type = value["type"]
+            object_owner = value['owner']
+            create_table_section = build_create_table_section(value)
+            tablespace_section = build_tablespace_section(value.get("attributes", {}))
+            comments_section = build_comments_section(
+                value.get("comments", {}), object_owner, table_name
+            )
+            index_section = build_indexes_and_primary_key_section(value.get("indexes", {}),
+                                                                  object_owner,
+                                                                  table_name)
+            custom_sequences_section = build_sequence_section(sequences=value.get("sequences", {}))
+            custom_trigger_section = build_trigger_section(triggers=value.get("triggers", {}))
 
-    for env in json_data["root"]:
-        environment = env["environment"]
-        if environment == requested_environment.value:
-            for obj in env["objects"]:
-                if obj["name"] in table_names and obj["type"] == "TABLE":
-                    table_name = obj["name"]
-                    object_type = obj["type"]
-                    object_owner = obj['owner']
-                    create_table_section = build_create_table_section(obj)
-                    tablespace_section = build_tablespace_section(obj.get("attributes", {}))
-                    comments_section = build_comments_section(
-                        obj.get("comments", {}), object_owner, table_name
-                    )
-                    index_section = build_indexes_and_primary_key_section(obj.get("indexes", {}),
-                                                                          object_owner,
-                                                                          table_name)
-                    custom_sequences_section = build_sequence_section(sequences=obj.get("sequences", {}))
-                    custom_trigger_section = build_trigger_section(triggers=obj.get("triggers", {}))
+            custom_grant_section = build_grant_section(grants=value.get("grants", {}))
+            custom_synonym_section = build_synonym_section(synonym=value.get("synonym"))
 
-                    custom_grant_section = build_grant_section(grants=obj.get("grants", {}))
-                    custom_synonym_section = build_synonym_section(synonym=obj.get("synonym"))
+            # Start with the fixed parts of the filename
+            filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
 
-                    # Start with the fixed parts of the filename
-                    filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
+            # Conditionally add "IDX", "SEQ", and "TR" based on sections
+            if index_section.strip():  # Ensure there's meaningful content in the index section
+                filename_parts.append("IDX")
+            if custom_sequences_section.strip():  # Check if the sequences section has data
+                filename_parts.append("SEQ")
+            if custom_trigger_section.strip():  # Check if the triggers section has data
+                filename_parts.append("TR")
+            if custom_grant_section.strip():
+                filename_parts.append("GNT")
+            if custom_synonym_section.strip():
+                filename_parts.append("SYN")
 
-                    # Conditionally add "IDX", "SEQ", and "TR" based on sections
-                    if index_section.strip():  # Ensure there's meaningful content in the index section
-                        filename_parts.append("IDX")
-                    if custom_sequences_section.strip():  # Check if the sequences section has data
-                        filename_parts.append("SEQ")
-                    if custom_trigger_section.strip():  # Check if the triggers section has data
-                        filename_parts.append("TR")
-                    if custom_grant_section.strip():
-                        filename_parts.append("GNT")
-                    if custom_synonym_section.strip():
-                        filename_parts.append("SYN")
+            # Join all parts with a dot and add the file extension
+            filename = ".".join(filename_parts) + ".sql"
 
-                    # Join all parts with a dot and add the file extension
-                    filename = ".".join(filename_parts) + ".sql"
+            header_section = build_header_section(filename)
+            drop_object_section = build_drop_section(object_type, object_owner, table_name)
+            footer_section = build_footer_section(filename)
 
-                    header_section = build_header_section(filename)
-                    drop_object_section = build_drop_section(object_type, object_owner, table_name)
-                    footer_section = build_footer_section(filename)
+            script = (f"{header_section}"
+                      f"\n"
+                      f"{drop_object_section}"
+                      f"\n"
+                      f"{create_table_section}\n"
+                      f"{tablespace_section}\n"
+                      f"\n"
+                      f"{comments_section}\n"
+                      f"\n"
+                      f"{index_section}\n"
+                      f"\n"
+                      f"{custom_sequences_section}\n"
+                      f"\n"
+                      f"{custom_trigger_section}\n"
+                      f"\n"
+                      f"{custom_grant_section}\n"
+                      f"\n"
+                      f"{custom_synonym_section}\n"
+                      f"\n"
+                      f"{footer_section}")
 
-                    script = (f"{header_section}"
-                              f"\n"
-                              f"{drop_object_section}"
-                              f"\n"
-                              f"{create_table_section}\n"
-                              f"{tablespace_section}\n"
-                              f"\n"
-                              f"{comments_section}\n"
-                              f"\n"
-                              f"{index_section}\n"
-                              f"\n"
-                              f"{custom_sequences_section}\n"
-                              f"\n"
-                              f"{custom_trigger_section}\n"
-                              f"\n"
-                              f"{custom_grant_section}\n"
-                              f"\n"
-                              f"{custom_synonym_section}\n"
-                              f"\n"                              
-                              f"{footer_section}")
-
-                    # Add the script to the dictionary with the table name as the key
-                    scripts[filename] = script
+            scripts.append({
+                "file_name": filename,
+                "script": script
+            })
 
     return scripts
 
@@ -358,10 +358,27 @@ def write_table_scripts(scripts_data: list[dict]):
         print(f"Saved script for table '{filename}' to '{file_path}'")
 
 
+def create_table_scripts_manager():
+    scripts_data = build_create_table_script_data()
+    scripts_folder_path = get_scripts_folder_path()
+    for script_info in scripts_data:
+        file_name = script_info["file_name"]
+        script_content = script_info["script"]
+        # Construct the file name
+        file_path = os.path.join(scripts_folder_path, file_name)
+
+        # Write the script to the file
+        with open(file_path, 'w') as file:
+            file.write(script_content)
+
+        logging.info(f"Saved script for table '{file_name}' to '{file_path}'")
+
+
 def get_scripts_folder_path() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_folder = os.path.join(script_dir, SCRIPT_FOLDER_PATH)
     return source_folder
+
 
 if __name__ == "__main__":
     # Trigger details
@@ -418,6 +435,3 @@ if __name__ == "__main__":
     }
 
     print(type(trigger_info))
-
-
-
