@@ -1,12 +1,30 @@
+# Ignore everything by default
+*
+
+# Allow virtual environment
 !/.venv/
+
+# Allow database config file
 !/config/db_config.json
-/input/
-!/workfiles/
-!/workfiles/b7_sources/
-!/workfiles/b9_sources/
-/workfiles/b7_sources/
-/.idea/
-/.idea/.gitignore
-/workfiles/
-!/workfiles/*.csv
-!/workfiles/*.json
+
+# Ignore input directory completely
+input/
+
+# Workfiles: Ignore everything inside, but allow specific files/folders
+workfiles/
+!workfiles/b7_sources/
+!workfiles/b7_sources/*.sql
+!workfiles/b9_sources/
+!workfiles/*.csv
+!workfiles/*.json
+
+# IDE settings
+.idea/
+.idea/.gitignore
+
+# Ignore all JSON files by default
+*.json
+
+# Python cache
+__pycache__/
+db/**/__pycache__/
