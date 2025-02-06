@@ -1,39 +1,41 @@
 import logging
+from typing import Any
+
 from db.OracleDatabaseTools import is_oracle_built_in_object
 import re
 
 
-def extract_select_tables(source_code):
+def extract_select_tables(source_code: str) -> set[str]:
     # Matches table names in SELECT statements
     select_pattern = re.compile(r"select.*?from\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return [match.group(1) for match in select_pattern.finditer(source_code)]
 
 
-def extract_insert_tables(source_code):
+def extract_insert_tables(source_code: str) -> list[str]:
     # Matches table names in INSERT statements
     insert_pattern = re.compile(r"insert\s+into\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return [match.group(1) for match in insert_pattern.finditer(source_code)]
 
 
-def extract_update_tables(source_code):
+def extract_update_tables(source_code: str) -> list[str]:
     # Matches table names in UPDATE statements
     update_pattern = re.compile(r"update\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return [match.group(1) for match in update_pattern.finditer(source_code)]
 
 
-def extract_delete_tables(source_code):
+def extract_delete_tables(source_code: str) -> list[str]:
     # Matches table names in DELETE statements
     delete_pattern = re.compile(r"delete\s+from\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return [match.group(1) for match in delete_pattern.finditer(source_code)]
 
 
-def extract_type_declarations(source_code):
+def extract_type_declarations(source_code: str) -> list[str]:
     # Matches table names used in `%TYPE` declarations
     type_pattern = re.compile(r"([a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+%type", re.IGNORECASE)
     return [match.group(1) for match in type_pattern.finditer(source_code)]
 
 
-def extract_procedures(source_code: str):
+def extract_procedures(source_code: str) -> list[str]:
     """
        Extract valid procedure names from Oracle source code with exclusions.
 
@@ -94,27 +96,27 @@ def extract_procedures(source_code: str):
     return valid_procedures
 
 
-def extract_insert_into(source_code):
+def extract_insert_into(source_code: str) -> set[str]:
     insert_pattern = re.compile(r"\bINSERT\s+INTO\s+([a-zA-Z0-9_]+)", re.IGNORECASE)
     return set(match.group(1) for match in insert_pattern.finditer(source_code))
 
 
-def extract_procedures_names_at_first_line(source_code):
+def extract_procedures_names_at_first_line(source_code: str) -> set[str]:
     procedure_pattern = re.compile(r"\bPROCEDURE\s+([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in procedure_pattern.finditer(source_code))
 
 
-def extract_cursors(source_code: str):
+def extract_cursors(source_code: str) -> set[str]:
     cursor_pattern = re.compile(r"\bCURSOR\s+([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in cursor_pattern.finditer(source_code))
 
 
-def extract_generic_functions(source_code):
+def extract_generic_functions(source_code: str) -> set[str]:
     function_pattern = re.compile(r"\b([a-zA-Z0-9_]+)\s*\(", re.IGNORECASE)
     return set(match.group(1) for match in function_pattern.finditer(source_code))
 
 
-def extract_local_functions(source_code):
+def extract_local_functions(source_code: str) -> set[str]:
     """
     Extracts local function names from the source code, excluding standalone function declarations.
 
@@ -142,13 +144,13 @@ def extract_local_functions(source_code):
     return local_functions
 
 
-def extract_sequences(source_code):
+def extract_sequences(source_code: str)-> list[str]:
     """Extracts sequences used in the source code."""
     sequence_pattern = re.compile(r"\b([a-zA-Z0-9_]+)\.NEXTVAL", re.IGNORECASE)
     return sequence_pattern.findall(source_code)
 
 
-def extract_functions(source_code):
+def extract_functions(source_code: str)-> set[str]:
     """
            Extract valid procedure names from Oracle source code with exclusions.
 

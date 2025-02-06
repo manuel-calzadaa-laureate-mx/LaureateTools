@@ -150,8 +150,8 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
         "indexes": indexes["indexes"],
         "sequences": sequences["sequences"],
         "triggers": triggers["triggers"],
-        "grants" : grants["grants"],
-        "synonym" : synonym,
+        "grants": grants["grants"],
+        "synonym": synonym,
     }
 
     return new_table

@@ -16,7 +16,6 @@ class MappingObjectTypes(Enum):
     TABLE = 'TABLE'
 
 
-
 def get_mapping_data_for_one_type_mapped_by_b7_object_name(mapping_object_type: MappingObjectTypes) -> dict:
     mapped_data = {}
     if mapping_object_type:
@@ -27,6 +26,7 @@ def get_mapping_data_for_one_type_mapped_by_b7_object_name(mapping_object_type: 
                 mapped_data[b7_name] = mapping_record
         return mapped_data
     return {}
+
 
 def get_mapping_data_mapped_by_b7_object_name() -> dict:
     mapped_data = {}
@@ -75,6 +75,7 @@ def build_mapping_data() -> list[dict]:
             })
 
     return mapping_data
+
 
 def normalize_value(value: str):
     """

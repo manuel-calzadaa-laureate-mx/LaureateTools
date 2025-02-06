@@ -1,4 +1,8 @@
 # LAUREATE PROCESSING
+
+## QUICK START
+- Execute setup.py
+- Fill 
 ## INTRODUCTION
 This process is meant to be a CI/CD tool for 
 - migration from banner7 to banner9
