@@ -1,6 +1,9 @@
 # Ignore everything by default
 *
 
+# Allow root py files
+!*.py
+
 # Allow virtual environment
 !/.venv/
 
