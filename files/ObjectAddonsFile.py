@@ -141,7 +141,7 @@ def _get_custom_all_table_grants(json_data: dict, object_name: str):
     ## Get the sequence names:
     custom_sequences = _get_custom_sequences(json_data=json_data, b9_table_name=object_name)
     sequence_names = [sequence['name'] for sequence in custom_sequences['sequences']]
-    sequence_grants = _get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names)
+    sequence_grants = _get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names, grant_type=GrantType.SEQUENCE)
     merged_grants = table_grants.get("grants", []) + sequence_grants.get("grants", [])
     return {"grants": merged_grants}
 
@@ -169,8 +169,12 @@ def _get_custom_grants_multiple_objects(
         object_names: list,
         grant_type: GrantType = GrantType.TABLE
 ):
-    # Navigate to the grant type within the JSON structure
-    fields = json_data["root"]["grants"][0][grant_type.value]
+    # Locate the correct grant type in the grants list
+    fields = next((grant[grant_type.value] for grant in json_data["root"]["grants"] if grant_type.value in grant), None)
+
+    if not fields:
+        raise ValueError(f"Grant type '{grant_type.value}' not found in JSON data.")
+
     script_template = fields["script"]
     owners = fields["owner"]
 
