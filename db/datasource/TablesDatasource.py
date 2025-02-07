@@ -73,7 +73,7 @@ def fetch_table_attributes_for_tables_grouped_by_schema_and_table_name(connectio
             grouped_attributes[schema] = {}
         grouped_attributes[schema][table_name] = {
             "pct_free": pct_free,
-            "pct_used": pct_used,
+            "pct_used": pct_used or 0,
             "ini_trans": ini_trans,
             "max_trans": max_trans,
             "logging": logging,
