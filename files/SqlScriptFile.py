@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Dict
 
-from db.DatabaseProperties import DatabaseEnvironment
+from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
 from files.ObjectDataFile import get_object_data_mapped_by_names_by_environment, ObjectDataTypes, \
     get_object_data_mapped_by_names_by_environment_and_type
 
@@ -14,6 +14,7 @@ logging.basicConfig(
 )
 
 PROMPT = "Prompt >>>"
+
 
 def build_header_section(filename: str):
     return (f"{PROMPT}\n"
@@ -96,10 +97,48 @@ def build_comments_section(comments: Dict, table_owner: str, table_name: str) ->
     return comment_script
 
 
-def build_drop_section(object_type: str, object_owner: str, object_name: str):
-    return (f"-- Eliminaciones\n"
-            f"-- DROP TABLE {object_owner}.{object_name};\n")
+def _convert_drop_objects_to_map_by_type(drop_objects: list[dict]) -> dict:
+    """
+    Converts a list of drop objects into a dictionary grouped by type.
 
+    :param drop_objects: List of dictionaries containing object metadata.
+    :return: Dictionary with keys as object types and formatted SQL strings as values.
+    """
+    drop_objects_map = {}
+
+    for obj in drop_objects:
+        obj_type = _extract_value(obj.get("type"))
+        obj_name = _extract_value(obj.get("name"))
+        obj_owner = _extract_value(obj.get("owner"))
+
+        if obj_type == "TABLE":
+            drop_objects_map["TABLE"] = f"{obj_owner}.{obj_name} CASCADE CONSTRAINTS"
+        elif obj_type == "SEQUENCE":
+            drop_objects_map["SEQUENCE"] = f"{obj_name}"
+        elif obj_type == "SYNONYM":
+            drop_objects_map["SYNONYM"] = f"{obj_name}"
+
+    return drop_objects_map
+
+def build_drop_section(drop_objects: list[dict]) -> str:
+    """
+    Builds an Oracle drop script using a map for efficient retrieval.
+
+    :param drop_objects: List of dictionaries containing object metadata.
+    :return: A formatted SQL script as a string.
+    """
+    drop_objects_map_by_type = _convert_drop_objects_to_map_by_type(drop_objects)
+
+    return (f"-- Eliminaciones\n"
+            f"-- DROP TABLE {drop_objects_map_by_type.get('TABLE', 'N/A')};\n"
+            f"-- DROP SEQUENCE {drop_objects_map_by_type.get('SEQUENCE', 'N/A')};\n"
+            f"-- DROP PUBLIC SYNONYM {drop_objects_map_by_type.get('SYNONYM', 'N/A')};\n")
+
+def _extract_value(value):
+    """Extracts a single value from a set or returns the value if it's a string."""
+    if isinstance(value, set) and value:
+        return next(iter(value))  # Extract first element from set
+    return value  # Return string directly if not a set
 
 def build_footer_section(filename):
     return (f"COMMIT;\n"
@@ -187,10 +226,16 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
 
     for key, value in object_data.items():
         if value["name"]:
+            drop_elements = []
             table_name = value["name"]
             object_type = value["type"]
             object_owner = value['owner']
             create_table_section = build_create_table_section(value)
+            if create_table_section:
+                drop_elements.append({"type": {object_type},
+                                      "owner": {object_owner},
+                                      "table": {table_name},
+                                      "name": {table_name}})
             tablespace_section = build_tablespace_section(value.get("attributes", {}))
             comments_section = build_comments_section(
                 value.get("comments", {}), object_owner, table_name
@@ -199,11 +244,21 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
                                                                   object_owner,
                                                                   table_name)
             custom_sequences_section = build_sequence_section(sequences=value.get("sequences", {}))
+            if custom_sequences_section:
+                for custom_sequence in value.get("sequences", {}):
+                    drop_elements.append({"type": DatabaseObject.SEQUENCE.name,
+                                          "owner": {object_owner},
+                                          "table": {table_name},
+                                          "name": custom_sequence.get("name")})
             custom_trigger_section = build_trigger_section(triggers=value.get("triggers", {}))
 
             custom_grant_section = build_grant_section(grants=value.get("grants", {}))
             custom_synonym_section = build_synonym_section(synonym=value.get("synonym"))
-
+            if custom_synonym_section:
+                drop_elements.append({"type": {DatabaseObject.SYNONYM.name},
+                                      "owner": {object_owner},
+                                      "table": {table_name},
+                                      "name": {table_name}})
             # Start with the fixed parts of the filename
             filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
 
@@ -223,7 +278,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
             filename = ".".join(filename_parts) + ".sql"
 
             header_section = build_header_section(filename)
-            drop_object_section = build_drop_section(object_type, object_owner, table_name)
+            drop_object_section = build_drop_section(drop_elements)
             footer_section = build_footer_section(filename)
 
             script = (f"{header_section}"
