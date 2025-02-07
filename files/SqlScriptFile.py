@@ -13,11 +13,12 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+PROMPT = "Prompt >>>"
 
 def build_header_section(filename: str):
-    return (f"Prompt>>>\n"
-            f"Prompt>>> [INI] ** Ejecutando {filename}\n"
-            f"Prompt>>>\n")
+    return (f"{PROMPT}\n"
+            f"{PROMPT} [INI] ** Ejecutando {filename}\n"
+            f"{PROMPT}\n")
 
 
 def build_create_table_section(obj: Dict) -> str:
@@ -97,15 +98,15 @@ def build_comments_section(comments: Dict, table_owner: str, table_name: str) ->
 
 def build_drop_section(object_type: str, object_owner: str, object_name: str):
     return (f"-- Eliminaciones\n"
-            f"-- DROP TABLE {object_owner}.{object_name}\n")
+            f"-- DROP TABLE {object_owner}.{object_name};\n")
 
 
 def build_footer_section(filename):
     return (f"COMMIT;\n"
             f"\n"
-            f"Prompt>>>\n"
-            f"Prompt>>> [FIN] ** Creando {filename}\n"
-            f"Prompt>>>\n"
+            f"{PROMPT}\n"
+            f"{PROMPT} [FIN] ** Creando {filename}\n"
+            f"{PROMPT}\n"
             f"\n"
             f"BEGIN\n"
             f"  NULL;\n"
