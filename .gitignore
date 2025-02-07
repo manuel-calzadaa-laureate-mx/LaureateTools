@@ -1,5 +1,3 @@
-# Ignore everything by default
-*
 
 # Allow root py files
 !*.py
@@ -31,3 +29,5 @@ workfiles/
 # Python cache
 __pycache__/
 db/**/__pycache__/
+
+!/files/TablesFile.py

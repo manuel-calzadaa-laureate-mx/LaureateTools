@@ -16,6 +16,7 @@ from db.datasource.TriggersDatasource import fetch_triggers_elements_from_databa
 from files.DependencyFile import get_dependencies_data
 from files.MappingFile import MappingFileTypes, \
     get_filtered_mapping_data_by_type_and_is_mapped
+from files.TablesFile import get_tables_by_environment
 from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file, write_json_file
 from tools.MigrationTools import migrate_b7_table_to_b9
@@ -227,7 +228,7 @@ def extract_unique_dependencies_types_from_data_file(
         environment: DatabaseEnvironment,
         database_object_type: DatabaseObject,
         is_custom: bool = True
-) -> [str]:
+) -> set[str]:
     """
     Extracts all unique dependency names from a JSON file filtered by a specific environment and object type.
 
@@ -267,7 +268,7 @@ def extract_unique_dependencies_types_from_data_file(
                             else:
                                 dependency_names.add(dependency.get('name').upper())
 
-        return sorted(dependency_names)
+        return dependency_names
 
     except FileNotFoundError:
         raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
@@ -522,12 +523,15 @@ def add_custom_sequences_manager():
     logging.info("Ending: add custom sequences to object data")
 
 
-def add_custom_tables_manager():
+def add_custom_tables_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     logging.info("Starting: add custom tables to object data")
 
     unique_tables = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.TABLE,
-                                                                     environment=DatabaseEnvironment.BANNER7,
+                                                                     environment=database_environment,
                                                                      is_custom=True)
+    additional_tables = get_tables_by_environment(database_environment=database_environment)
+    if additional_tables:
+        unique_tables.update(additional_tables)
 
     if unique_tables:
         connection = get_db_connection(DatabaseEnvironment.BANNER7)
