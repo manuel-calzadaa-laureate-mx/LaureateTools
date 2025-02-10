@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from tools.BusinessRulesTools import is_custom_table
+from tools.CommonTools import extract_table_info
 from tools.FileTools import read_json_file
 
 
@@ -32,29 +32,6 @@ def get_object_addons_data() -> dict:
 def get_object_addons_file_path() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, OBJECT_ADDONS_DATA_JSON)
-
-
-def extract_table_info(table_name: str) -> dict:
-    # Extract prefix: first two characters, where the second character must be "Z"
-    if len(table_name) >= 2 and table_name[1] == "Z":
-        prefix = table_name[:2]
-    else:
-        raise ValueError(f"Invalid table name: {table_name} does not meet the criteria.")
-
-    # Extract base: check if "TB" exists, and use the part after it
-    if "TB" in table_name:
-        base_start = table_name.index("TB") + 2
-        base = table_name[base_start:]
-    else:
-        # If "TB" is not present, use the part after the prefix
-        base = table_name[2:]
-
-    # Return the extracted values
-    return {
-        "prefix": prefix,
-        "base": base,
-        "table_name": table_name
-    }
 
 
 def _get_custom_comments(json_data, b9_table_name: str):
@@ -106,22 +83,24 @@ def _get_custom_sequences(json_data: dict, b9_table_name: str):
     return {"sequences": sequences}
 
 
-def _get_custom_indexes(json_data: dict, b9_table_name: str, owner: str = "UVM"):
-    table_info = extract_table_info(table_name=b9_table_name)
+def get_custom_indexes() -> dict:
+    addons_data = get_object_addons_data()
+    return _get_custom_indexes(addons_data)
+
+
+def _get_custom_indexes(json_data: dict):
     indexes = json_data["root"]["indexes"]
     transformed_indexes = []
 
     for index in indexes:
         transformed_index = {
-            "name": index["name"]
-            .replace("{owner}", owner)
-            .replace("{prefix}", table_info.get("prefix"))
-            .replace("{base}", table_info.get("base")),
+            "name": index["name"],
             "uniqueness": index["uniqueness"],
+            "constraint_type": index["constraint_type"],
             "tablespace": "DEVELOPMENT",
             "columns": [
                 {
-                    "column_name": column["column_name"].replace("{table}", b9_table_name),
+                    "column_name": column["column_name"],
                     "column_position": column["column_position"],
                     "descend": column["descend"],
                     "index_type": column["index_type"],
@@ -141,7 +120,8 @@ def _get_custom_all_table_grants(json_data: dict, object_name: str):
     ## Get the sequence names:
     custom_sequences = _get_custom_sequences(json_data=json_data, b9_table_name=object_name)
     sequence_names = [sequence['name'] for sequence in custom_sequences['sequences']]
-    sequence_grants = _get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names, grant_type=GrantType.SEQUENCE)
+    sequence_grants = _get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names,
+                                                          grant_type=GrantType.SEQUENCE)
     merged_grants = table_grants.get("grants", []) + sequence_grants.get("grants", [])
     return {"grants": merged_grants}
 
@@ -218,7 +198,7 @@ def read_custom_table_data(b9_table_name: str, object_addon_type: ObjectAddonTyp
     elif object_addon_type == ObjectAddonType.COMMENTS:
         return _get_custom_comments(json_data=json_custom_data, b9_table_name=b9_table_name)
     elif object_addon_type == ObjectAddonType.INDEXES:
-        return _get_custom_indexes(json_data=json_custom_data, b9_table_name=b9_table_name)
+        return _get_custom_indexes(json_data=json_custom_data)
     elif object_addon_type == ObjectAddonType.SEQUENCES:
         return _get_custom_sequences(json_data=json_custom_data, b9_table_name=b9_table_name)
     elif object_addon_type == ObjectAddonType.TRIGGERS:
@@ -229,97 +209,3 @@ def read_custom_table_data(b9_table_name: str, object_addon_type: ObjectAddonTyp
         return _get_custom_synonym(json_data=json_custom_data, b9_table_name=b9_table_name)
     else:
         raise ValueError(f"Unsupported addon type: {object_addon_type}")
-
-
-def refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
-    updated_indexes = []
-
-    for one_index in b7_table_indexes:
-        updated_index = one_index.copy()
-        updated_index["name"] = one_index.get("name").replace(b7_table_name, b9_table_name)
-        updated_index["columns"] = []
-
-        updated_index_columns = []
-        columns = one_index.get("columns", [])
-        for one_column in columns:
-            updated_index_column = one_column.copy()
-            updated_index_column["column_name"] = refactor_column_name(one_column.get("column_name"),
-                                                                       b7_table_name=b7_table_name,
-                                                                       b9_table_name=b9_table_name)
-            updated_index_columns.append(updated_index_column)
-        updated_index["columns"] = updated_index_columns
-        updated_indexes.append(updated_index)
-    custom_table_indexes = read_custom_table_data(b9_table_name=b9_table_name,
-                                                  object_addon_type=ObjectAddonType.INDEXES)
-
-    combined_indexes = updated_indexes + custom_table_indexes['indexes']
-    result = {"indexes": combined_indexes}
-    return result
-
-
-def refactor_table_comments(b7_table_comments: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
-    updated_comments = []
-
-    for comments in b7_table_comments:
-        column_name = refactor_column_name(comments['name'], b7_table_name, b9_table_name)
-
-        # Update the comments dictionary
-        updated_comment = comments.copy()
-        updated_comment['name'] = column_name
-
-        updated_comments.append(updated_comment)
-
-    custom_table_comments = read_custom_table_data(b9_table_name=b9_table_name,
-                                                   object_addon_type=ObjectAddonType.COMMENTS)
-
-    combined_comments = updated_comments + custom_table_comments['comments']
-    result = {"comments": combined_comments}
-    return result
-
-
-def refactor_column_name(column_name: str, b7_table_name: str, b9_table_name: str) -> str:
-    # Check if the name starts with old_table_name
-    if not column_name.startswith(b7_table_name):
-        # Prepend old_table_name if it does not start with it
-        column_name = f"{b7_table_name}_{column_name}"
-    # Replace old_table_name with new_table_name
-    column_name = column_name.replace(b7_table_name, b9_table_name, 1)
-    return column_name
-
-
-def refactor_table_columns(b7_table_columns: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
-    """
-    Renames columns based on the rules provided.
-
-    Parameters:
-    columns (list): List of dictionaries representing columns.
-    old_table_name (str): The old table name prefix.
-    new_table_name (str): The new table name prefix.
-
-    Returns:
-    list: A new list of dictionaries with updated column names.
-    """
-    updated_columns = []
-
-    for column in b7_table_columns:
-        column_name = column['name']
-
-        # Check if the name starts with old_table_name
-        if not column_name.startswith(b7_table_name):
-            # Prepend old_table_name if it does not start with it
-            column_name = f"{b7_table_name}_{column_name}"
-
-        # Replace old_table_name with new_table_name
-        column_name = column_name.replace(b7_table_name, b9_table_name, 1)
-
-        # Update the column dictionary
-        updated_column = column.copy()
-        updated_column['name'] = column_name
-
-        updated_columns.append(updated_column)
-
-    custom_table_columns = read_custom_table_data(b9_table_name=b9_table_name,
-                                                  object_addon_type=ObjectAddonType.COLUMNS)
-    combined_columns = updated_columns + custom_table_columns['columns']
-    result = {"columns": combined_columns}
-    return result

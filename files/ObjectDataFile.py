@@ -499,7 +499,7 @@ def add_base_tables_manager():
         logging.info(f"Added {len(unique_tables)} base tables to object data")
 
     else:
-        print("No unique base tables found. Skipping db operations.")
+        logging.info("No unique base tables found. Skipping db operations.")
     logging.info("Ending: add base tables to object data")
 
 
@@ -519,7 +519,7 @@ def add_custom_sequences_manager():
         logging.info(f"Added {len(unique_sequences)} custom sequences to object data")
 
     else:
-        print("No unique sequences found. Skipping db operations.")
+        logging.info("No unique sequences found. Skipping db operations.")
     logging.info("Ending: add custom sequences to object data")
 
 
@@ -539,7 +539,7 @@ def add_custom_tables_manager(database_environment: DatabaseEnvironment = Databa
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER7, new_json_data=
         json_attributes_from_tables)
     else:
-        print("No unique custom tables found. Skipping db operations.")
+        logging.info("No unique custom tables found. Skipping db operations.")
     logging.info("Ending: add custom tables to object data")
 
 

@@ -4,7 +4,7 @@ import os
 from db.DatabaseProperties import DatabaseEnvironment
 from files.CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
 from files.SourceCodeFile import extract_all_dependencies_from_one_source_code_data, get_source_code_folder
-from tools.CommonTools import get_all_current_owners, parse_object_name
+from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
 from tools.FileTools import write_csv_file, read_csv_file
 
 DEPENDENCIES_FILE_PATH = "../workfiles/dependencies.csv"
@@ -251,7 +251,7 @@ def resolve_dependency(owners: list, obj_name: str) -> dict:
             - 'package': The package name if the prefix is not an owner, else None.
             - 'object_name': The actual object name.
     """
-    parsed_name = parse_object_name(obj_name)
+    parsed_name = split_table_name_into_package_and_table_name(obj_name)
     dependency_prefix, dependency_name = parsed_name["prefix"], parsed_name["name"]
 
     if dependency_prefix in owners:

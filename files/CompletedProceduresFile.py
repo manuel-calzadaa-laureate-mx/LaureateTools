@@ -6,7 +6,7 @@ from db.OracleDatabaseTools import get_db_connection
 from db.datasource.FunctionsDatasource import get_packaged_object_owner, get_independent_object_owners
 from db.datasource.ProceduresDatasource import query_sources
 from files.SourceCodeFile import get_source_code_folder
-from tools.CommonTools import get_all_current_owners, parse_object_name
+from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
 from tools.FileTools import read_csv_file, write_csv_file
 
 COMPLETED_PROCEDURES_FILE_PATH = "../workfiles/completed_procedures.csv"
@@ -77,7 +77,7 @@ def _find_missing_data_to_add(objects: list[dict],
                 # check if package is really the owner
                 all_owners = get_all_current_owners()
                 # retrieve the "package" value
-                supposed_owner, object_name = parse_object_name(one_object)
+                supposed_owner, object_name = split_table_name_into_package_and_table_name(one_object)
                 if supposed_owner in all_owners:
                     hidden_dependencies.append([supposed_owner, None, object_name, None])
                     logging.info(f"Success! it was the owner {one_object}")
