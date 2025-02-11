@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from tools.CommonTools import extract_table_info
+from tools.CommonTools import extract_table_info, refactor_tagged_text
 from tools.FileTools import read_json_file
 
 
@@ -68,10 +68,15 @@ def _get_custom_table_columns(json_data: dict, b9_table_name: str):
 
 def _get_custom_sequences(json_data: dict, b9_table_name: str):
     fields = json_data["root"]["sequences"]
+    extracted_table_info = extract_table_info(table_name=b9_table_name)
+    prefix = extracted_table_info.get("prefix")
+    base = extracted_table_info.get("base")
 
     sequences = [
         {
-            "name": field["name"].replace("{table}", b9_table_name),
+            "name": refactor_tagged_text(original_text=field["name"],
+                                         tags=["{prefix}", "{base}"],
+                                         replacement_text=[prefix, base]),
             "increment_by": field["increment_by"],
             "start_with": field["start_with"],
             "max_value": field["max_value"],
@@ -175,10 +180,14 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
 
     triggers = [
         {
-            "name": field["name"].replace("{prefix}", prefix).replace("{base}", base),
+            "name": refactor_tagged_text(original_text=field["name"],
+                                         tags=["{prefix}", "{base}"],
+                                         replacement_text=[prefix, base]),
             "table": field["table"].replace("{table}", b9_table_name),
             "event": field["event"],
-            "body": field["body"].replace("{table}", b9_table_name)
+            "body": refactor_tagged_text(original_text=field["body"],
+                                         tags=["{prefix}", "{base}", "{table}"],
+                                         replacement_text=[prefix, base, b9_table_name]),
         }
         for field in fields
     ]

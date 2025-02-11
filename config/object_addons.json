@@ -34,7 +34,7 @@
       },
       {
         "sequence": {
-          "script": "GRANT SELECT ON UVM.{object} TO {owner};",
+          "script": "GRANT ALTER, SELECT ON UVM.{object} TO {owner} WITH GRANT OPTION;",
           "owner": [
             "BANINST1",
             "SATURN",
@@ -194,7 +194,7 @@
     ],
     "sequences": [
       {
-        "name": "{table}_SURROGATE_ID_SEQUENCE",
+        "name": "{prefix}SE{base}",
         "increment_by": 1,
         "start_with": 1,
         "max_value": 999999999999,
@@ -207,7 +207,7 @@
         "name": "{prefix}TR{base}_SURROGATE_ID",
         "table": "{table}",
         "event": "BEFORE INSERT OR UPDATE",
-        "body": "If INSERTING\n    Then\n        If GFKSJPA.GETID( ) Is Not Null\n        Then\n            :NEW.{table}_SURROGATE_ID  := GFKSJPA.GETID( );\n            GFKSJPA.SETID( Null );\n        Else\n            :NEW.{table}_SURROGATE_ID  := {table}_SURROGATE_ID_SEQUENCE.NEXTVAL;\n        End If;\n        If GFKSJPA.GETVERSION( ) Is Not Null\n        Then\n            :NEW.{table}_VERSION  := GFKSJPA.GETVERSION( );\n            GFKSJPA.SETVERSION( Null );\n        Else\n            :NEW.{table}_VERSION  := 0;\n        End If;\n    Else\n        If GFKSJPA.GETVERSION( ) Is Not Null\n        Then\n            :NEW.{table}_VERSION  := GFKSJPA.GETVERSION( );\n            GFKSJPA.SETVERSION( Null );\n        Elsif :NEW.{table}_VERSION = :OLD.{table}_VERSION\n        Then\n            :NEW.{table}_VERSION  := :OLD.{table}_VERSION + 1;\n        End If;\n    End If;\n"
+        "body": "If INSERTING\n    Then\n        If GFKSJPA.GETID( ) Is Not Null\n        Then\n            :NEW.{table}_SURROGATE_ID  := GFKSJPA.GETID( );\n            GFKSJPA.SETID( Null );\n        Else\n            :NEW.{table}_SURROGATE_ID  := {prefix}SE{base}.NEXTVAL;\n        End If;\n        If GFKSJPA.GETVERSION( ) Is Not Null\n        Then\n            :NEW.{table}_VERSION  := GFKSJPA.GETVERSION( );\n            GFKSJPA.SETVERSION( Null );\n        Else\n            :NEW.{table}_VERSION  := 0;\n        End If;\n    Else\n        If GFKSJPA.GETVERSION( ) Is Not Null\n        Then\n            :NEW.{table}_VERSION  := GFKSJPA.GETVERSION( );\n            GFKSJPA.SETVERSION( Null );\n        Elsif :NEW.{table}_VERSION = :OLD.{table}_VERSION\n        Then\n            :NEW.{table}_VERSION  := :OLD.{table}_VERSION + 1;\n        End If;\n    End If;\n"
       }
     ]
   }

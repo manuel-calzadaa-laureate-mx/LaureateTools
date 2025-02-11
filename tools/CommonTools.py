@@ -71,3 +71,12 @@ def extract_table_info(table_name: str) -> dict:
         "base": base,
         "table_name": table_name
     }
+
+def refactor_tagged_text(original_text: str, tags: list[str], replacement_text: list[str]) -> str:
+    if len(tags) != len(replacement_text):
+        raise ValueError("Tags and replacement_text lists must have the same length")
+
+    for tag, replacement in zip(tags, replacement_text):
+        original_text = original_text.replace(tag, replacement)
+
+    return original_text

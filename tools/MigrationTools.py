@@ -1,7 +1,7 @@
 from enum import Enum
 
 from files.ObjectAddonsFile import read_custom_table_data, ObjectAddonType, get_custom_indexes
-from tools.CommonTools import MultiCounter, extract_table_info
+from tools.CommonTools import MultiCounter, extract_table_info, refactor_tagged_text
 
 
 class ObjectType(Enum):
@@ -194,7 +194,7 @@ def _refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tab
     prefix = extracted_table_info.get("prefix")
     base = extracted_table_info.get("base", "")
 
-    ## PROCESS NORMAL OCURRING INDEXES
+    ## PROCESS NORMAL OCCURRING INDEXES
     for one_index in b7_table_indexes:
         updated_index = one_index.copy()
 
@@ -232,9 +232,9 @@ def _refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tab
 
             index_type_counter = counter.next(index_type.value)
             one_custom_index_original_name = one_custom_index["name"]
-            new_custom_index_name = _refactor_tagged_text(original_text=one_custom_index_original_name,
-                                                          tags=["{prefix}", "{base}", "{serial}"],
-                                                          replacement_text=[prefix, base, index_type_counter])
+            new_custom_index_name = refactor_tagged_text(original_text=one_custom_index_original_name,
+                                                         tags=["{prefix}", "{base}", "{serial}"],
+                                                         replacement_text=[prefix, base, index_type_counter])
 
             updated_custom_index["name"] = new_custom_index_name
             updated_custom_index["columns"] = []
@@ -245,9 +245,9 @@ def _refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tab
             for one_custom_column in custom_columns:
                 updated_custom_index_column = one_custom_column.copy()
                 column_name = one_custom_column.get("column_name")
-                updated_custom_index_column["column_name"] = _refactor_tagged_text(original_text=column_name,
-                                                                                   tags=["{table}"],
-                                                                                   replacement_text=[b9_table_name])
+                updated_custom_index_column["column_name"] = refactor_tagged_text(original_text=column_name,
+                                                                                  tags=["{table}"],
+                                                                                  replacement_text=[b9_table_name])
                 updated_custom_index_columns.append(updated_custom_index_column)
             updated_custom_index["columns"] = updated_custom_index_columns
             custom_table_indexes.append(updated_custom_index)
@@ -287,14 +287,7 @@ def _refactor_column_name(column_name: str, b7_table_name: str, b9_table_name: s
     return column_name
 
 
-def _refactor_tagged_text(original_text: str, tags: list[str], replacement_text: list[str]) -> str:
-    if len(tags) != len(replacement_text):
-        raise ValueError("Tags and replacement_text lists must have the same length")
 
-    for tag, replacement in zip(tags, replacement_text):
-        original_text = original_text.replace(tag, replacement)
-
-    return original_text
 
 
 def _refactor_table_columns(b7_table_columns: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
