@@ -48,7 +48,7 @@ def _get_custom_comments(json_data, b9_table_name: str):
     return {"comments": comments}
 
 
-def _get_custom_table_columns(json_data: dict, b9_table_name: str):
+def _get_custom_table_columns(json_data: dict, b9_table_name: str)-> dict:
     fields = json_data["root"]["columns"]
 
     columns = [

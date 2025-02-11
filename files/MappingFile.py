@@ -8,6 +8,7 @@ from tools.FileTools import read_csv_file
 
 MAPPING_FILE_PATH = "../workfiles/mapping.csv"
 
+
 class MappingFileTypes(Enum):
     TRIGGER = 'TRIGGER'
     PACKAGE = 'PACKAGE'
@@ -17,6 +18,7 @@ class MappingFileTypes(Enum):
     TYPE = 'TYPE'
     VIEW = 'VIEW'
     TABLE = 'TABLE'
+
 
 def load_mapping_file_to_json(mapping_file_path: str, json_file_path: Optional[str] = None) -> List[dict]:
     """
@@ -44,20 +46,46 @@ def load_mapping_file_to_json(mapping_file_path: str, json_file_path: Optional[s
 
     return data
 
-def get_mapping_file_path()-> str:
+
+def get_mapping_file_path() -> str:
     mapping_path = os.path.dirname(os.path.abspath(__file__))
     mapping_file_path = os.path.join(mapping_path, MAPPING_FILE_PATH)
     return mapping_file_path
 
+
 def get_mapping_data() -> list[dict]:
     return read_csv_file(get_mapping_file_path())
 
-def _is_valid_mapping_data_row(mapping_data_row: dict)-> bool:
+
+def _is_valid_mapping_data_row(mapping_data_row: dict) -> bool:
     if mapping_data_row["B9_NOMBRE"].upper() == "NONE":
         return False
     return True
 
-def get_filtered_mapping_data_by_type_and_is_mapped(mapping_object_types: MappingFileTypes)-> list[dict]:
+def get_filtered_mapping_data_by_type_and_is_mapped_for_banner9(mapping_object_types: MappingFileTypes) -> list[dict]:
+    mapping_data = get_mapping_data_by_type_and_is_mapped(mapping_object_types=mapping_object_types)
+    filtered_mapping_data = []
+    for one_mapping_data in mapping_data:
+        if one_mapping_data["B7_NOMBRE"].upper() != "NONE":
+            continue
+        if not _is_valid_mapping_data_row(mapping_data_row=one_mapping_data):
+            continue
+        filtered_mapping_data.append(one_mapping_data)
+    return filtered_mapping_data
+
+def get_filtered_mapping_data_by_type_and_is_mapped_for_banner7(mapping_object_types: MappingFileTypes) -> list[dict]:
+    mapping_data = get_mapping_data_by_type_and_is_mapped(mapping_object_types=mapping_object_types)
+    filtered_mapping_data = []
+    for one_mapping_data in mapping_data:
+        if one_mapping_data["B7_NOMBRE"].upper() == "NONE":
+            continue
+        if not _is_valid_mapping_data_row(mapping_data_row=one_mapping_data):
+            continue
+        filtered_mapping_data.append(one_mapping_data)
+    return filtered_mapping_data
+
+
+def get_filtered_mapping_data_by_type_and_is_mapped(mapping_object_types: MappingFileTypes) -> list[dict]:
     mapping_data = get_mapping_data_by_type_and_is_mapped(mapping_object_types=mapping_object_types)
     filtered_mapping_data = []
     for one_mapping_data in mapping_data:
@@ -66,14 +94,15 @@ def get_filtered_mapping_data_by_type_and_is_mapped(mapping_object_types: Mappin
         filtered_mapping_data.append(one_mapping_data)
     return filtered_mapping_data
 
-def get_mapping_data_by_type_and_is_mapped(mapping_object_types: MappingFileTypes)-> list[dict]:
+
+def get_mapping_data_by_type_and_is_mapped(mapping_object_types: MappingFileTypes) -> list[dict]:
     mapping_data = get_mapping_data()
     mapping_data_by_type = []
     # Convert IS_MAPPED column to boolean
     for one_mapping_element in mapping_data:
         if one_mapping_element:
             if (one_mapping_element['B7_TIPO'] == mapping_object_types.value and
-                one_mapping_element['IS_MAPPED'].lower() == 'true'):
+                    one_mapping_element['IS_MAPPED'].lower() == 'true'):
                 mapping_data_by_type.append(one_mapping_element)
     return mapping_data_by_type
 

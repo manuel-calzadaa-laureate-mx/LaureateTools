@@ -15,13 +15,15 @@ from db.datasource.TablesDatasource import fetch_table_columns_for_tables_groupe
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database, fetch_triggers_for_tables
 from files.DependencyFile import get_dependencies_data
 from files.MappingFile import MappingFileTypes, \
-    get_filtered_mapping_data_by_type_and_is_mapped
+    get_filtered_mapping_data_by_type_and_is_mapped, get_filtered_mapping_data_by_type_and_is_mapped_for_banner7, \
+    get_filtered_mapping_data_by_type_and_is_mapped_for_banner9
 from files.TablesFile import get_tables_by_environment
 from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file, write_json_file
-from tools.MigrationTools import migrate_b7_table_to_b9
+from tools.MigrationTools import migrate_b7_table_to_b9, migrate_b9_table_to_b9
 
 OBJECT_DATA_JSON = "../workfiles/object_data.json"
+MIGRATED_OBJECT_DATA_JSON = "../workfiles/migrated_object_data.json"
 
 
 class ObjectDataTypes(Enum):
@@ -134,7 +136,7 @@ def add_new_object_to_data_file(environment: DatabaseEnvironment, new_json_data:
     else:
         # Environment doesn't exist, add it
         data["root"].append({
-            "environment": environment.name,
+            "environment": environment.value,
             "objects": new_metadata if isinstance(new_metadata, list) else [new_metadata]
         })
 
@@ -150,7 +152,7 @@ def add_or_update_object_data_file(environment: DatabaseEnvironment, new_json_da
     :param environment: Environment name to append/update metadata
     :param new_json_data: JSON string to append/update
     """
-    object_data_file = get_object_data_file_path()
+    object_data_file = get_migrated_object_data_file_path()
 
     # Ensure file exists and has valid JSON
     if os.path.exists(object_data_file) and os.path.getsize(object_data_file) > 0:
@@ -367,7 +369,7 @@ def add_new_environment(new_environment: DatabaseEnvironment):
 def get_object_data_mapped_by_names_by_environment_and_type(object_data_type: str = "table",
                                                             database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> dict:
     object_data_dictionary = {}
-    object_data = get_object_data()  # Fetch JSON data
+    object_data = get_migrated_object_data()  # Fetch JSON data
 
     for one_root in object_data.get("root", []):  # Ensure "root" exists
         if one_root.get("environment") == database_environment.value:
@@ -413,10 +415,18 @@ def get_object_data() -> dict:
     config_file = get_object_data_file_path()
     return read_json_file(config_file)
 
+def get_migrated_object_data() -> dict:
+    config_file = get_migrated_object_data_file_path()
+    return read_json_file(config_file)
 
 def get_object_data_file_path() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, OBJECT_DATA_JSON)
+
+
+def get_migrated_object_data_file_path() -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, MIGRATED_OBJECT_DATA_JSON)
 
 
 def get_trigger_names_and_status(triggers: dict, schema: str, table_name: str):
@@ -534,9 +544,9 @@ def add_custom_tables_manager(database_environment: DatabaseEnvironment = Databa
         unique_tables.update(additional_tables)
 
     if unique_tables:
-        connection = get_db_connection(DatabaseEnvironment.BANNER7)
+        connection = get_db_connection(database_environment)
         json_attributes_from_tables = extract_table_metadata_from_database(connection, unique_tables)
-        add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER7, new_json_data=
+        add_new_object_to_data_file(database_environment, new_json_data=
         json_attributes_from_tables)
     else:
         logging.info("No unique custom tables found. Skipping db operations.")
@@ -562,18 +572,37 @@ def add_custom_triggers_manager():
     logging.info("Ending: add custom tables to object data")
 
 
-def migrate_table_manager():
-    filtered_migration_data = get_filtered_mapping_data_by_type_and_is_mapped(
+def migrate_banner7_tables_manager():
+    filtered_migration_data = get_filtered_mapping_data_by_type_and_is_mapped_for_banner7(
         mapping_object_types=MappingFileTypes.TABLE)
     for one_migration_data in filtered_migration_data:
-        b7_table_name = one_migration_data.get("B7_NOMBRE")
-        b9_paquete = one_migration_data.get("B9_PAQUETE")
+        b7_table_name = one_migration_data.get("B7_NOMBRE",'')
+        b9_paquete = one_migration_data.get("B9_PAQUETE",'')
         b9_nombre = one_migration_data.get("B9_NOMBRE")
         b9_esquema = one_migration_data.get("B9_ESQUEMA")
 
         object_data = get_object_data()
-        converted_table_data = migrate_b7_table_to_b9(json_data=object_data, b7_table_name=b7_table_name,
-                                                      b9_table_name=b9_nombre, b9_owner=b9_esquema)
+        converted_table_data = migrate_b7_table_to_b9(json_data=object_data,
+                                                      b7_table_name=b7_table_name,
+                                                      b9_table_name=b9_nombre,
+                                                      b9_owner=b9_esquema)
+
+        add_or_update_object_data_file(new_json_data=converted_table_data,
+                                       environment=DatabaseEnvironment.BANNER9)
+
+
+def migrate_banner9_tables_manager():
+    filtered_migration_data = get_filtered_mapping_data_by_type_and_is_mapped_for_banner9(
+        mapping_object_types=MappingFileTypes.TABLE)
+
+    for one_migration_data in filtered_migration_data:
+        b9_nombre = one_migration_data.get("B9_NOMBRE")
+        b9_esquema = one_migration_data.get("B9_ESQUEMA")
+
+        object_data = get_object_data()
+        converted_table_data = migrate_b9_table_to_b9(json_data=object_data,
+                                                      b9_table_name=b9_nombre,
+                                                      b9_owner=b9_esquema)
 
         add_or_update_object_data_file(new_json_data=converted_table_data,
                                        environment=DatabaseEnvironment.BANNER9)

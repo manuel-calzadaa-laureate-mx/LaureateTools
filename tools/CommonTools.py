@@ -29,25 +29,50 @@ class MultiCounter:
     def __init__(self):
         self.counters = {}
 
+    def _get_counter(self, key: str) -> int:
+        """
+        Internal helper to get the counter value, initializing it if it doesn't exist.
+        """
+        if key not in self.counters:
+            self.counters[key] = 0
+        return self.counters[key]
+
+    def _set_counter(self, key: str, value: int):
+        """
+        Internal helper to set the counter value.
+        """
+        if value < 0:
+            raise ValueError("Counter value cannot be negative")
+        self.counters[key] = value
+
+    def back(self, key: str) -> str:
+        """Returns the previous count for the given key as a zero-padded string."""
+        current_value = self._get_counter(key)
+        self._set_counter(key, current_value - 1)
+        return f"{self.counters[key]:03d}"
+
+    def repeat(self, key: str) -> str:
+        """Returns the current count for the given key as a zero-padded string."""
+        current_value = self._get_counter(key)
+        return f"{current_value:03d}"
+
     def next(self, key: str) -> str:
         """Returns the next count for the given key as a zero-padded string."""
-        if key not in self.counters:
-            self.counters[key] = 0  # Initialize if not present
-        self.counters[key] += 1
+        current_value = self._get_counter(key)
+        self._set_counter(key, current_value + 1)
         return f"{self.counters[key]:03d}"
 
     def reset(self, key: str = None):
         """Resets the counter for a specific key or all counters if no key is given."""
         if key:
-            self.counters[key] = 0
+            self._set_counter(key, 0)
         else:
             self.counters.clear()
 
     def set_value(self, key: str, value: int):
         """Sets the counter for a specific key to a given value."""
-        if value < 0:
-            raise ValueError("Counter value cannot be negative")
-        self.counters[key] = value
+        self._set_counter(key, value)
+
 
 
 def extract_table_info(table_name: str) -> dict:
