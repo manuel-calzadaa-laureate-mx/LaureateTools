@@ -7,27 +7,34 @@ from files.ObjectDataFile import get_object_data_mapped_by_names_by_environment,
     get_object_data_mapped_by_names_by_environment_and_type
 
 SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"
+LINEFEED = "\n"
+END_OF_SENTENCE = f";{LINEFEED}"
+PROMPT = "Prompt >>>"
 
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-PROMPT = "Prompt >>>"
+
+def get_show_errors():
+    return f"/{LINEFEED}SHOW ERRORS{LINEFEED}"
 
 
 def build_header_section(filename: str):
-    return (f"{PROMPT}\n"
-            f"{PROMPT} [INI] ** Ejecutando {filename}\n"
-            f"{PROMPT}\n")
+    return (f"{PROMPT}{LINEFEED}"
+            f"{PROMPT} [INI] ** Ejecutando {filename}{LINEFEED}"
+            f"{PROMPT}{LINEFEED}")
 
 
 def build_create_table_section(obj: Dict) -> str:
     """
     Construye la sección CREATE TABLE del script.
     """
-    script = (f"-- Creaciones\n\n"
-              f"CREATE TABLE {obj['owner']}.{obj['name']}\n(\n")
+    script = (f"-- Creaciones{LINEFEED}"
+              f"{LINEFEED}"
+              f"CREATE TABLE {obj['owner']}.{obj['name']}{LINEFEED}"
+              f"({LINEFEED}")
     for column in obj["columns"]:
         col_def = f"  {column['name']} {column['type']}"
         if column['type'] == "NUMBER":
@@ -38,10 +45,10 @@ def build_create_table_section(obj: Dict) -> str:
         elif column['type'] == "VARCHAR2":
             col_def += f"({column['length']} CHAR)"
         col_def += " NOT NULL" if not column['nullable'] else ""
-        col_def += ",\n"
+        col_def += f",{LINEFEED}"
         script += col_def
 
-    script = script.rstrip(",\n") + "\n)"
+    script = script.rstrip(f",{LINEFEED}") + f"{LINEFEED})"
     return script
 
 
@@ -57,30 +64,30 @@ def build_tablespace_section(attributes: Dict) -> str:
     logging = attributes.get("logging", "YES")
 
     storage = (
-        "STORAGE    (\n"
-        "            INITIAL          65536\n"
-        "            NEXT             1048576\n"
-        "            MINEXTENTS       1\n"
-        "            MAXEXTENTS       UNLIMITED\n"
-        "            PCTINCREASE      0\n"
-        "            BUFFER_POOL      DEFAULT\n"
-        "           )\n"
+        f"STORAGE    ({LINEFEED}"
+        f"            INITIAL          65536{LINEFEED}"
+        f"            NEXT             1048576{LINEFEED}"
+        f"            MINEXTENTS       1{LINEFEED}"
+        f"            MAXEXTENTS       UNLIMITED{LINEFEED}"
+        f"            PCTINCREASE      0{LINEFEED}"
+        f"            BUFFER_POOL      DEFAULT{LINEFEED}"
+        f"           ){LINEFEED}"
     )
 
     logging_clause = "LOGGING" if logging == "YES" else "NOLOGGING"
 
     tablespace_script = (
-        f"TABLESPACE {tablespace}\n"
-        f"PCTUSED    {pct_used}\n"
-        f"PCTFREE    {pct_free}\n"
-        f"INITRANS   {ini_trans}\n"
-        f"MAXTRANS   {max_trans}\n"
+        f"TABLESPACE {tablespace}{LINEFEED}"
+        f"PCTUSED    {pct_used}{LINEFEED}"
+        f"PCTFREE    {pct_free}{LINEFEED}"
+        f"INITRANS   {ini_trans}{LINEFEED}"
+        f"MAXTRANS   {max_trans}{LINEFEED}"
         f"{storage}"
-        f"{logging_clause} \n"
-        "NOCOMPRESS \n"
-        "NOCACHE\n"
-        "NOPARALLEL\n"
-        "MONITORING;"
+        f"{logging_clause}{LINEFEED}"
+        f"NOCOMPRESS{LINEFEED}"
+        f"NOCACHE{LINEFEED}"
+        f"NOPARALLEL{LINEFEED}"
+        f"MONITORING{END_OF_SENTENCE}"
     )
     return tablespace_script
 
@@ -93,7 +100,7 @@ def build_comments_section(comments: Dict, table_owner: str, table_name: str) ->
     comment_script = "-- Descripcion de los Campos\n\n"
     for comment in comments:
         if comment["comment"]:
-            comment_script += f"   COMMENT ON COLUMN {table_owner}.{table_name}.{comment["name"]} IS '{comment["comment"]}';\n"
+            comment_script += f"   COMMENT ON COLUMN {table_owner}.{table_name}.{comment["name"]} IS '{comment["comment"]}'{END_OF_SENTENCE}"
     return comment_script
 
 
@@ -120,6 +127,7 @@ def _convert_drop_objects_to_map_by_type(drop_objects: list[dict]) -> dict:
 
     return drop_objects_map
 
+
 def build_drop_section(drop_objects: list[dict]) -> str:
     """
     Builds an Oracle drop script using a map for efficient retrieval.
@@ -129,10 +137,12 @@ def build_drop_section(drop_objects: list[dict]) -> str:
     """
     drop_objects_map_by_type = _convert_drop_objects_to_map_by_type(drop_objects)
 
-    return (f"-- Eliminaciones\n"
-            f"-- DROP TABLE {drop_objects_map_by_type.get('TABLE', 'N/A')};\n"
-            f"-- DROP SEQUENCE {drop_objects_map_by_type.get('SEQUENCE', 'N/A')};\n"
-            f"-- DROP PUBLIC SYNONYM {drop_objects_map_by_type.get('SYNONYM', 'N/A')};\n")
+    return (f"-- Eliminaciones{LINEFEED}"
+            f"{LINEFEED}"
+            f"-- DROP TABLE {drop_objects_map_by_type.get('TABLE', 'N/A')}{END_OF_SENTENCE}"
+            f"-- DROP SEQUENCE {drop_objects_map_by_type.get('SEQUENCE', 'N/A')}{END_OF_SENTENCE}"
+            f"-- DROP PUBLIC SYNONYM {drop_objects_map_by_type.get('SYNONYM', 'N/A')}{END_OF_SENTENCE}")
+
 
 def _extract_value(value):
     """Extracts a single value from a set or returns the value if it's a string."""
@@ -140,37 +150,34 @@ def _extract_value(value):
         return next(iter(value))  # Extract first element from set
     return value  # Return string directly if not a set
 
+
 def build_footer_section(filename):
-    return (f"COMMIT;\n"
-            f"\n"
-            f"{PROMPT}\n"
-            f"{PROMPT} [FIN] ** Creando {filename}\n"
-            f"{PROMPT}\n"
-            f"\n"
-            f"BEGIN\n"
-            f"  NULL;\n"
-            f"END;\n"
-            f"\n"
-            f"/\n"
-            f"\n"
-            f"SHOW ERRORS;\n")
+    return (f"{PROMPT}{LINEFEED}"
+            f"{PROMPT} [FIN] ** Creando {filename}{LINEFEED}"
+            f"{PROMPT}{LINEFEED}"
+            f"{LINEFEED}"
+            f"BEGIN{LINEFEED}"
+            f"  NULL;{LINEFEED}"
+            f"END{END_OF_SENTENCE}"
+            f"{get_show_errors()}")
 
 
 def build_sequence_section(sequences: list) -> str:
     """
     Builds the section of the script for creating sequences.
     """
-    sequences_script = "-- Secuencias asignadas a esta tabla\n\n"
+    sequences_script = (f"-- Secuencias asignadas a esta tabla{LINEFEED}"
+                        f"{LINEFEED}")
     for sequence in sequences:
         sequences_script += (
-            f"CREATE SEQUENCE {sequence['name']}\n"
-            f"   INCREMENT BY {sequence['increment_by']}\n"
-            f"   START WITH {sequence['start_with']}\n"
-            f"   MAXVALUE {sequence['max_value']}\n"
-            f"   {'CYCLE' if sequence['cycle'] else 'NOCYCLE'}\n"
-            f"   CACHE {sequence['cache']};\n\n"
+            f"CREATE SEQUENCE {sequence['name']}{LINEFEED}"
+            f"   INCREMENT BY {sequence['increment_by']}{LINEFEED}"
+            f"   START WITH {sequence['start_with']}{LINEFEED}"
+            f"   MAXVALUE {sequence['max_value']}{LINEFEED}"
+            f"   {'CYCLE' if sequence['cycle'] else 'NOCYCLE'}{LINEFEED}"
+            f"   CACHE {sequence['cache']}{END_OF_SENTENCE}"
         )
-    sequences_script += "\nSHOW ERRORS;\n"
+    sequences_script += get_show_errors()
     return sequences_script
 
 
@@ -178,18 +185,19 @@ def build_trigger_section(triggers: list) -> str:
     """
     Builds the section of the script for creating triggers.
     """
-    triggers_script = "-- TRIGGERS ASIGNADOS A ESTA TABLA\n\n"
+    triggers_script = (f"-- TRIGGERS ASIGNADOS A ESTA TABLA{LINEFEED}"
+                       f"{LINEFEED}")
     for trigger in triggers:
         triggers_script += (
-            f"CREATE OR REPLACE TRIGGER {trigger['name']}\n"
-            f"   {trigger['event']}\n"
-            f"   ON {trigger['table']}\n"
-            f"   FOR EACH ROW\n"
-            f"BEGIN\n"
-            f"{trigger['body']}\n"
-            f"END;\n/\n\n"
+            f"CREATE OR REPLACE TRIGGER {trigger['name']}{LINEFEED}"
+            f"   {trigger['event']}{LINEFEED}"
+            f"   ON {trigger['table']}{LINEFEED}"
+            f"   FOR EACH ROW{LINEFEED}"
+            f"BEGIN{LINEFEED}"
+            f"{trigger['body']}{LINEFEED}"
+            f"END{END_OF_SENTENCE}"
         )
-    triggers_script += "\nSHOW ERRORS;\n"
+    triggers_script += get_show_errors()
     return triggers_script
 
 
@@ -197,12 +205,13 @@ def build_grant_section(grants: list) -> str:
     """
     Builds the section of the script for creating grants.
     """
-    grants_script = "-- GRANTS ASIGNADOS A ESTA TABLA\n\n"
+    grants_script = (f"-- GRANTS ASIGNADOS A ESTA TABLA{LINEFEED}"
+                     f"{LINEFEED}")
     for grant in grants:
         grants_script += (
-            f"{grant}\n"
+            f"{grant}{LINEFEED}"
         )
-    grants_script += "\nSHOW ERRORS;\n"
+    grants_script += get_show_errors()
     return grants_script
 
 
@@ -210,10 +219,11 @@ def build_synonym_section(synonym: str) -> str:
     """
     Builds the section of the script for creating synonym.
     """
-    synonym_script = "-- SYNONYM ASIGNADO A ESTA TABLA\n\n"
+    synonym_script = (f"-- SYNONYM ASIGNADO A ESTA TABLA{LINEFEED}"
+                      f"{LINEFEED}")
     synonym_script += (
-        f"{synonym}\n"
-        f"\nSHOW ERRORS;\n"
+        f"{synonym}{LINEFEED}"
+        f"{get_show_errors()}"
     )
     return synonym_script
 
@@ -282,24 +292,24 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
             footer_section = build_footer_section(filename)
 
             script = (f"{header_section}"
-                      f"\n"
+                      f"{LINEFEED}"
                       f"{drop_object_section}"
-                      f"\n"
-                      f"{create_table_section}\n"
-                      f"{tablespace_section}\n"
-                      f"\n"
-                      f"{comments_section}\n"
-                      f"\n"
-                      f"{index_section}\n"
-                      f"\n"
-                      f"{custom_sequences_section}\n"
-                      f"\n"
-                      f"{custom_trigger_section}\n"
-                      f"\n"
-                      f"{custom_grant_section}\n"
-                      f"\n"
-                      f"{custom_synonym_section}\n"
-                      f"\n"
+                      f"{LINEFEED}"
+                      f"{create_table_section}"
+                      f"{tablespace_section}"
+                      f"{LINEFEED}"
+                      f"{comments_section}"
+                      f"{LINEFEED}"
+                      f"{index_section}"
+                      f"{LINEFEED}"
+                      f"{custom_sequences_section}"
+                      f"{LINEFEED}"
+                      f"{custom_trigger_section}"
+                      f"{LINEFEED}"
+                      f"{custom_grant_section}"
+                      f"{LINEFEED}"
+                      f"{custom_synonym_section}"
+                      f"{LINEFEED}"
                       f"{footer_section}")
 
             scripts.append({

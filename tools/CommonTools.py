@@ -105,3 +105,4 @@ def refactor_tagged_text(original_text: str, tags: list[str], replacement_text: 
         original_text = original_text.replace(tag, replacement)
 
     return original_text
+
