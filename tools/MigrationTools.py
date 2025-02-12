@@ -2,6 +2,7 @@ from enum import Enum
 
 from db.DatabaseProperties import DatabaseEnvironment
 from files.ObjectAddonsFile import read_custom_table_data, ObjectAddonType, get_custom_indexes
+from files.TableColumnSubstituteFile import get_tables_column_substitute_file
 from tools.CommonTools import MultiCounter, extract_table_info, refactor_tagged_text
 
 
@@ -424,7 +425,8 @@ def _refactor_table_columns(b7_table_columns: list[dict], b7_table_name: str, b9
             column_name = f"{b7_table_name}_{column_name}"
 
         # Replace the old table name with the new one (only first occurrence)
-        column_name = column_name.replace(b7_table_name, b9_table_name, 1)
+        column_name_preview = column_name.replace(b7_table_name, b9_table_name, 1)
+        column_name = get_tables_column_substitute_file(table_name=b9_table_name, original_column=column_name_preview)
 
         updated_column = column.copy()
         updated_column["name"] = column_name
