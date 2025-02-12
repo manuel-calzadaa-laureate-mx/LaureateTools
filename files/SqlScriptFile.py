@@ -18,7 +18,7 @@ logging.basicConfig(
 
 
 def get_show_errors():
-    return f"/{LINEFEED}SHOW ERRORS{LINEFEED}"
+    return f"/{LINEFEED}SHOW ERRORS{END_OF_SENTENCE}"
 
 
 def build_header_section(filename: str):
@@ -77,6 +77,7 @@ def build_tablespace_section(attributes: Dict) -> str:
     logging_clause = "LOGGING" if logging == "YES" else "NOLOGGING"
 
     tablespace_script = (
+        f"{LINEFEED}"
         f"TABLESPACE {tablespace}{LINEFEED}"
         f"PCTUSED    {pct_used}{LINEFEED}"
         f"PCTFREE    {pct_free}{LINEFEED}"
