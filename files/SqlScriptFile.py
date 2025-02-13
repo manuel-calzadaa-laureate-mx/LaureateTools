@@ -48,7 +48,7 @@ def build_create_table_section(obj: Dict) -> str:
         col_def += f",{LINEFEED}"
         script += col_def
 
-    script = script.rstrip(f",{LINEFEED}") + f"{LINEFEED})"
+    script = script.rstrip(f",{LINEFEED}") + f"{LINEFEED})" + f"{END_OF_SENTENCE}"
     return script
 
 
@@ -297,7 +297,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
                       f"{drop_object_section}"
                       f"{LINEFEED}"
                       f"{create_table_section}"
-                      f"{tablespace_section}"
+                      # f"{tablespace_section}"
                       f"{LINEFEED}"
                       f"{comments_section}"
                       f"{LINEFEED}"
@@ -330,7 +330,7 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
     :param table_name: Name of the table.
     :return: SQL script string.
     """
-    script = "-- Primary Key\n\n"
+    script = ""
     primary_key = None
     index_scripts = []
 
@@ -361,22 +361,23 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
         # Build the CREATE INDEX statement
         index_script = (
             f"CREATE {'UNIQUE ' if index.get('uniqueness') == 'UNIQUE' else ''}INDEX {table_owner}.{index['name']} "
-            f"ON {table_owner}.{table_name}\n"
-            f"       ({columns_str})\n"
-            f"       LOGGING\n"
-            f"       TABLESPACE {index['tablespace']}\n"
-            f"       PCTFREE    {index.get('pct_free', 10)}\n"
-            f"       INITRANS   {index.get('ini_trans', 2)}\n"
-            f"       MAXTRANS   {index.get('max_trans', 255)}\n"
-            f"       STORAGE    (\n"
-            f"                   INITIAL          65536\n"
-            f"                   NEXT             1048576\n"
-            f"                   MINEXTENTS       1\n"
-            f"                   MAXEXTENTS       UNLIMITED\n"
-            f"                   PCTINCREASE      0\n"
-            f"                   BUFFER_POOL      DEFAULT\n"
-            f"                  )\n"
-            f"    NOPARALLEL;\n"
+            f"ON {table_owner}.{table_name}{LINEFEED}"
+            f"       ({columns_str}){END_OF_SENTENCE}"
+            # f"       LOGGING{LINEFEED}"
+            # f"       TABLESPACE {index['tablespace']}{LINEFEED}"
+            # f"       PCTFREE    {index.get('pct_free', 10)}{LINEFEED}"
+            # f"       INITRANS   {index.get('ini_trans', 2)}{LINEFEED}"
+            # f"       MAXTRANS   {index.get('max_trans', 255)}{LINEFEED}"
+            # f"       STORAGE    ({LINEFEED}"
+            # f"                   INITIAL          65536{LINEFEED}"
+            # f"                   NEXT             1048576{LINEFEED}"
+            # f"                   MINEXTENTS       1{LINEFEED}"
+            # f"                   MAXEXTENTS       UNLIMITED{LINEFEED}"
+            # f"                   PCTINCREASE      0{LINEFEED}"
+            # f"                   BUFFER_POOL      DEFAULT{LINEFEED}"
+            # f"                  ){LINEFEED}"
+            # f"    NOPARALLEL"
+            # f"{END_OF_SENTENCE}"
         )
         index_scripts.append(index_script)
 
@@ -384,13 +385,14 @@ def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table
     if primary_key:
         pk_columns = ", ".join([col["column_name"] for col in primary_key["columns"]])
         pk_name = primary_key["name"]
-        script += f"ALTER TABLE {table_owner}.{table_name} ADD CONSTRAINT {pk_name} PRIMARY KEY ({pk_columns});\n\n"
+        script += f"-- Primary Key{LINEFEED}{LINEFEED}"
+        script += f"ALTER TABLE {table_owner}.{table_name} ADD CONSTRAINT {pk_name} PRIMARY KEY ({pk_columns}){END_OF_SENTENCE}{LINEFEED}"
 
     # Add the index scripts
     if index_scripts:
         script += "-- Indices\n\n" + "\n".join(index_scripts)
 
-    script += "\nSHOW ERRORS;\n"
+    script += get_show_errors()
     return script
 
 
@@ -445,60 +447,3 @@ def get_scripts_folder_path() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_folder = os.path.join(script_dir, SCRIPT_FOLDER_PATH)
     return source_folder
-
-
-if __name__ == "__main__":
-    # Trigger details
-    trigger_info = {
-        "owner": "SATURN",
-        "name": "SZTR_STDN_AOL",
-        "type": "TRIGGER",
-        "table_name": "SGBSTDN",
-        "trigger_type": "AFTER EACH ROW",
-        "triggering_event": "INSERT OR UPDATE OR DELETE",
-        "referencing_names": "REFERENCING NEW AS NEW OLD AS OLD",
-        "when_clause": None,
-        "status": "ENABLED",
-        "description": "SATURN.SZTR_STDN_AOL \nAFTER INSERT OR UPDATE OR DELETE ON SGBSTDN\nFOR EACH ROW\n",
-        "trigger_body": """DECLARE
-    
-       VL_NUM_ERROR   VARCHAR2(100);
-       VL_MENSAJE     VARCHAR2(500);
-       VL_GET_CAMPUS  VARCHAR2(5);
-       VL_VALOR       VARCHAR2(5);
-    
-    BEGIN
-    
-       SELECT F_GET_CAMPUS 
-         INTO VL_GET_CAMPUS 
-         FROM DUAL;
-    
-       SELECT NVL(ZSFNVALOR('CONF_AOL', 'CAMPONLN'), '53')
-         INTO VL_VALOR
-         FROM DUAL;
-    
-       IF VL_GET_CAMPUS <> VL_VALOR THEN
-    
-          IF INSERTING THEN
-    
-             SZPK_AOL_EV.P_REGISTRA_EVENTOS('CURRICULA', :NEW.SGBSTDN_TERM_CODE_EFF, :NEW.SGBSTDN_PIDM, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
-             SZPK_AOL_EV.P_REGISTRA_EVENTOS('PERSONAS', :NEW.SGBSTDN_PIDM, NULL, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
-    
-          ELSIF UPDATING THEN
-    
-             SZPK_AOL_EV.P_REGISTRA_EVENTOS('CURRICULA', :NEW.SGBSTDN_TERM_CODE_EFF, :NEW.SGBSTDN_PIDM, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
-             SZPK_AOL_EV.P_REGISTRA_EVENTOS('PERSONAS', :NEW.SGBSTDN_PIDM, NULL, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
-    
-          ELSE 
-    
-             SZPK_AOL_EV.P_REGISTRA_EVENTOS('CURRICULA', :OLD.SGBSTDN_TERM_CODE_EFF, :OLD.SGBSTDN_PIDM, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
-             SZPK_AOL_EV.P_REGISTRA_EVENTOS('PERSONAS', :OLD.SGBSTDN_PIDM, NULL, NULL, 'R', VL_NUM_ERROR, VL_MENSAJE);
-    
-          END IF;
-    
-       END IF;
-    
-    END;"""
-    }
-
-    print(type(trigger_info))

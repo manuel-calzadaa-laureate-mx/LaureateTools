@@ -48,7 +48,7 @@ def _get_custom_comments(json_data, b9_table_name: str):
     return {"comments": comments}
 
 
-def _get_custom_table_columns(json_data: dict, b9_table_name: str)-> dict:
+def _get_custom_table_columns(json_data: dict, b9_table_name: str) -> dict:
     fields = json_data["root"]["columns"]
 
     columns = [
@@ -183,7 +183,9 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
             "name": refactor_tagged_text(original_text=field["name"],
                                          tags=["{prefix}", "{base}"],
                                          replacement_text=[prefix, base]),
-            "table": field["table"].replace("{table}", b9_table_name),
+            "table": refactor_tagged_text(original_text=field["table"],
+                                          tags=["{owner}", "{table}"],
+                                          replacement_text=["UVM", b9_table_name]),
             "event": field["event"],
             "body": refactor_tagged_text(original_text=field["body"],
                                          tags=["{prefix}", "{base}", "{table}"],
