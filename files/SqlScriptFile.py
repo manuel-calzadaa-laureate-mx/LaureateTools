@@ -18,8 +18,10 @@ logging.basicConfig(
 
 
 def get_show_errors():
-    return f"/{LINEFEED}SHOW ERRORS{END_OF_SENTENCE}"
+    return f"SHOW ERRORS{END_OF_SENTENCE}"
 
+def get_show_errors_block():
+    return f"/{LINEFEED}SHOW ERRORS{END_OF_SENTENCE}"
 
 def build_header_section(filename: str):
     return (f"{PROMPT}{LINEFEED}"
@@ -160,7 +162,7 @@ def build_footer_section(filename):
             f"BEGIN{LINEFEED}"
             f"  NULL;{LINEFEED}"
             f"END{END_OF_SENTENCE}"
-            f"{get_show_errors()}")
+            f"{get_show_errors_block()}")
 
 
 def build_sequence_section(sequences: list) -> str:
@@ -171,7 +173,7 @@ def build_sequence_section(sequences: list) -> str:
                         f"{LINEFEED}")
     for sequence in sequences:
         sequences_script += (
-            f"CREATE SEQUENCE {sequence['name']}{LINEFEED}"
+            f"CREATE SEQUENCE UVM.{sequence['name']}{LINEFEED}"
             f"   INCREMENT BY {sequence['increment_by']}{LINEFEED}"
             f"   START WITH {sequence['start_with']}{LINEFEED}"
             f"   MAXVALUE {sequence['max_value']}{LINEFEED}"
@@ -190,7 +192,7 @@ def build_trigger_section(triggers: list) -> str:
                        f"{LINEFEED}")
     for trigger in triggers:
         triggers_script += (
-            f"CREATE OR REPLACE TRIGGER {trigger['name']}{LINEFEED}"
+            f"CREATE OR REPLACE TRIGGER UVM.{trigger['name']}{LINEFEED}"
             f"   {trigger['event']}{LINEFEED}"
             f"   ON {trigger['table']}{LINEFEED}"
             f"   FOR EACH ROW{LINEFEED}"
@@ -198,7 +200,7 @@ def build_trigger_section(triggers: list) -> str:
             f"{trigger['body']}{LINEFEED}"
             f"END{END_OF_SENTENCE}"
         )
-    triggers_script += get_show_errors()
+    triggers_script += get_show_errors_block()
     return triggers_script
 
 

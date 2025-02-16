@@ -188,8 +188,8 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
                                           replacement_text=["UVM", b9_table_name]),
             "event": field["event"],
             "body": refactor_tagged_text(original_text=field["body"],
-                                         tags=["{prefix}", "{base}", "{table}"],
-                                         replacement_text=[prefix, base, b9_table_name]),
+                                         tags=["{prefix}", "{base}", "{table}", "{owner}"],
+                                         replacement_text=[prefix, base, b9_table_name, "UVM"]),
         }
         for field in fields
     ]
