@@ -3,7 +3,7 @@ from itertools import chain
 
 from db.DatabaseProperties import DatabaseEnvironment
 from db.datasource.MappingDatasource import query_mapping_table, query_mapping_table_by_object_type
-from files.ObjectDataFile import get_object_data_mapped_by_names_by_environment
+from files.B7ObjectDataFile import get_object_data_mapped_by_names_by_environment
 
 
 class MappingObjectTypes(Enum):

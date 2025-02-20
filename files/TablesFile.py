@@ -3,7 +3,7 @@ import os
 from db.DatabaseProperties import DatabaseEnvironment
 from tools.FileTools import read_csv_file
 
-TABLES_FILE = "../input/tables.csv"
+TABLES_FILE = "../input/new_tables.csv"
 
 
 def get_tables_file_path() -> str:

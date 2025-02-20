@@ -3,10 +3,10 @@ import os
 
 from db.DatabaseProperties import DatabaseEnvironment
 from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package
-from files.CompletedProceduresFile import get_completed_procedures_file_path
+from files.B7CompletedProceduresFile import get_completed_procedures_file_path
 from tools.FileTools import read_csv_file, write_csv_file
 
-INCOMPLETE_PROCEDURES_FILE_PATH = "../input/incomplete_procedures.csv"
+INCOMPLETE_PROCEDURES_FILE_PATH = "../input/b7_incomplete_procedures.csv"
 
 logging.basicConfig(
     level=logging.DEBUG,

@@ -9,7 +9,7 @@ from files.SourceCodeFile import get_source_code_folder
 from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
 from tools.FileTools import read_csv_file, write_csv_file
 
-COMPLETED_PROCEDURES_FILE_PATH = "../workfiles/completed_procedures.csv"
+COMPLETED_PROCEDURES_FILE_PATH = "../workfiles/b7_output/completed_procedures.csv"
 
 
 def _is_packaged_object(object_name: str) -> bool:

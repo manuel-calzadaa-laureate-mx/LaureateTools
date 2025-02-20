@@ -20,7 +20,7 @@ def create_folders_and_subfolders(base_folder: str, subfolders: [str] = None)-> 
 
 def create_workfiles_folder():
     base_folder = "workfiles"
-    subfolders = ["b7_sources", "b9_scripts", "b9_sources"]
+    subfolders = ["b7_sources", "b9_scripts", "b9_sources","b7_output"]
     create_folders_and_subfolders(base_folder=base_folder, subfolders=subfolders)
 
 
@@ -28,7 +28,7 @@ def create_input_folder():
     base_folder = "input"
     create_folders_and_subfolders(base_folder=base_folder)
     header = [["Owner","Package","Procedure"]]
-    incomplete_procedure = "input/incomplete_procedure.csv"
+    incomplete_procedure = "input/b7_incomplete_procedure.csv"
     write_csv_file(output_file=incomplete_procedure,data_to_write=header, is_append=False)
 
 

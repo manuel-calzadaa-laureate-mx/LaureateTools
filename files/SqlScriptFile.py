@@ -3,7 +3,7 @@ import os
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
-from files.ObjectDataFile import get_object_data_mapped_by_names_by_environment, ObjectDataTypes, \
+from files.B7ObjectDataFile import get_object_data_mapped_by_names_by_environment, ObjectDataTypes, \
     get_object_data_mapped_by_names_by_environment_and_type
 
 SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"

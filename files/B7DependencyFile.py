@@ -2,13 +2,13 @@ import logging
 import os
 
 from db.DatabaseProperties import DatabaseEnvironment
-from files.CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
+from files.B7CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
 from files.SourceCodeFile import extract_all_dependencies_from_one_source_code_data, get_source_code_folder
 from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
 from tools.FileTools import write_csv_file, read_csv_file
 
-DEPENDENCIES_FILE_PATH = "../workfiles/dependencies.csv"
-MISSING_DEPENDENCIES_FILE_PATH = "../workfiles/missing_dependencies.csv"
+DEPENDENCIES_FILE_PATH = "../workfiles/b7_output/dependencies.csv"
+MISSING_DEPENDENCIES_FILE_PATH = "../workfiles/b7_output/missing_dependencies.csv"
 
 logging.basicConfig(
     level=logging.DEBUG,

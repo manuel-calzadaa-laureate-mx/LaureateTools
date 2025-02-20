@@ -1,8 +1,8 @@
 import logging
 
-from files.CompletedProceduresFile import create_source_code_manager
-from files.DependencyFile import find_all_dependencies_manager
-from files.IncompleteProceduresFile import find_missing_procedures_manager
+from files.B7CompletedProceduresFile import create_source_code_manager
+from files.B7DependencyFile import find_all_dependencies_manager
+from files.B7IncompleteProceduresFile import find_missing_procedures_manager
 
 logging.basicConfig(
     level=logging.DEBUG,

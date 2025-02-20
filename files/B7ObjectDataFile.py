@@ -13,17 +13,17 @@ from db.datasource.TablesDatasource import fetch_table_columns_for_tables_groupe
     fetch_column_comments_for_tables_grouped_by_schema_and_table_name, \
     fetch_full_indexes_for_tables_grouped_by_schema_and_table_name
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database, fetch_triggers_for_tables
-from files.DependencyFile import get_dependencies_data
+from files.B7DependencyFile import get_dependencies_data
 from files.MappingFile import MappingFileTypes, \
-    get_filtered_mapping_data_by_type_and_is_mapped, get_filtered_mapping_data_by_type_and_is_mapped_for_banner7, \
+    get_filtered_mapping_data_by_type_and_is_mapped_for_banner7, \
     get_filtered_mapping_data_by_type_and_is_mapped_for_banner9
 from files.TablesFile import get_tables_by_environment
 from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file, write_json_file
 from tools.MigrationTools import migrate_b7_table_to_b9, migrate_b9_table_to_b9
 
-OBJECT_DATA_JSON = "../workfiles/object_data.json"
-MIGRATED_OBJECT_DATA_JSON = "../workfiles/migrated_object_data.json"
+OBJECT_DATA_JSON = "../workfiles/b7_output/object_data.json"
+MIGRATED_OBJECT_DATA_JSON = "../workfiles/b7_output/migrated_object_data.json"
 
 
 class ObjectDataTypes(Enum):
