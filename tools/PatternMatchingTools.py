@@ -70,12 +70,14 @@ def extract_procedures(source_code: str) -> list[str]:
             continue
 
         # Step 3: Exclusion for names starting with "F_" (indicating a function)
-        if object_name.upper().startswith("F_"):
+        valid_function_prefix = ["F_", "FN_"]
+        if object_name.upper().startswith(tuple(valid_function_prefix)):
             logging.info(f"Excluding due to 'F_' prefix: {full_name}")
             continue
 
         # Step 4: Validation for names starting with "P_"
-        if object_name.upper().startswith("P_"):
+        valid_procedure_prefix = ["P_", "PR_"]
+        if object_name.upper().startswith(tuple(valid_procedure_prefix)):
             valid_procedures.add(full_name)
             logging.info(f"Immediately adding due to starting with 'P_': {full_name}")
             continue
