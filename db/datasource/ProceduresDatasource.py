@@ -4,11 +4,11 @@ from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import get_db_connection
 
 
-def query_all_procedures_by_owner_and_package(owner, package=None):
+def query_all_procedures_by_owner_and_package(owner, package=None, database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     """
     Query the ALL_PROCEDURES table to get procedures for the given owner and package.
     """
-    connection = get_db_connection(database_name=DatabaseEnvironment.BANNER7)
+    connection = get_db_connection(database_name=database_environment)
     cursor = connection.cursor()
     if package:
         cursor.execute("""

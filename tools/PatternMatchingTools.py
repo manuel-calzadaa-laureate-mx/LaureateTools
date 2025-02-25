@@ -1,8 +1,7 @@
 import logging
-from typing import Any
+import re
 
 from db.OracleDatabaseTools import is_oracle_built_in_object
-import re
 
 
 def extract_select_tables(source_code: str) -> set[str]:
@@ -45,15 +44,8 @@ def extract_procedures(source_code: str) -> list[str]:
        Returns:
            list: A list of valid procedure names.
        """
-    # Step 1: Match the general pattern
-    pattern = r"""
-           \b(\w+\s+)?               # WORD (first word, can be rejected later)
-           (\w+)\.(\w+)\b            # PACKAGE.OBJECT (package and procedure name)
-           \s*\(                     # Opening parenthesis
-           [^;]*?\)                  # Parameters (anything up to the closing parenthesis)
-           \s*;                      # Semicolon
-       """
-    potential_matches = re.findall(pattern, source_code, re.IGNORECASE | re.VERBOSE)
+
+    potential_matches = match_general_pattern(source_code=source_code)
 
     valid_procedures = set()
 
@@ -62,7 +54,11 @@ def extract_procedures(source_code: str) -> list[str]:
 
         # Step 1: Exclude invalid packages
         if len(optional_package_name.strip()) == 1:
-            logging.info(f"Excluding due to invalid PACKAGE: {optional_package_name}")
+            logging.info(f"Excluding due to invalid PACKAGE length: {optional_package_name}")
+            continue
+
+        if not is_valid_package_name(optional_package_name):
+            logging.info(f"Excluding due to invalid PACKAGE name: {optional_package_name}")
             continue
 
         # Combine optional_package_name and object_name into package_name.procedure_name if optional_package_name exists
@@ -144,13 +140,21 @@ def extract_local_functions(source_code: str) -> set[str]:
     return local_functions
 
 
-def extract_sequences(source_code: str)-> list[str]:
+def extract_sequences(source_code: str) -> list[str]:
     """Extracts sequences used in the source code."""
     sequence_pattern = re.compile(r"\b([a-zA-Z0-9_]+)\.NEXTVAL", re.IGNORECASE)
     return sequence_pattern.findall(source_code)
 
 
-def extract_functions(source_code: str)-> set[str]:
+def is_valid_package_name(package_name):
+    if len(package_name) <= 1:
+        return False
+    # Regex to match only alphanumeric characters and underscores
+    pattern = r'^[a-zA-Z0-9_]+$'
+    return bool(re.match(pattern, package_name))
+
+
+def extract_functions(source_code: str) -> set[str]:
     """
            Extract valid procedure names from Oracle source code with exclusions.
 
@@ -160,15 +164,7 @@ def extract_functions(source_code: str)-> set[str]:
            Returns:
                list: A list of valid procedure names.
            """
-    # Step 1: Match the general pattern
-    pattern = r"""
-               \b(\w+\s+)?               # WORD (first word, can be rejected later)
-               (\w+)\.(\w+)\b            # PACKAGE.OBJECT (package and procedure name)
-               \s*\(                     # Opening parenthesis
-               [^;]*?\)                  # Parameters (anything up to the closing parenthesis)
-               \s*;                      # Semicolon
-           """
-    potential_matches = re.findall(pattern, source_code, re.IGNORECASE | re.VERBOSE)
+    potential_matches = match_general_pattern(source_code)
 
     valid_functions = set()
 
@@ -177,6 +173,11 @@ def extract_functions(source_code: str)-> set[str]:
 
         # Step 1: Exclude invalid packages
         if len(optional_package_name.strip()) == 1:
+            logging.info(f"Excluding due to invalid PACKAGE: {optional_package_name}")
+            continue
+
+        # Exclude packages that have symbols
+        if not is_valid_package_name(optional_package_name):
             logging.info(f"Excluding due to invalid PACKAGE: {optional_package_name}")
             continue
 
@@ -189,12 +190,14 @@ def extract_functions(source_code: str)-> set[str]:
             continue
 
         # Step 3: Exclusion for names starting with "P_" (indicating a procedure)
-        if object_name.upper().startswith("P_"):
+        valid_procedure_prefix = ["P_", "PR_"]
+        if object_name.upper().startswith(tuple(valid_procedure_prefix)):
             logging.info(f"Excluding due to 'P_' prefix: {full_name}")
             continue
 
         # Step 4: Validation for names starting with "F_"
-        if object_name.upper().startswith("F_"):
+        valid_function_prefix = ["F_", "FN_"]
+        if object_name.upper().startswith(tuple(valid_function_prefix)):
             valid_functions.add(full_name)
             logging.info(f"Immediately adding due to starting with 'F_': {full_name}")
             continue
@@ -209,6 +212,20 @@ def extract_functions(source_code: str)-> set[str]:
         logging.info(f"Valid function found: {full_name.upper()}")
 
     return valid_functions
+
+
+def match_general_pattern(source_code: str):
+    pattern = r"""
+               \b(\w+\s+)?               # WORD (first word, can be rejected later)
+               ([\w$]+)                  # PACKAGE AZaz09_$
+               \.                        # dot
+               (\w+)\b                   # OBJECT AZaz09_
+               \s*\(                     # Opening parenthesis
+               [^;]*?\)                  # Parameters (anything up to the closing parenthesis)
+               \s*;                      # Semicolon
+           """
+    potential_matches = re.findall(pattern, source_code, re.IGNORECASE | re.VERBOSE)
+    return potential_matches
 
 
 if __name__ == "__main__":
