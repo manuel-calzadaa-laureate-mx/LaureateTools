@@ -14,8 +14,6 @@ from db.datasource.TablesDatasource import fetch_table_columns_for_tables_groupe
     fetch_full_indexes_for_tables_grouped_by_schema_and_table_name
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database, fetch_triggers_for_tables
 from files.B9DependencyFile import get_dependencies_data
-from files.MappingFile import MappingFileTypes, \
-    get_filtered_mapping_data_by_type_and_is_mapped_for_banner9
 from files.TablesFile import get_tables_by_environment
 from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file, write_json_file

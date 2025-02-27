@@ -31,3 +31,5 @@ __pycache__/
 db/**/__pycache__/
 
 !/files/TablesFile.py
+/banner/install/install.csv
+/banner/install/rollback.csv

@@ -1,14 +1,18 @@
+import json
 import logging
 import os
 
+import pandas as pd
+
 from db.DatabaseProperties import DatabaseEnvironment
-from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
+from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager, \
+    get_completed_procedures_file_path
 from files.DependencyFile import extract_unique_existing_objects, extract_object_with_missing_status, \
     filter_missing_status_dependencies, find_delta_of_missing_dependencies, \
     is_object_dependency_procedure_or_function, is_object_need_process
 from files.SourceCodeFile import extract_all_dependencies_from_one_source_code_data, get_source_code_folder
 from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
-from tools.FileTools import write_csv_file, read_csv_file
+from tools.FileTools import write_csv_file, read_csv_file, read_json_file
 
 DEPENDENCIES_FILE_PATH = "../workfiles/b9_output/dependencies.csv"
 MISSING_DEPENDENCIES_FILE_PATH = "../workfiles/b9_output/missing_dependencies.csv"
@@ -99,6 +103,64 @@ def _write_dependencies_file(dependencies_data: list[dict]):
     write_csv_file(output_file=dependency_file, data_to_write=dependencies_data, is_append=is_append)
 
 
+def append_package_dependencies():
+    import pandas as pd
+
+    # Load the CSV file into a DataFrame
+    dependencies_file = get_dependency_file_path()
+    df = pd.read_csv(dependencies_file)
+
+    # Filter out rows where STATUS is MISSING
+    df = df[df['STATUS'] != 'MISSING']
+
+    # Get unique OBJECT_PACKAGE values
+    unique_packages = df['OBJECT_PACKAGE'].unique()
+
+    # Create a list to store new rows
+    new_rows = []
+
+    # Iterate over each unique package
+    for package in unique_packages:
+        if pd.isna(package):  # Skip rows where OBJECT_PACKAGE is NaN
+            continue
+
+        # Filter rows that belong to the current package
+        package_rows = df[df['OBJECT_PACKAGE'] == package]
+
+        # Get unique OBJECT_NAME values for the current package
+        unique_object_names = package_rows['OBJECT_NAME'].unique()
+
+        # Create new rows for each unique OBJECT_NAME
+        for object_name in unique_object_names:
+            # Get the corresponding row to copy OBJECT_OWNER, OBJECT_TYPE, etc.
+            original_row = package_rows[package_rows['OBJECT_NAME'] == object_name].iloc[0]
+
+            # Build the new row
+            new_row = {
+                'STATUS': 'OK',  # Default status
+                'OBJECT_OWNER': original_row['OBJECT_OWNER'],
+                'OBJECT_TYPE': 'PACKAGE',
+                'OBJECT_PACKAGE': 'NONE',  # Set as NONE for the root
+                'OBJECT_NAME': package,  # The package name
+                'DEPENDENCY_OWNER': original_row['OBJECT_OWNER'],
+                'DEPENDENCY_TYPE': original_row['OBJECT_TYPE'],
+                'DEPENDENCY_PACKAGE': package,  # The original package
+                'DEPENDENCY_NAME': object_name
+            }
+            new_rows.append(new_row)
+
+    # Create a DataFrame from the new rows
+    new_df = pd.DataFrame(new_rows)
+
+    # Append the new rows to the original DataFrame
+    updated_df = pd.concat([df, new_df], ignore_index=True)
+
+    # Save the updated DataFrame to the same CSV file
+    updated_df.to_csv(dependencies_file, index=False)
+
+    print("New rows added to 'dependencies.csv'.")
+
+
 def find_all_dependencies_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     while True:
         # Step 1: find and write all current dependencies
@@ -119,6 +181,9 @@ def find_all_dependencies_manager(database_environment: DatabaseEnvironment = Da
 
         # Step 4: Find the source code for missing objects
         create_source_code_manager(database_environment=database_environment)
+    append_package_dependencies()
+    complete_dependency_file()
+
 
 
 def resolve_dependency(owners: list, obj_name: str) -> dict:
@@ -139,8 +204,8 @@ def resolve_dependency(owners: list, obj_name: str) -> dict:
     dependency_prefix, dependency_name = parsed_name["prefix"], parsed_name["name"]
 
     if dependency_prefix in owners:
-        return {"owner": dependency_prefix, "package": None, "name": dependency_name}
-    return {"owner": None, "package": dependency_prefix or None, "name": dependency_name}
+        return {"owner": dependency_prefix, "package": "NONE", "name": dependency_name}
+    return {"owner": None, "package": dependency_prefix or "NONE", "name": dependency_name}
 
 
 def _is_dependency_object_exist(data: list[dict], object_owner: str, object_package: str, object_name: str) -> bool:
@@ -275,6 +340,43 @@ def get_missing_dependencies_file_path():
     source_folder = os.path.join(script_dir, MISSING_DEPENDENCIES_FILE_PATH)
     return source_folder
 
+_OBJECT_DATA_JSON = "../workfiles/b9_output/object_data.json"
+
+def _get_object_data_file_path() -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, _OBJECT_DATA_JSON)
+
+def _get_object_data() -> dict:
+    config_file = _get_object_data_file_path()
+    return read_json_file(config_file)
+
+def complete_dependency_file():
+    dependency_file = get_dependency_file_path()
+    object_data = _get_object_data()
+
+    # Step 1: Read the dependencies.csv file
+    dependencies_df = pd.read_csv(dependency_file)
+
+    # Step 2: Identify rows where DEPENDENCY_OWNER is missing
+    missing_owner_rows = dependencies_df[dependencies_df['DEPENDENCY_OWNER'].isna()]
+
+    # Create a dictionary to map name to owner
+    name_to_owner_map = {}
+    for root in object_data['root']:
+        for obj in root['objects']:
+            name_to_owner_map[obj['name']] = obj['owner']
+
+    # Step 4: Update the missing DEPENDENCY_OWNER values
+    for index, row in missing_owner_rows.iterrows():
+        dependency_name = row['DEPENDENCY_NAME']
+        if dependency_name in name_to_owner_map:
+            dependencies_df.at[index, 'DEPENDENCY_OWNER'] = name_to_owner_map[dependency_name]
+
+    # Step 5: Save the updated dependencies.csv file
+    dependencies_df.to_csv(dependency_file, index=False)
+
 
 if __name__ == "__main__":
-    find_all_dependencies_manager(database_environment=DatabaseEnvironment.BANNER9)
+    complete_dependency_file()
+    # find_all_dependencies_manager(database_environment=DatabaseEnvironment.BANNER9)
+
