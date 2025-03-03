@@ -70,7 +70,7 @@ def _find_missing_data_to_add(objects: list[dict],
     for one_object in objects:
         logging.info(f"Processing function: {one_object}")
         if one_object["PACKAGE"]:
-            result = get_packaged_object_owner(one_object, db_connection)
+            result = get_packaged_object_owner(object_dict=one_object, database_environment=DatabaseEnvironment.BANNER7)
             logging.info(f"packaged object: {result}")
             if result is None:
                 logging.info(f"Could not retrieve owner/package/procedure for {one_object}")

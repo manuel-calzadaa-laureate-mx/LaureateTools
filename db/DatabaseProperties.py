@@ -13,6 +13,7 @@ class DatabaseObject(Enum):
     TRIGGER = "trigger"
     VIEW = "view"
     GRANT = "grant"
+    PACKAGE = "package"
 
 class TableObject(Enum):
     TRIGGER = "triggers"

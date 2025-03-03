@@ -102,7 +102,7 @@ def write_csv(file_path, data, header):
         writer = csv.writer(file)
         writer.writerow(header)
         for order, (obj_type, obj_package, obj_name) in enumerate(data, start=1):
-            writer.writerow([order, obj_type, obj_name])
+            writer.writerow([order, obj_package, obj_type, obj_name])
 
 def build_graph(dependencies, packages_with_deps):
     graph = defaultdict(list)
@@ -152,10 +152,10 @@ def main():
     sorted_order = topological_sort(graph, in_degree, nodes, package_weights)
 
     # Write rollback.csv
-    write_csv(rollback_csv, sorted_order, ['ORDER', 'OBJECT_TYPE', 'OBJECT_NAME'])
+    write_csv(rollback_csv, sorted_order, ['ORDER', 'PACKAGE_TYPE', 'OBJECT_TYPE', 'OBJECT_NAME'])
 
     # Write install.csv (reverse order)
-    write_csv(install_csv, reversed(sorted_order), ['ORDER', 'OBJECT_TYPE', 'OBJECT_NAME'])
+    write_csv(install_csv, reversed(sorted_order), ['ORDER', 'PACKAGE_TYPE', 'OBJECT_TYPE', 'OBJECT_NAME'])
 
 if __name__ == '__main__':
     main()

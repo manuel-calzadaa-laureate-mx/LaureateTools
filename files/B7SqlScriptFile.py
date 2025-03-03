@@ -20,8 +20,10 @@ logging.basicConfig(
 def get_show_errors():
     return f"SHOW ERRORS{END_OF_SENTENCE}"
 
+
 def get_show_errors_block():
     return f"/{LINEFEED}SHOW ERRORS{END_OF_SENTENCE}"
+
 
 def build_header_section(filename: str):
     return (f"{PROMPT}{LINEFEED}"
@@ -416,21 +418,27 @@ def build_create_trigger_script(trigger_info: dict) -> str:
     return trigger_script.strip()
 
 
-def write_table_scripts(scripts_data: list[dict]):
-    output_dir = get_scripts_folder_path()
-    for filename, script in scripts_data:
-        # Construct the file name
-        file_path = os.path.join(output_dir, filename)
-
-        # Write the script to the file
-        with open(file_path, 'w') as file:
-            file.write(script)
-
-        print(f"Saved script for table '{filename}' to '{file_path}'")
-
-
 def create_table_scripts_manager():
     scripts_data = build_create_table_script_data()
+    _write_script_files(scripts_data=scripts_data)
+
+
+def get_scripts_folder_path() -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    source_folder = os.path.join(script_dir, SCRIPT_FOLDER_PATH)
+    return source_folder
+
+
+def build_create_sequences_script_data():
+    pass
+
+
+def create_sequence_scripts_manager():
+    scripts_data = build_create_sequences_script_data()
+    _write_script_files(scripts_data=scripts_data)
+
+
+def _write_script_files(scripts_data):
     scripts_folder_path = get_scripts_folder_path()
     for script_info in scripts_data:
         file_name = script_info["file_name"]
@@ -443,9 +451,3 @@ def create_table_scripts_manager():
             file.write(script_content)
 
         logging.info(f"Saved script for table '{file_name}' to '{file_path}'")
-
-
-def get_scripts_folder_path() -> str:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    source_folder = os.path.join(script_dir, SCRIPT_FOLDER_PATH)
-    return source_folder

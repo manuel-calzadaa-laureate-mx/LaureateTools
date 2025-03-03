@@ -158,7 +158,7 @@ def append_package_dependencies():
     # Save the updated DataFrame to the same CSV file
     updated_df.to_csv(dependencies_file, index=False)
 
-    print("New rows added to 'dependencies.csv'.")
+    logging.info("New rows added to 'dependencies.csv'.")
 
 
 def find_all_dependencies_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
@@ -182,7 +182,7 @@ def find_all_dependencies_manager(database_environment: DatabaseEnvironment = Da
         # Step 4: Find the source code for missing objects
         create_source_code_manager(database_environment=database_environment)
     append_package_dependencies()
-    complete_dependency_file()
+    # complete_dependency_file()
 
 
 
@@ -258,6 +258,10 @@ def _extract_missing_dependencies_from_source_files(
         object_owner = filename.split('.')[0]
         object_package = filename.split('.')[1]
         object_name = filename.split('.')[2]  # Assuming the file name is the object name
+
+        # the package is a ROOT element don't look for dependencies
+        if object_package == 'NONE':
+            continue
 
         if _is_dependency_object_exist(data=dependencies_data,
                                        object_owner=object_owner,

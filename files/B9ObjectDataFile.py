@@ -95,8 +95,8 @@ def _convert_dependencies_file_to_json_object(dependencies_data: list[dict]) -> 
                                                                         })
         elif dep_type == "PROCEDURE":
             objects_dict[obj_name]["dependencies"]["procedures"].append({"name": dep_name})
-
     # Convert the dictionary to a list and add it to json_data
+
     json_data["root"][0]["objects"] = list(objects_dict.values())
 
     return json_data
@@ -363,10 +363,16 @@ def add_new_environment(new_environment: DatabaseEnvironment):
         json.dump(data, f, indent=4)
 
 
-def get_object_data_mapped_by_names_by_environment_and_type(object_data_type: str = "table",
-                                                            database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> dict:
+def _get_generic_object_data_mapped_by_names_by_environment_and_type(
+        object_data_type: str = "TABLE",
+        database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9,
+        data_fetcher=None  # Function to fetch the JSON data
+) -> dict:
+    if data_fetcher is None:
+        raise ValueError("A data fetcher function must be provided.")
+
     object_data_dictionary = {}
-    object_data = get_migrated_object_data()  # Fetch JSON data
+    object_data = data_fetcher  # Fetch JSON data using the provided function
 
     for one_root in object_data.get("root", []):  # Ensure "root" exists
         if one_root.get("environment") == database_environment.value:
@@ -377,6 +383,20 @@ def get_object_data_mapped_by_names_by_environment_and_type(object_data_type: st
                         object_data_dictionary[name] = one_object
 
     return object_data_dictionary
+
+
+def get_object_data_mapped_by_names_by_environment_and_type(object_data_type: str = "TABLE",
+                                                            database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
+    return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
+                                                                            database_environment=database_environment,
+                                                                            data_fetcher=get_object_data())
+
+
+def get_migrated_object_data_mapped_by_names_by_environment_and_type(object_data_type: str = "TABLE",
+                                                                     database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
+    return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
+                                                                            database_environment=database_environment,
+                                                                            data_fetcher=get_migrated_object_data())
 
 
 def get_object_data_mapped_by_names_by_environment(
@@ -571,9 +591,37 @@ def add_custom_triggers_manager():
     logging.info("Ending: add custom tables to object data")
 
 
-def migrate_banner9_tables_manager(refactor_table_names: bool = True):
+def migrate_banner9_sequences_manager(refactor_table_names: bool = True):
+    unique_sequences = extract_unique_dependencies_types_from_data_file(environment=DatabaseEnvironment.BANNER9,
+                                                                        database_object_type=DatabaseObject.SEQUENCE,
+                                                                        is_custom=True)
+    sequence_object_data = get_object_data_mapped_by_names_by_environment_and_type(
+        object_data_type=ObjectDataTypes.SEQUENCE.value, database_environment=DatabaseEnvironment.BANNER9)
 
-    unique_tables = extract_unique_dependencies_types_from_data_file(environment=DatabaseEnvironment.BANNER9, database_object_type=DatabaseObject.TABLE, is_custom=True)
+    for one_sequence in unique_sequences:
+        current_sequence = sequence_object_data[one_sequence]
+
+        if current_sequence:
+            new_sequence = {
+                "owner": current_sequence["owner"],
+                "name": current_sequence["name"],
+                "type": current_sequence["type"],
+                "deployment": current_sequence["deployment"],
+                "min_value": current_sequence["min_value"],
+                "max_value": current_sequence["max_value"],
+                "increment_by": current_sequence["increment_by"],
+                "cycle_flag": current_sequence["cycle_flag"],
+                "order_flag": current_sequence["order_flag"],
+                "cache_size": current_sequence["cache_size"],
+                "last_number": current_sequence["last_number"],
+            }
+            add_or_update_object_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=new_sequence)
+
+
+def migrate_banner9_tables_manager(refactor_table_names: bool = True):
+    unique_tables = extract_unique_dependencies_types_from_data_file(environment=DatabaseEnvironment.BANNER9,
+                                                                     database_object_type=DatabaseObject.TABLE,
+                                                                     is_custom=True)
 
     for one_table in unique_tables:
         b9_nombre = one_table

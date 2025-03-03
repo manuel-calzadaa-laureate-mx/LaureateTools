@@ -3,7 +3,7 @@ import logging
 import subprocess
 from testcontainers.oracle import OracleDbContainer
 
-from files.SqlScriptFile import get_scripts_folder_path
+from files.B7SqlScriptFile import get_scripts_folder_path
 
 # Configure logging
 logging.basicConfig(
