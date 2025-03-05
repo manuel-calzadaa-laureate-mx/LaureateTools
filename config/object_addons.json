@@ -1,53 +1,47 @@
 {
   "root": {
-    "synonym": "CREATE PUBLIC SYNONYM {table} FOR UVM.{table};",
-    "grants": [
-      {
-        "table": {
-          "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{object} TO {owner};",
-          "owner": [
-            "BANINST1",
-            "SATURN",
-            "TAISMGR",
-            "BANSECR",
-            "TIBCO01",
-            "TIBCO02",
-            "TIBCO03",
-            "TIBCO04"
-          ]
-        }
+    "synonym": "CREATE PUBLIC SYNONYM {object} FOR UVM.{object};",
+    "grants": {
+      "table": {
+        "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{object} TO {owner};",
+        "owner": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
       },
-      {
-        "package": {
-          "script": "GRANT EXECUTE, DEBUG ON UVM.{object} TO {owner};",
-          "owner": [
-            "BANINST1",
-            "SATURN",
-            "TAISMGR",
-            "BANSECR",
-            "TIBCO01",
-            "TIBCO02",
-            "TIBCO03",
-            "TIBCO04"
-          ]
-        }
+      "package": {
+        "script": "GRANT EXECUTE, DEBUG ON UVM.{object} TO {owner};",
+        "owner": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
       },
-      {
-        "sequence": {
-          "script": "GRANT ALTER, SELECT ON UVM.{object} TO {owner} WITH GRANT OPTION;",
-          "owner": [
-            "BANINST1",
-            "SATURN",
-            "TAISMGR",
-            "BANSECR",
-            "TIBCO01",
-            "TIBCO02",
-            "TIBCO03",
-            "TIBCO04"
-          ]
-        }
+      "sequence": {
+        "script": "GRANT ALTER, SELECT ON UVM.{object} TO {owner} WITH GRANT OPTION;",
+        "owner": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
       }
-    ],
+    },
     "columns": [
       {
         "name": "{table}_ACTIVITY_DATE",
