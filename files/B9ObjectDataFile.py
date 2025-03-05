@@ -14,6 +14,7 @@ from db.datasource.TablesDatasource import fetch_table_columns_for_tables_groupe
     fetch_full_indexes_for_tables_grouped_by_schema_and_table_name
 from db.datasource.TriggersDatasource import fetch_triggers_elements_from_database, fetch_triggers_for_tables
 from files.B9DependencyFile import get_dependencies_data
+from files.ObjectAddonsFile import read_custom_data, GrantType, ObjectAddonType
 from files.TablesFile import get_tables_by_environment
 from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file, write_json_file
@@ -546,7 +547,7 @@ def add_custom_sequences_manager():
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=
         json_attributes_from_sequences)
         logging.info(f"Added {len(unique_sequences)} custom sequences to object data")
-
+        connection.close()
     else:
         logging.info("No unique sequences found. Skipping db operations.")
     logging.info("Ending: add custom sequences to object data")
@@ -600,11 +601,14 @@ def migrate_banner9_sequences_manager(refactor_table_names: bool = True):
 
     for one_sequence in unique_sequences:
         current_sequence = sequence_object_data[one_sequence]
-
+        sequence_name = current_sequence["name"]
+        grants = read_custom_data(grant_type=GrantType.SEQUENCE, object_addon_type=ObjectAddonType.GRANTS,
+                                  b9_object_name=sequence_name)
+        synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=sequence_name)
         if current_sequence:
             new_sequence = {
                 "owner": current_sequence["owner"],
-                "name": current_sequence["name"],
+                "name": sequence_name,
                 "type": current_sequence["type"],
                 "deployment": current_sequence["deployment"],
                 "min_value": current_sequence["min_value"],
@@ -614,6 +618,8 @@ def migrate_banner9_sequences_manager(refactor_table_names: bool = True):
                 "order_flag": current_sequence["order_flag"],
                 "cache_size": current_sequence["cache_size"],
                 "last_number": current_sequence["last_number"],
+                "grants": grants["grants"],
+                "synonym": synonyms,
             }
             add_or_update_object_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=new_sequence)
 

@@ -415,9 +415,11 @@ def get_object_data() -> dict:
     config_file = get_object_data_file_path()
     return read_json_file(config_file)
 
+
 def get_migrated_object_data() -> dict:
     config_file = get_migrated_object_data_file_path()
     return read_json_file(config_file)
+
 
 def get_object_data_file_path() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -576,8 +578,8 @@ def migrate_banner7_tables_manager():
     filtered_migration_data = get_filtered_mapping_data_by_type_and_is_mapped_for_banner7(
         mapping_object_types=MappingFileTypes.TABLE)
     for one_migration_data in filtered_migration_data:
-        b7_table_name = one_migration_data.get("B7_NOMBRE",'')
-        b9_paquete = one_migration_data.get("B9_PAQUETE",'')
+        b7_table_name = one_migration_data.get("B7_NOMBRE", '')
+        b9_paquete = one_migration_data.get("B9_PAQUETE", '')
         b9_nombre = one_migration_data.get("B9_NOMBRE")
         b9_esquema = one_migration_data.get("B9_ESQUEMA")
 

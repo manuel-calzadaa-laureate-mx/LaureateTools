@@ -125,15 +125,15 @@ def _get_custom_all_table_grants(json_data: dict, object_name: str):
     ## Get the sequence names:
     custom_sequences = _get_custom_sequences(json_data=json_data, b9_table_name=object_name)
     sequence_names = [sequence['name'] for sequence in custom_sequences['sequences']]
-    sequence_grants = _get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names,
-                                                          grant_type=GrantType.SEQUENCE)
+    sequence_grants = get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names,
+                                                         grant_type=GrantType.SEQUENCE)
     merged_grants = table_grants.get("grants", []) + sequence_grants.get("grants", [])
     return {"grants": merged_grants}
 
 
 def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType = GrantType.TABLE):
     # Navigate to the grant type within the JSON structure
-    fields = json_data["root"]["grants"][0][grant_type.value]
+    fields = json_data["root"]["grants"][grant_type.value]
     script_template = fields["script"]
     owners = fields["owner"]
 
@@ -146,16 +146,16 @@ def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType 
 
 
 def _get_custom_synonym(json_data: dict, b9_table_name: str) -> str:
-    return json_data["root"]["synonym"].replace("{table}", b9_table_name)
+    return json_data["root"]["synonym"].replace("{object}", b9_table_name)
 
 
-def _get_custom_grants_multiple_objects(
+def get_custom_grants_multiple_objects(
         json_data: dict,
         object_names: list,
         grant_type: GrantType = GrantType.TABLE
 ):
     # Locate the correct grant type in the grants list
-    fields = next((grant[grant_type.value] for grant in json_data["root"]["grants"] if grant_type.value in grant), None)
+    fields = json_data["root"]["grants"].get(grant_type.value)
 
     if not fields:
         raise ValueError(f"Grant type '{grant_type.value}' not found in JSON data.")
@@ -196,7 +196,7 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
     return {"triggers": triggers}
 
 
-def read_custom_table_data(b9_table_name: str, object_addon_type: ObjectAddonType):
+def read_custom_data(b9_object_name: str, object_addon_type: ObjectAddonType, grant_type: GrantType = GrantType.TABLE):
     """
     Generalized function to read custom table data based on addon type.
     """
@@ -205,18 +205,19 @@ def read_custom_table_data(b9_table_name: str, object_addon_type: ObjectAddonTyp
 
     # Route to the appropriate function based on the addon type
     if object_addon_type == ObjectAddonType.COLUMNS:
-        return _get_custom_table_columns(json_data=json_custom_data, b9_table_name=b9_table_name)
+        return _get_custom_table_columns(json_data=json_custom_data, b9_table_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.COMMENTS:
-        return _get_custom_comments(json_data=json_custom_data, b9_table_name=b9_table_name)
+        return _get_custom_comments(json_data=json_custom_data, b9_table_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.INDEXES:
         return _get_custom_indexes(json_data=json_custom_data)
     elif object_addon_type == ObjectAddonType.SEQUENCES:
-        return _get_custom_sequences(json_data=json_custom_data, b9_table_name=b9_table_name)
+        return _get_custom_sequences(json_data=json_custom_data, b9_table_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.TRIGGERS:
-        return _get_custom_triggers(json_data=json_custom_data, b9_table_name=b9_table_name)
+        return _get_custom_triggers(json_data=json_custom_data, b9_table_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.GRANTS:
-        return _get_custom_all_table_grants(json_data=json_custom_data, object_name=b9_table_name)
+        return _get_custom_grants(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type)
+        # return _get_custom_all_table_grants(json_data=json_custom_data, object_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.SYNONYMS:
-        return _get_custom_synonym(json_data=json_custom_data, b9_table_name=b9_table_name)
+        return _get_custom_synonym(json_data=json_custom_data, b9_table_name=b9_object_name)
     else:
         raise ValueError(f"Unsupported addon type: {object_addon_type}")

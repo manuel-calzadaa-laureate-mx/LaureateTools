@@ -217,8 +217,7 @@ def build_grant_section(grants: list) -> str:
     """
     Builds the section of the script for creating grants.
     """
-    grants_script = (f"-- GRANTS ASIGNADOS A ESTA TABLA{LINEFEED}"
-                     f"{LINEFEED}")
+    grants_script = f"-- GRANTS ASIGNADOS A ESTE OBJETO{LINEFEED}"
     for grant in grants:
         grants_script += (
             f"{grant}{LINEFEED}"
@@ -231,8 +230,7 @@ def build_synonym_section(synonym: str) -> str:
     """
     Builds the section of the script for creating synonym.
     """
-    synonym_script = (f"-- SYNONYM ASIGNADO A ESTA TABLA{LINEFEED}"
-                      f"{LINEFEED}")
+    synonym_script = f"-- SYNONYM ASIGNADO A ESTE OBJETO{LINEFEED}"
     synonym_script += (
         f"{synonym}{LINEFEED}"
         f"{get_show_errors()}"
@@ -483,6 +481,8 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
             for drop_element in drop_elements:
                 drop_object_section += f"-- DROP SEQUENCE {drop_element["name"]}{END_OF_SENTENCE}"
 
+            grants = build_grant_section(grants=value["grants"])
+            synonym = build_synonym_section(synonym=value["synonym"])
             footer_section = build_footer_section(filename)
 
             script = (f"{header_section}"
@@ -490,6 +490,11 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
                       f"{drop_object_section}"
                       f"{LINEFEED}"
                       f"{sequences_script}"
+                      f"{LINEFEED}"
+                      f"{grants}"
+                      f"{LINEFEED}"
+                      f"{synonym}"
+                      f"{LINEFEED}"
                       f"{footer_section}")
 
             scripts.append({

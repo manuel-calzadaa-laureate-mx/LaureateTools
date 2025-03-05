@@ -1,7 +1,7 @@
 from enum import Enum
 
 from db.DatabaseProperties import DatabaseEnvironment
-from files.ObjectAddonsFile import read_custom_table_data, ObjectAddonType, get_custom_indexes
+from files.ObjectAddonsFile import read_custom_data, ObjectAddonType, get_custom_indexes, GrantType
 from files.TableColumnSubstituteFile import get_tables_column_substitute_file
 from tools.CommonTools import MultiCounter, extract_table_info, refactor_tagged_text
 
@@ -103,8 +103,40 @@ def convert_object_to_banner9(object_type: ObjectType, object_owner: str, object
     }
 
 
+def migrate_b9_sequence_to_b9(json_data: dict, b9_sequence_name: str,
+                              b9_owner: str = "UVM") -> dict:
+    # Find the original table
+    original_sequence = None
+    for env in json_data.get("root", []):
+        if env.get("environment") != DatabaseEnvironment.BANNER9.value:
+            continue
+        for obj in env.get("objects", []):
+            if obj.get("name") == b9_sequence_name:
+                original_sequence = obj
+                break
+        if original_sequence:
+            break
+
+    if not original_sequence:
+        raise ValueError(f"Original table '{b9_sequence_name}' not found in the JSON data.")
+
+    grants = read_custom_data(b9_object_name=b9_sequence_name, object_addon_type=ObjectAddonType.GRANTS,
+                              grant_type=GrantType.SEQUENCE)
+    synonym = read_custom_data(b9_object_name=b9_sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
+    new_table = {
+        "name": b9_sequence_name,
+        "type": "TABLE",
+        "owner": b9_owner,
+        "custom": original_sequence.get("custom", True),
+        "grants": grants["grants"],
+        "synonym": synonym,
+    }
+
+    return new_table
+
+
 def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
-                           b9_owner: str = "UVM"):
+                           b9_owner: str = "UVM") -> dict:
     # Find the original table
     original_table = None
     for env in json_data.get("root", []):
@@ -123,10 +155,15 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
     columns = _refactor_table_columns(original_table.get("columns", []), b9_table_name, b9_table_name)
     comments = _refactor_table_comments(original_table.get("comments", {}), b9_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b9_table_name, b9_table_name)
-    sequences = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
-    triggers = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
-    grants = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
-    synonym = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
+    sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
+    triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
+
+    table_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
+    sequence_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
+                                       grant_type=GrantType.SEQUENCE)
+    grants = {"grants": table_grants.get("grants", []) + sequence_grants.get("grants", [])}
+
+    synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
     new_table = {
         "name": b9_table_name,
         "type": "TABLE",
@@ -185,10 +222,10 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     columns = _refactor_table_columns(original_table.get("columns", []), b7_table_name, b9_table_name)
     comments = _refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
-    sequences = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
-    triggers = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
-    grants = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
-    synonym = read_custom_table_data(b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
+    sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
+    triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
+    grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
+    synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
     new_table = {
         "name": b9_table_name,
         "type": "TABLE",
@@ -277,8 +314,6 @@ def _refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tab
             updated_custom_index["columns"] = updated_custom_index_columns
             custom_table_indexes.append(updated_custom_index)
 
-
-
     ## PROCESS NORMAL OCCURRING INDEXES
     for one_index in b7_table_indexes:
         skip_index = False
@@ -291,12 +326,12 @@ def _refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tab
         for one_column in columns:
             updated_index_column = one_column.copy()
             column_name = _refactor_column_name(one_column.get("column_name"),
-                                    b7_table_name=b7_table_name,
-                                    b9_table_name=b9_table_name)
+                                                b7_table_name=b7_table_name,
+                                                b9_table_name=b9_table_name)
             updated_index_column["column_name"] = column_name
 
             ## IF THIS IS A CUSTOM INDEX SKIP IT
-            is_custom_index = is_custom_index_column(column_name= column_name, custom_indexes= custom_table_indexes)
+            is_custom_index = is_custom_index_column(column_name=column_name, custom_indexes=custom_table_indexes)
             if is_custom_index:
                 skip_index = True
                 break
@@ -322,15 +357,15 @@ def _refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_tab
     result = {"indexes": combined_indexes}
     return result
 
-def is_custom_index_column(column_name: str, custom_indexes: list[dict])-> bool:
+
+def is_custom_index_column(column_name: str, custom_indexes: list[dict]) -> bool:
     for custom_index in custom_indexes:
         custom_columns = custom_index.get("columns", [])
         for custom_column in custom_columns:
-            custom_column_name = custom_column.get("column_name","")
+            custom_column_name = custom_column.get("column_name", "")
             if custom_column_name == column_name:
                 return True
     return False
-
 
 
 def _refactor_table_comments(b7_table_comments: list[dict], b7_table_name: str, b9_table_name: str) -> dict[
@@ -358,8 +393,8 @@ def _refactor_table_comments(b7_table_comments: list[dict], b7_table_name: str, 
         updated_comments.append(updated_comment)
 
     # Fetch all custom table comments
-    custom_table_comments = read_custom_table_data(
-        b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.COMMENTS
+    custom_table_comments = read_custom_data(
+        b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.COMMENTS
     )
 
     # Find missing custom comments
@@ -433,8 +468,8 @@ def _refactor_table_columns(b7_table_columns: list[dict], b7_table_name: str, b9
         updated_columns.append(updated_column)
 
     # Fetch all custom columns
-    all_custom_table_columns = read_custom_table_data(
-        b9_table_name=b9_table_name, object_addon_type=ObjectAddonType.COLUMNS
+    all_custom_table_columns = read_custom_data(
+        b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.COLUMNS
     )
 
     # Find missing custom columns
