@@ -1,5 +1,7 @@
-from files.B9ObjectDataFile import migrate_banner9_tables_manager, migrate_banner9_sequences_manager
+from files.B9ObjectDataFile import migrate_banner9_tables_manager, migrate_banner9_sequences_manager, \
+    migrate_banner9_package_manager
 
 if __name__ == "__main__":
     migrate_banner9_tables_manager()
     migrate_banner9_sequences_manager()
+    migrate_banner9_package_manager()

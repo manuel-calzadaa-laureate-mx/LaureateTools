@@ -29,6 +29,7 @@ class ObjectDataTypes(Enum):
     TRIGGER = "TRIGGER"
     PROCEDURE = "PROCEDURE"
     FUNCTION = "FUNCTION"
+    PACKAGE = "PACKAGE"
 
 
 def create_object_base_manager():
@@ -622,15 +623,22 @@ def migrate_banner9_tables_manager(refactor_table_names: bool = True):
     unique_tables = extract_unique_dependencies_types_from_data_file(environment=DatabaseEnvironment.BANNER9,
                                                                      database_object_type=DatabaseObject.TABLE,
                                                                      is_custom=True)
-
+    object_data = get_object_data()
     for one_table in unique_tables:
         b9_nombre = one_table
         b9_esquema = "UVM"
 
-        object_data = get_object_data()
         converted_table_data = migrate_b9_table_to_b9(json_data=object_data,
                                                       b9_table_name=b9_nombre,
                                                       b9_owner=b9_esquema)
 
         add_or_update_object_data_file(new_json_data=converted_table_data,
+                                       environment=DatabaseEnvironment.BANNER9)
+
+
+def migrate_banner9_package_manager():
+    packages_from_object_data = get_object_data_mapped_by_names_by_environment_and_type(
+        object_data_type=DatabaseObject.PACKAGE.name, database_environment=DatabaseEnvironment.BANNER9)
+    for one_package in packages_from_object_data:
+        add_or_update_object_data_file(new_json_data=packages_from_object_data[one_package],
                                        environment=DatabaseEnvironment.BANNER9)

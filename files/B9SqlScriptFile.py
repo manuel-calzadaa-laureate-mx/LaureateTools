@@ -5,6 +5,8 @@ from typing import Dict
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
 from files.B9ObjectDataFile import ObjectDataTypes, \
     get_migrated_object_data_mapped_by_names_by_environment_and_type
+from tools.PackageTools import get_packages_as_list, package_specification_extract_and_format
+from tools.SqlScriptTools import SqlScriptFilenamePrefix
 
 SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"
 LINEFEED = "\n"
@@ -283,7 +285,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
                                       "table": {table_name},
                                       "name": {table_name}})
             # Start with the fixed parts of the filename
-            filename_parts = [f"CREA_TABLA_{table_name}", object_owner, "TBL"]
+            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_TABLE.value}{table_name}", object_owner, "TBL"]
 
             # Conditionally add "IDX", "SEQ", and "TR" based on sections
             if index_section.strip():  # Ensure there's meaningful content in the index section
@@ -427,8 +429,10 @@ def build_create_trigger_script(trigger_info: dict) -> str:
 
 
 def create_table_scripts_manager():
+    logging.info("Starting: create table script generator")
     scripts_data = build_create_table_script_data()
     _write_script_files(scripts_data=scripts_data)
+    logging.info("Ending: create table script generator")
 
 
 def get_scripts_folder_path() -> str:
@@ -472,7 +476,7 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
             sequences_script += get_show_errors()
             sequences_script += LINEFEED
 
-            filename_parts = [f"CREA_SEQUENCIA_{object_name}", object_owner, "SEQ"]
+            filename_parts = [f"{SqlScriptFilenamePrefix.SEQUENCE.value}{object_name}", object_owner, "SEQ"]
 
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
@@ -501,8 +505,70 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
 
 
 def create_sequence_scripts_manager():
+    logging.info("Starting: create sequence script generator")
     scripts_data = build_create_sequences_script_data()
     _write_script_files(scripts_data=scripts_data)
+    logging.info("Ending: create sequence script generator")
+
+
+def build_create_package_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9):
+    object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
+        database_environment=requested_environment,
+        object_data_type=ObjectDataTypes.PACKAGE.value)
+    object_data_keys = list(object_data.keys())
+    all_packages_as_list = get_packages_as_list(package_owner='UVM',
+                                                package_names=object_data_keys,
+                                                database_environment=DatabaseEnvironment.BANNER9)
+
+    scripts = []
+    for one_package_key in all_packages_as_list:
+        one_package = all_packages_as_list.get(one_package_key)
+        object_name = one_package.get("name")
+        object_owner = one_package.get("owner")
+
+        one_package_global_code = one_package.get("code")
+        package_specifications_code = one_package_global_code.get("PACKAGE")
+        package_specifications_code_lines = package_specifications_code.get("lines")
+
+        package_specifications_unformatted = package_specification_extract_and_format(
+            lines=package_specifications_code_lines)
+
+        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{object_name}", object_owner, "KP"]
+
+        # Join all parts with a dot and add the file extension
+        filename = ".".join(filename_parts) + ".sql"
+
+        header_section = build_header_section(filename)
+
+        drop_object_section = f"-- Eliminaciones{LINEFEED}{LINEFEED}"
+
+        # for drop_element in drop_elements:
+        #     drop_object_section += f"-- DROP SEQUENCE {drop_element["name"]}{END_OF_SENTENCE}"
+
+        footer_section = build_footer_section(filename)
+
+        script = (f"{header_section}"
+                  f"{LINEFEED}"
+                  f"{drop_object_section}"
+                  f"{LINEFEED}"
+                  # f"{package_specifications}"
+                  f"{LINEFEED}"
+                  f"{LINEFEED}"
+                  f"{footer_section}")
+
+        scripts.append({
+            "file_name": filename,
+            "script": script
+        })
+
+    return scripts
+
+
+def create_packages_scripts_manager():
+    logging.info("Starting: create packages script generator")
+    scripts_data = build_create_package_script_data()
+    _write_script_files(scripts_data=scripts_data)
+    logging.info("Starting: create packages script generator")
 
 
 def _write_script_files(scripts_data):
@@ -518,3 +584,7 @@ def _write_script_files(scripts_data):
             file.write(script_content)
 
         logging.info(f"Saved script for table '{file_name}' to '{file_path}'")
+
+
+if __name__ == "__main__":
+    build_create_package_script_data()
