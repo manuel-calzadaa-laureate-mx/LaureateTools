@@ -272,3 +272,19 @@ def get_completed_procedures() -> list[dict]:
 
 if __name__ == "__main__":
     create_source_code_manager()
+
+
+def create_package_specification_source_code_manager(
+        database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9):
+    """Read, process, and write extracted source code."""
+    logging.info("Starting: extract package specification source code")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    completed_procedures_csv_file_path = os.path.join(script_dir, get_completed_procedures_file_path())
+    csv_data = read_csv_file(completed_procedures_csv_file_path)
+    # grouped_data = _group_package_specification_data(csv_data)
+    # grouped_data = _group_data_into_packages(csv_data)
+    # extracted_data = _process_source_code_extraction(grouped_data)
+    # source_code_folder = os.path.join(script_dir, get_source_code_folder(database_environment))
+    # _write_extracted_data_to_source_code_files(extracted_data, source_code_folder)
+
+    logging.info("Ending: extract source code")

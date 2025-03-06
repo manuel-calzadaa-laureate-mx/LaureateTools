@@ -550,6 +550,9 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment 
         # for drop_element in drop_elements:
         #     drop_object_section += f"-- DROP SEQUENCE {drop_element["name"]}{END_OF_SENTENCE}"
 
+        grants = []
+        synonyms = ""
+
         footer_section = build_footer_section(filename)
 
         script = (f"{header_section}"
@@ -558,6 +561,9 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment 
                   f"{LINEFEED}"
                   # f"{package_specifications}"
                   f"{LINEFEED}"
+                  f"{grants}"
+                  f"{LINEFEED}"
+                  f"{synonyms}"
                   f"{LINEFEED}"
                   f"{footer_section}")
 

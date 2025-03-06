@@ -3,6 +3,10 @@ import re
 
 from db.OracleDatabaseTools import is_oracle_built_in_object
 
+VALID_PROCEDURE_PREFIXES = ["P_", "PR_", "TZPR"]
+
+VALID_FUNCTION_PREFIXES = ["F_", "FN_", "TZFN"]
+
 
 def extract_select_tables(source_code: str) -> set[str]:
     # Matches table names in SELECT statements
@@ -70,13 +74,13 @@ def extract_procedures(source_code: str) -> list[str]:
             continue
 
         # Step 3: Exclusion for names starting with "F_" (indicating a function)
-        valid_function_prefix = ["F_", "FN_"]
+        valid_function_prefix = VALID_FUNCTION_PREFIXES
         if object_name.upper().startswith(tuple(valid_function_prefix)):
             logging.info(f"Excluding due to 'F_' prefix: {full_name}")
             continue
 
         # Step 4: Validation for names starting with "P_"
-        valid_procedure_prefix = ["P_", "PR_"]
+        valid_procedure_prefix = VALID_PROCEDURE_PREFIXES
         if object_name.upper().startswith(tuple(valid_procedure_prefix)):
             valid_procedures.add(full_name)
             logging.info(f"Immediately adding due to starting with 'P_': {full_name}")
@@ -192,16 +196,16 @@ def extract_functions(source_code: str) -> set[str]:
             continue
 
         # Step 3: Exclusion for names starting with "P_" (indicating a procedure)
-        valid_procedure_prefix = ["P_", "PR_"]
+        valid_procedure_prefix = VALID_PROCEDURE_PREFIXES
         if object_name.upper().startswith(tuple(valid_procedure_prefix)):
-            logging.info(f"Excluding due to 'P_' prefix: {full_name}")
+            logging.info(f"Excluding due to procedure prefix: {full_name}")
             continue
 
         # Step 4: Validation for names starting with "F_"
-        valid_function_prefix = ["F_", "FN_"]
+        valid_function_prefix = VALID_FUNCTION_PREFIXES
         if object_name.upper().startswith(tuple(valid_function_prefix)):
             valid_functions.add(full_name)
-            logging.info(f"Immediately adding due to starting with 'F_': {full_name}")
+            logging.info(f"Immediately adding due to starting with function prefix: {full_name}")
             continue
 
         # Step 5: Exclusion for Oracle built-in functions

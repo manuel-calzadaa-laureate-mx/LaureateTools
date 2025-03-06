@@ -548,7 +548,6 @@ def add_custom_sequences_manager():
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=
         json_attributes_from_sequences)
         logging.info(f"Added {len(unique_sequences)} custom sequences to object data")
-        connection.close()
     else:
         logging.info("No unique sequences found. Skipping db operations.")
     logging.info("Ending: add custom sequences to object data")

@@ -15,6 +15,7 @@ def get_package_records(package_owner: str, package_names: list[str],
        Returns:
            List[Tuple]: A list of tuples containing the source code records for the specified packages.
        """
+
     connection = get_db_connection(database_name=database_environment)
     cursor = connection.cursor()
 
@@ -29,7 +30,7 @@ def get_package_records(package_owner: str, package_names: list[str],
            FROM
                all_source
            WHERE
-               type IN ('PACKAGE')
+               type IN ('PACKAGE','PACKAGE BODY')
                AND owner = :package_owner
                AND name IN ({})
        """.format(", ".join([f":package_name_{i}" for i in range(len(package_names))]))
