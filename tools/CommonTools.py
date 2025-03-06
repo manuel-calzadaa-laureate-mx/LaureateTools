@@ -21,9 +21,11 @@ def split_table_name_into_package_and_table_name(obj_name: str) -> dict:
     parts = obj_name.split(".", 1)  # Split only at the first dot
     return {"prefix": parts[0] if len(parts) > 1 else None, "name": parts[-1]}
 
+
 def get_all_current_owners(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> list:
     all_owners_fetchall = get_all_owners(database_environment=database_environment)
     return [row[0] for row in all_owners_fetchall]
+
 
 class MultiCounter:
     def __init__(self):
@@ -74,8 +76,7 @@ class MultiCounter:
         self._set_counter(key, value)
 
 
-
-def extract_table_info(table_name: str) -> dict:
+def extract_object_basic_structure(table_name: str) -> dict:
     # Extract prefix: first two characters, where the second character must be "Z"
     if len(table_name) >= 2 and table_name[1] == "Z":
         prefix = table_name[:2]
@@ -97,6 +98,7 @@ def extract_table_info(table_name: str) -> dict:
         "table_name": table_name
     }
 
+
 def refactor_tagged_text(original_text: str, tags: list[str], replacement_text: list[str]) -> str:
     if len(tags) != len(replacement_text):
         raise ValueError("Tags and replacement_text lists must have the same length")
@@ -105,4 +107,3 @@ def refactor_tagged_text(original_text: str, tags: list[str], replacement_text: 
         original_text = original_text.replace(tag, replacement)
 
     return original_text
-
