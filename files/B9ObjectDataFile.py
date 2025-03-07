@@ -6,7 +6,6 @@ from enum import Enum
 import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject, TableObject
-from db.OracleDatabaseTools import get_db_connection
 from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
 from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, \
     fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \

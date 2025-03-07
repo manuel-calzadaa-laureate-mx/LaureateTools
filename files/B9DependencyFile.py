@@ -5,6 +5,7 @@ import os
 import pandas as pd
 
 from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
 from files.DependencyFile import extract_unique_existing_objects, extract_object_with_missing_status, \
     filter_missing_status_dependencies, find_delta_of_missing_dependencies, \
@@ -158,11 +159,11 @@ def append_package_dependencies():
     logging.info("New rows added to 'dependencies.csv'.")
 
 
-def find_all_dependencies_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+def find_all_dependencies_manager(db_pool: OracleDBConnectionPool):
     last_remaining_objects = []
     while True:
         # Step 1: find and write all current dependencies
-        dependencies_data = _extract_missing_dependencies_from_source_files(database_environment=database_environment)
+        dependencies_data = _extract_missing_dependencies_from_source_files(db_pool=db_pool)
         _write_dependencies_file(dependencies_data=dependencies_data)
 
         # Step 2: find missing dependencies by drill down
@@ -187,10 +188,10 @@ def find_all_dependencies_manager(database_environment: DatabaseEnvironment = Da
 
         # Step 3: Update the complete procedures file
         update_missing_procedures_to_add_manager(objects=remaining_objects,
-                                                 database_environment=database_environment)
+                                                 db_pool=db_pool)
 
         # Step 4: Find the source code for missing objects
-        create_source_code_manager(database_environment=database_environment)
+        create_source_code_manager(db_pool=db_pool)
 
         # Step 5: Maybe the remaining object doesn't have dependencies
         last_remaining_objects = remaining_objects
@@ -246,8 +247,9 @@ def _is_dependency_object_exist(data: list[dict], object_owner: str, object_pack
     )
 
 
-def _extract_missing_dependencies_from_source_files(
-        database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> list[dict]:
+def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionPool,
+                                                    database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> \
+        list[dict]:
     """
     Extract dependencies from all SQL files in a source folder.
 
@@ -256,12 +258,13 @@ def _extract_missing_dependencies_from_source_files(
 
     Returns:
         list[dict]: A list of dictionaries, each representing a dependency.
+        :param db_pool:
     """
 
     dependencies = []
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_folder = os.path.join(script_dir, get_source_code_folder(database_environment=database_environment))
-    current_owners = get_all_current_owners(database_environment=database_environment)
+    current_owners = get_all_current_owners(db_pool=db_pool)
     dependencies_data = get_dependencies_data()
 
     for filename in os.listdir(source_folder):

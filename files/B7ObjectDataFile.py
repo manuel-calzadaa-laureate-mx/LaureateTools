@@ -6,7 +6,7 @@ from enum import Enum
 import cx_Oracle
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject, TableObject
-from db.OracleDatabaseTools import get_db_connection
+from db.OracleDatabaseTools import get_db_connection, OracleDBConnectionPool
 from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
 from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, \
     fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \
@@ -535,11 +535,13 @@ def add_custom_sequences_manager():
     logging.info("Ending: add custom sequences to object data")
 
 
-def add_custom_tables_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+def add_custom_tables_manager(db_pool: OracleDBConnectionPool,
+                              database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     logging.info("Starting: add custom tables to object data")
 
     unique_tables = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.TABLE,
                                                                      environment=database_environment,
+                                                                     db_pool=db_pool,
                                                                      is_custom=True)
     additional_tables = get_tables_by_environment(database_environment=database_environment)
     if additional_tables:

@@ -2,7 +2,7 @@ import logging
 import os
 
 from db.DatabaseProperties import DatabaseEnvironment
-from db.OracleDatabaseTools import get_db_connection
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.FunctionsDatasource import get_packaged_object_owner, get_independent_object_owners
 from db.datasource.ProceduresDatasource import query_sources
 from files.SourceCodeFile import get_source_code_folder
@@ -53,24 +53,24 @@ def _write_completed_procedures_data(completed_data_to_append):
                        is_append=True)
 
 
-def update_missing_procedures_to_add_manager(objects: list[dict],
+def update_missing_procedures_to_add_manager(objects: list[dict], db_pool=OracleDBConnectionPool,
                                              database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> None:
     logging.info("Starting: update missing procedures to add")
-    object_data_to_append = _find_missing_data_to_add(objects=objects, database_environment=database_environment)
+    object_data_to_append = _find_missing_data_to_add(objects=objects, db_pool=db_pool,
+                                                      database_environment=database_environment)
     logging.info(f"this is the data to be added: {object_data_to_append}")
     _write_completed_procedures_data(completed_data_to_append=object_data_to_append)
 
 
-def _find_missing_data_to_add(objects: list[dict],
+def _find_missing_data_to_add(objects: list[dict], db_pool: OracleDBConnectionPool,
                               database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> \
         list[list]:
     """Update the procedures file based on whether the function is packaged or independent."""
-    db_connection = get_db_connection(database_name=database_environment)
     hidden_dependencies = []
     for one_object in objects:
         logging.info(f"Processing function: {one_object}")
         if one_object["PACKAGE"]:
-            result = get_packaged_object_owner(object_dict=one_object, database_environment=DatabaseEnvironment.BANNER7)
+            result = get_packaged_object_owner(object_dict=one_object)
             logging.info(f"packaged object: {result}")
             if result is None:
                 logging.info(f"Could not retrieve owner/package/procedure for {one_object}")
@@ -93,7 +93,7 @@ def _find_missing_data_to_add(objects: list[dict],
                 hidden_dependencies.append(
                     {"Owner": owner, "Package": None, "Procedure": procedure, "Function": None})
             else:
-                result = get_independent_object_owners(one_object, db_connection)
+                result = get_independent_object_owners(one_object, db_pool=db_pool)
                 logging.info(f"non-packaged object: {result}")
                 if result is None:
                     logging.info(f"Could not retrieve owner/procedure for {one_object}")
@@ -102,7 +102,6 @@ def _find_missing_data_to_add(objects: list[dict],
                     hidden_dependencies.append(
                         {"Owner": owner, "Package": None, "Procedure": procedure, "Function": None})
 
-    db_connection.close()
     return hidden_dependencies
 
 
@@ -168,20 +167,20 @@ def _write_extracted_data_to_source_code_files(extracted_data: dict, source_code
             sql_file.writelines(entry['source_code'])
 
 
-def create_source_code_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+def create_source_code_manager(db_pool: OracleDBConnectionPool):
     """Read, process, and write extracted source code."""
     logging.info("Starting: extract source code")
     script_dir = os.path.dirname(os.path.abspath(__file__))
     completed_procedures_csv_file_path = os.path.join(script_dir, get_completed_procedures_file_path())
     csv_data = read_csv_file(completed_procedures_csv_file_path)
     grouped_data = _group_data_into_packages(csv_data)
-    extracted_data = _process_source_code_extraction(grouped_data)
+    extracted_data = _process_source_code_extraction(db_pool=db_pool, data=grouped_data)
     source_code_folder = os.path.join(script_dir, get_source_code_folder())
     _write_extracted_data_to_source_code_files(extracted_data, source_code_folder)
     logging.info("Ending: extract source code")
 
 
-def _process_source_code_extraction(data: dict) -> dict:
+def _process_source_code_extraction(db_pool: OracleDBConnectionPool, data: dict) -> dict:
     source_codes = []
 
     for package, rows in data.items():
@@ -206,6 +205,7 @@ def _process_source_code_extraction(data: dict) -> dict:
                     logging.info(
                         f"Extracting individual source code: Owner={owner}, Procedure={procedure}, Function={function}")
                     source_code_lines = query_sources(
+                        db_pool=db_pool,
                         owner=owner,
                         procedure=procedure,
                         function=function

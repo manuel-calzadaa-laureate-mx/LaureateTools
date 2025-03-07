@@ -4,193 +4,170 @@ from typing import List, Dict
 
 import cx_Oracle
 
-from db.DatabaseProperties import DatabaseEnvironment
-from db.OracleDatabaseTools import get_db_connection
+from db.OracleDatabaseTools import OracleDBConnectionPool
 
 
-def query_mapping_table_by_object_type(mapping_object_type: str) -> list[dict]:
-    db_connection = get_db_connection(database_name=DatabaseEnvironment.BANNER9)
+def query_mapping_table_by_object_type(db_pool: OracleDBConnectionPool, mapping_object_type: str) -> list[dict]:
+    with db_pool.get_connection() as connection:
+        cursor = connection.cursor()
+        # Construct the query with a bind variable for each name
+        query = f"""
+        SELECT 
+            GZTBTMPEO_B7_TIPO,
+            GZTBTMPEO_B7_ESQUEMA,
+            GZTBTMPEO_B7_PAQUETE,
+            GZTBTMPEO_B7_NOMBRE,
+            GZTBTMPEO_B9_TIPO,
+            GZTBTMPEO_B9_ESQUEMA,
+            GZTBTMPEO_B9_PAQUETE,
+            GZTBTMPEO_B9_NOMBRE,
+            GZTBTMPEO_DESCRIPCION,
+            GZTBTMPEO_OBSERVACION,
+            GZTBTMPEO_ACTIVITY_DATE,
+            GZTBTMPEO_USER,
+            GZTBTMPEO_DATA_ORIGIN
+        FROM GZTBTMPEO
+        WHERE GZTBTMPEO_B7_TIPO = :object_type
+        """
 
-    # Construct the query with a bind variable for each name
-    query = f"""
-    SELECT 
-        GZTBTMPEO_B7_TIPO,
-        GZTBTMPEO_B7_ESQUEMA,
-        GZTBTMPEO_B7_PAQUETE,
-        GZTBTMPEO_B7_NOMBRE,
-        GZTBTMPEO_B9_TIPO,
-        GZTBTMPEO_B9_ESQUEMA,
-        GZTBTMPEO_B9_PAQUETE,
-        GZTBTMPEO_B9_NOMBRE,
-        GZTBTMPEO_DESCRIPCION,
-        GZTBTMPEO_OBSERVACION,
-        GZTBTMPEO_ACTIVITY_DATE,
-        GZTBTMPEO_USER,
-        GZTBTMPEO_DATA_ORIGIN
-    FROM GZTBTMPEO
-    WHERE GZTBTMPEO_B7_TIPO = :object_type
-    """
-
-    cursor = db_connection.cursor()
-    cursor.execute(query, object_type=mapping_object_type)
-    rows = cursor.fetchall()
-    results = []
-    for row in rows:
-        if row:
-            # Map the result to a dictionary
-            columns = [col[0] for col in cursor.description]
-            results.append(dict(zip(columns, row)))
-    cursor.close()
-    db_connection.close()
-    return results
+        cursor.execute(query, object_type=mapping_object_type)
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            if row:
+                # Map the result to a dictionary
+                columns = [col[0] for col in cursor.description]
+                results.append(dict(zip(columns, row)))
+        return results
 
 
-def query_mapping_table() -> list[dict]:
+def query_mapping_table(db_pool: OracleDBConnectionPool) -> list[dict]:
     """
     Retrieve all fields from the GTTBTMPEO table for a list of GZTBTMPEO_B7_NOMBRE values.
 
     Returns:
         list: A list of dictionaries containing all fields of the matched rows.
     """
+    with db_pool.get_connection as connection:
+        cursor = connection.cursor()
 
-    db_connection = get_db_connection(database_name=DatabaseEnvironment.BANNER9)
+        # Construct the query with a bind variable for each name
+        query = f"""
+        SELECT 
+            GZTBTMPEO_B7_TIPO,
+            GZTBTMPEO_B7_ESQUEMA,
+            GZTBTMPEO_B7_PAQUETE,
+            GZTBTMPEO_B7_NOMBRE,
+            GZTBTMPEO_B9_TIPO,
+            GZTBTMPEO_B9_ESQUEMA,
+            GZTBTMPEO_B9_PAQUETE,
+            GZTBTMPEO_B9_NOMBRE,
+            GZTBTMPEO_DESCRIPCION,
+            GZTBTMPEO_OBSERVACION,
+            GZTBTMPEO_ACTIVITY_DATE,
+            GZTBTMPEO_USER,
+            GZTBTMPEO_DATA_ORIGIN
+        FROM GZTBTMPEO
+        """
 
-    # Construct the query with a bind variable for each name
-    query = f"""
-    SELECT 
-        GZTBTMPEO_B7_TIPO,
-        GZTBTMPEO_B7_ESQUEMA,
-        GZTBTMPEO_B7_PAQUETE,
-        GZTBTMPEO_B7_NOMBRE,
-        GZTBTMPEO_B9_TIPO,
-        GZTBTMPEO_B9_ESQUEMA,
-        GZTBTMPEO_B9_PAQUETE,
-        GZTBTMPEO_B9_NOMBRE,
-        GZTBTMPEO_DESCRIPCION,
-        GZTBTMPEO_OBSERVACION,
-        GZTBTMPEO_ACTIVITY_DATE,
-        GZTBTMPEO_USER,
-        GZTBTMPEO_DATA_ORIGIN
-    FROM GZTBTMPEO
-    """
-
-    cursor = db_connection.cursor()
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    results = []
-    for row in rows:
-        if row:
-            # Map the result to a dictionary
-            columns = [col[0] for col in cursor.description]
-            results.append(dict(zip(columns, row)))
-    cursor.close()
-    db_connection.close()
-    return results
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            if row:
+                # Map the result to a dictionary
+                columns = [col[0] for col in cursor.description]
+                results.append(dict(zip(columns, row)))
+        return results
 
 
-def query_mapping_by_b7_names(b7_names: []) -> [dict]:
-    """
-    Retrieve all fields from the GTTBTMPEO table for a list of GZTBTMPEO_B7_NOMBRE values.
-
-    Args:
-        b7_names (list): A list of values for GZTBTMPEO_B7_NOMBRE to query.
-        db_connection (cx_Oracle.Connection): The Oracle database connection.
-
-    Returns:
-        list: A list of dictionaries containing all fields of the matched rows.
-    """
-
+def query_mapping_by_b7_names(db_pool: OracleDBConnectionPool, b7_names: []) -> [dict]:
     if not b7_names:
         return []
 
-    db_connection = get_db_connection(database_name=DatabaseEnvironment.BANNER9)
+    with db_pool.get_connection as connection:
+        cursor = connection.cursor()
 
-    # Construct the query with a bind variable for each name
-    placeholders = ', '.join([f":name{i}" for i in range(len(b7_names))])
-    query = f"""
-    SELECT 
-        GZTBTMPEO_B7_TIPO,
-        GZTBTMPEO_B7_ESQUEMA,
-        GZTBTMPEO_B7_PAQUETE,
-        GZTBTMPEO_B7_NOMBRE,
-        GZTBTMPEO_B9_TIPO,
-        GZTBTMPEO_B9_ESQUEMA,
-        GZTBTMPEO_B9_PAQUETE,
-        GZTBTMPEO_B9_NOMBRE,
-        GZTBTMPEO_DESCRIPCION,
-        GZTBTMPEO_OBSERVACION,
-        GZTBTMPEO_ACTIVITY_DATE,
-        GZTBTMPEO_USER,
-        GZTBTMPEO_DATA_ORIGIN
-    FROM GZTBTMPEO
-    WHERE GZTBTMPEO_B7_NOMBRE IN ({placeholders})
-    """
+        # Construct the query with a bind variable for each name
+        placeholders = ', '.join([f":name{i}" for i in range(len(b7_names))])
+        query = f"""
+        SELECT 
+            GZTBTMPEO_B7_TIPO,
+            GZTBTMPEO_B7_ESQUEMA,
+            GZTBTMPEO_B7_PAQUETE,
+            GZTBTMPEO_B7_NOMBRE,
+            GZTBTMPEO_B9_TIPO,
+            GZTBTMPEO_B9_ESQUEMA,
+            GZTBTMPEO_B9_PAQUETE,
+            GZTBTMPEO_B9_NOMBRE,
+            GZTBTMPEO_DESCRIPCION,
+            GZTBTMPEO_OBSERVACION,
+            GZTBTMPEO_ACTIVITY_DATE,
+            GZTBTMPEO_USER,
+            GZTBTMPEO_DATA_ORIGIN
+        FROM GZTBTMPEO
+        WHERE GZTBTMPEO_B7_NOMBRE IN ({placeholders})
+        """
 
-    cursor = db_connection.cursor()
+        # Create the bind variables dictionary
+        bind_vars = {f"name{i}": name for i, name in enumerate(b7_names)}
+        cursor.execute(query, bind_vars)
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            if row:
+                # Map the result to a dictionary
+                columns = [col[0] for col in cursor.description]
+                results.append(dict(zip(columns, row)))
 
-    # Create the bind variables dictionary
-    bind_vars = {f"name{i}": name for i, name in enumerate(b7_names)}
-    cursor.execute(query, bind_vars)
-    rows = cursor.fetchall()
-    results = []
-    for row in rows:
+        return results
+
+
+def query_mapping_by_b7_name(db_pool: OracleDBConnectionPool, b7_name: str) -> dict:
+    with db_pool.get_connection as connection:
+        cursor = connection.cursor()
+        query = """
+        SELECT 
+            GZTBTMPEO_B7_TIPO,
+            GZTBTMPEO_B7_ESQUEMA,
+            GZTBTMPEO_B7_PAQUETE,
+            GZTBTMPEO_B7_NOMBRE,
+            GZTBTMPEO_B9_TIPO,
+            GZTBTMPEO_B9_ESQUEMA,
+            GZTBTMPEO_B9_PAQUETE,
+            GZTBTMPEO_B9_NOMBRE,
+            GZTBTMPEO_DESCRIPCION,
+            GZTBTMPEO_OBSERVACION,
+            GZTBTMPEO_ACTIVITY_DATE,
+            GZTBTMPEO_USER,
+            GZTBTMPEO_DATA_ORIGIN
+        FROM GZTBTMPEO
+        WHERE GZTBTMPEO_B7_NOMBRE = :b7_name
+        """
+
+        cursor.execute(query, b7_name=b7_name)
+
+        row = cursor.fetchone()
         if row:
             # Map the result to a dictionary
             columns = [col[0] for col in cursor.description]
-            results.append(dict(zip(columns, row)))
+            result = dict(zip(columns, row))
+        else:
+            result = None
 
-    cursor.close()
-    db_connection.close()
-    return results
-
-
-def query_mapping_by_b7_name(b7_name: str) -> dict:
-    db_connection = get_db_connection(DatabaseEnvironment.BANNER9)
-
-    query = """
-    SELECT 
-        GZTBTMPEO_B7_TIPO,
-        GZTBTMPEO_B7_ESQUEMA,
-        GZTBTMPEO_B7_PAQUETE,
-        GZTBTMPEO_B7_NOMBRE,
-        GZTBTMPEO_B9_TIPO,
-        GZTBTMPEO_B9_ESQUEMA,
-        GZTBTMPEO_B9_PAQUETE,
-        GZTBTMPEO_B9_NOMBRE,
-        GZTBTMPEO_DESCRIPCION,
-        GZTBTMPEO_OBSERVACION,
-        GZTBTMPEO_ACTIVITY_DATE,
-        GZTBTMPEO_USER,
-        GZTBTMPEO_DATA_ORIGIN
-    FROM GZTBTMPEO
-    WHERE GZTBTMPEO_B7_NOMBRE = :b7_name
-    """
-
-    cursor = db_connection.cursor()
-    cursor.execute(query, b7_name=b7_name)
-
-    row = cursor.fetchone()
-    if row:
-        # Map the result to a dictionary
-        columns = [col[0] for col in cursor.description]
-        result = dict(zip(columns, row))
-    else:
-        result = None
-
-    cursor.close()
-    db_connection.close()
-    return result
+        return result
 
 
-def insert_mapping_data(rows_to_insert: List[Dict[str, str]]):
+def insert_mapping_data(db_pool: OracleDBConnectionPool, rows_to_insert: List[Dict[str, str]]):
     """
     Inserts data into the GZTBTMPEO table with additional default values.
 
     Args:
-        rows_to_insert (List[Dict[str, str]]): List of dictionaries containing data to insert.
-        db_connection (cx_Oracle.Connection): The Oracle database connection.
+        :param rows_to_insert:
+        :param db_pool:
     """
-    db_connection = get_db_connection(DatabaseEnvironment.BANNER9)
+    with db_pool.get_connection as connection:
+        cursor = connection.cursor()
 
     if not rows_to_insert:
         logging.info("No valid rows to insert.")
@@ -270,19 +247,12 @@ def insert_mapping_data(rows_to_insert: List[Dict[str, str]]):
         print(f"Executing query: {formatted_query}")
 
         # Insert the row into the database
-        cursor = db_connection.cursor()
         try:
             cursor.execute(formatted_query)
-            db_connection.commit()
-            print("Successfully inserted row.")
+            connection.commit()
+            logging.info("Successfully inserted row.")
         except cx_Oracle.DatabaseError as e:
-            print(f"Error inserting row: {e}")
-            db_connection.rollback()
-        finally:
-            cursor.close()
+            logging.error(f"Error inserting row: {e}")
+            connection.rollback()
 
-    print(f"Successfully inserted {len(rows_to_insert)} rows.")
-
-
-if __name__ == "__main__":
-    print(query_mapping_by_b7_names(["GZRIPAY", "SZBCAPP"]))
+    logging.info(f"Successfully inserted {len(rows_to_insert)} rows.")

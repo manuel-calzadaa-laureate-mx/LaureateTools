@@ -1,4 +1,4 @@
-from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.AllSourcesDatasource import get_all_owners
 
 
@@ -22,8 +22,8 @@ def split_table_name_into_package_and_table_name(obj_name: str) -> dict:
     return {"prefix": parts[0] if len(parts) > 1 else None, "name": parts[-1]}
 
 
-def get_all_current_owners(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> list:
-    all_owners_fetchall = get_all_owners(database_environment=database_environment)
+def get_all_current_owners(db_pool: OracleDBConnectionPool) -> list:
+    all_owners_fetchall = get_all_owners(db_pool=db_pool)
     return [row[0] for row in all_owners_fetchall]
 
 

@@ -2,6 +2,7 @@ import logging
 import os
 
 from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from files.B7CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
 from files.SourceCodeFile import extract_all_dependencies_from_one_source_code_data, get_source_code_folder
 from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
@@ -216,10 +217,11 @@ def _write_dependencies_file(dependencies_data: list[dict]):
     write_csv_file(output_file=dependency_file, data_to_write=dependencies_data, is_append=is_append)
 
 
-def find_all_dependencies_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+def find_all_dependencies_manager(db_pool: OracleDBConnectionPool,
+                                  database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
     while True:
         # Step 1: find and write all current dependencies
-        dependencies_data = _extract_missing_dependencies_from_source_files()
+        dependencies_data = _extract_missing_dependencies_from_source_files(db_pool=db_pool)
         _write_dependencies_file(dependencies_data=dependencies_data)
 
         # Step 2: find missing dependencies by drill down
@@ -231,11 +233,12 @@ def find_all_dependencies_manager(database_environment: DatabaseEnvironment = Da
         logging.info(f"Remaining functions to process: {remaining_objects}")
 
         # Step 3: Update the complete procedures file
-        update_missing_procedures_to_add_manager(objects=remaining_objects,
+        update_missing_procedures_to_add_manager(objects=remaining_objects, db_pool=db_pool,
                                                  database_environment=DatabaseEnvironment.BANNER7)
 
         # Step 4: Find the source code for missing objects
         create_source_code_manager()
+
 
 def resolve_dependency(owners: list, obj_name: str) -> dict:
     """
@@ -284,7 +287,7 @@ def _is_dependency_object_exist(data: list[dict], object_owner: str, object_pack
     )
 
 
-def _extract_missing_dependencies_from_source_files() -> list[dict]:
+def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionPool) -> list[dict]:
     """
     Extract dependencies from all SQL files in a source folder.
 
@@ -298,7 +301,7 @@ def _extract_missing_dependencies_from_source_files() -> list[dict]:
     dependencies = []
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_folder = os.path.join(script_dir, get_source_code_folder())
-    current_owners = get_all_current_owners()
+    current_owners = get_all_current_owners(db_pool=db_pool)
     dependencies_data = get_dependencies_data()
 
     for filename in os.listdir(source_folder):
@@ -317,7 +320,6 @@ def _extract_missing_dependencies_from_source_files() -> list[dict]:
 
         if filename.endswith(".sql"):
             file_path = os.path.join(source_folder, filename)
-
 
             # Read the source code from the SQL file
             with open(file_path, mode='r', encoding='utf-8') as file:
