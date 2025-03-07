@@ -3,10 +3,11 @@ import os
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
-from files.B7ObjectDataFile import get_object_data_mapped_by_names_by_environment, ObjectDataTypes, \
+from files.B7ObjectDataFile import ObjectDataTypes, \
     get_object_data_mapped_by_names_by_environment_and_type
+from tools.SqlScriptTools import SqlScriptFilenamePrefix
 
-SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"
+SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts/migrated"
 LINEFEED = "\n"
 END_OF_SENTENCE = f";{LINEFEED}"
 PROMPT = "Prompt >>>"
@@ -275,7 +276,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment = 
                                       "table": {table_name},
                                       "name": {table_name}})
             # Start with the fixed parts of the filename
-            filename_parts = [f"CREATE_TABLE_{table_name}", object_owner, "TB"]
+            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_TABLE.value}{table_name}", object_owner, "TB"]
 
             # Conditionally add "IDX", "SEQ", and "TR" based on sections
             if index_section.strip():  # Ensure there's meaningful content in the index section
