@@ -76,26 +76,38 @@ class MultiCounter:
         self._set_counter(key, value)
 
 
-def extract_object_basic_structure(table_name: str) -> dict:
-    # Extract prefix: first two characters, where the second character must be "Z"
-    if len(table_name) >= 2 and table_name[1] == "Z":
-        prefix = table_name[:2]
-    else:
-        raise ValueError(f"Invalid table name: {table_name} does not meet the criteria.")
+def extract_object_structure(object_name: str) -> dict:
+    # Check if the table name is at least 5 characters long
+    if len(object_name) < 5:
+        raise ValueError(f"Invalid table name: {object_name} is too short.")
 
-    # Extract base: check if "TB" exists, and use the part after it
-    if "TB" in table_name:
-        base_start = table_name.index("TB") + 2
-        base = table_name[base_start:]
-    else:
-        # If "TB" is not present, use the part after the prefix
-        base = table_name[2:]
+    # Extract department (first character)
+    department = object_name[0]
+
+    # Extract custom (second character, must be 'Z')
+    custom = object_name[1]
+    if custom != "Z":
+        raise ValueError(f"Invalid table name: {object_name} does not have 'Z' as the second character.")
+
+    # Extract object identification (third and fourth characters)
+    object_identification = object_name[2:4]
+
+    # Extract module (fifth character)
+    module = object_name[4]
+
+    # Extract base (sixth character to the end)
+    base = object_name[5:]
 
     # Return the extracted values
     return {
-        "prefix": prefix,
-        "base": base,
-        "table_name": table_name
+        "department": department,
+        "custom": custom,
+        "prefix": department + custom,
+        "object_identification": object_identification,
+        "module": module,
+        "base": base + module,
+        "only_base": base,
+        "object_name": object_name
     }
 
 

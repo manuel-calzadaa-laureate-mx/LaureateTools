@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from tools.CommonTools import extract_object_basic_structure, refactor_tagged_text
+from tools.CommonTools import refactor_tagged_text, extract_object_structure
 from tools.FileTools import read_json_file
 
 
@@ -68,7 +68,7 @@ def _get_custom_table_columns(json_data: dict, b9_table_name: str) -> dict:
 
 def _get_custom_sequences(json_data: dict, b9_table_name: str):
     fields = json_data["root"]["sequences"]
-    extracted_table_info = extract_object_basic_structure(table_name=b9_table_name)
+    extracted_table_info = extract_object_structure(object_name=b9_table_name)
     prefix = extracted_table_info.get("prefix")
     base = extracted_table_info.get("base")
 
@@ -137,7 +137,7 @@ def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType 
     script_template = fields["script"]
     owners = fields["owner"]
 
-    extracted_table_info = extract_object_basic_structure(table_name=object_name)
+    extracted_table_info = extract_object_structure(object_name=object_name)
     prefix = extracted_table_info.get("prefix")
     base = extracted_table_info.get("base")
     grants = [
@@ -177,7 +177,7 @@ def get_custom_grants_multiple_objects(
 
 def _get_custom_triggers(json_data: dict, b9_table_name: str):
     fields = json_data["root"]["triggers"]
-    table_info = extract_object_basic_structure(table_name=b9_table_name)
+    table_info = extract_object_structure(object_name=b9_table_name)
     prefix = table_info.get("prefix")
     base = table_info.get("base")
 

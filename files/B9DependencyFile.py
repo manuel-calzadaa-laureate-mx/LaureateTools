@@ -1,12 +1,11 @@
-import json
+import logging
 import logging
 import os
 
 import pandas as pd
 
 from db.DatabaseProperties import DatabaseEnvironment
-from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager, \
-    get_completed_procedures_file_path
+from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
 from files.DependencyFile import extract_unique_existing_objects, extract_object_with_missing_status, \
     filter_missing_status_dependencies, find_delta_of_missing_dependencies, \
     is_object_dependency_procedure_or_function, is_object_need_process
@@ -63,8 +62,6 @@ def _extract_unique_dependency_objects(dependency_data: list[dict]) -> list:
     except KeyError as e:
         print(f"Error: Missing expected column in file - {e}")
         return []
-
-
 
 
 def _find_missing_dependencies() -> list:
@@ -162,6 +159,7 @@ def append_package_dependencies():
 
 
 def find_all_dependencies_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+    last_remaining_objects = []
     while True:
         # Step 1: find and write all current dependencies
         dependencies_data = _extract_missing_dependencies_from_source_files(database_environment=database_environment)
@@ -169,6 +167,18 @@ def find_all_dependencies_manager(database_environment: DatabaseEnvironment = Da
 
         # Step 2: find missing dependencies by drill down
         remaining_objects = _find_missing_dependencies()
+        if last_remaining_objects:
+            temp_objects = []
+            for item in remaining_objects:
+                if not any(
+                        obj['NAME'] == item['NAME'] and
+                        obj['OWNER'] == item['OWNER'] and
+                        obj['PACKAGE'] == item['PACKAGE']
+                        for obj in last_remaining_objects
+                ):
+                    temp_objects.append(item)
+            remaining_objects = temp_objects
+
         if not remaining_objects:
             logging.info("No remaining objects. Exiting loop.")
             break
@@ -181,9 +191,12 @@ def find_all_dependencies_manager(database_environment: DatabaseEnvironment = Da
 
         # Step 4: Find the source code for missing objects
         create_source_code_manager(database_environment=database_environment)
-    append_package_dependencies()
-    # complete_dependency_file()
 
+        # Step 5: Maybe the remaining object doesn't have dependencies
+        last_remaining_objects = remaining_objects
+
+    append_package_dependencies()
+    ## add sources for package specifications
 
 
 def resolve_dependency(owners: list, obj_name: str) -> dict:
@@ -344,15 +357,19 @@ def get_missing_dependencies_file_path():
     source_folder = os.path.join(script_dir, MISSING_DEPENDENCIES_FILE_PATH)
     return source_folder
 
+
 _OBJECT_DATA_JSON = "../workfiles/b9_output/object_data.json"
+
 
 def _get_object_data_file_path() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, _OBJECT_DATA_JSON)
 
+
 def _get_object_data() -> dict:
     config_file = _get_object_data_file_path()
     return read_json_file(config_file)
+
 
 def complete_dependency_file():
     dependency_file = get_dependency_file_path()
@@ -383,4 +400,3 @@ def complete_dependency_file():
 if __name__ == "__main__":
     complete_dependency_file()
     # find_all_dependencies_manager(database_environment=DatabaseEnvironment.BANNER9)
-

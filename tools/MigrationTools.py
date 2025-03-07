@@ -3,7 +3,7 @@ from enum import Enum
 from db.DatabaseProperties import DatabaseEnvironment
 from files.ObjectAddonsFile import read_custom_data, ObjectAddonType, get_custom_indexes, GrantType
 from files.TableColumnSubstituteFile import get_tables_column_substitute_file
-from tools.CommonTools import MultiCounter, extract_object_basic_structure, refactor_tagged_text
+from tools.CommonTools import MultiCounter, refactor_tagged_text, extract_object_structure
 
 
 class ObjectType(Enum):
@@ -276,7 +276,7 @@ def _find_index_type(constraint_type: str | None, uniqueness: str) -> IndexType:
 def _refactor_table_indexes(b7_table_indexes: [dict], b7_table_name: str, b9_table_name: str) -> [dict]:
     updated_indexes = []
     counter = MultiCounter()
-    extracted_table_info = extract_object_basic_structure(b9_table_name)
+    extracted_table_info = extract_object_structure(object_name=b9_table_name)
     prefix = extracted_table_info.get("prefix")
     base = extracted_table_info.get("base", "")
 
