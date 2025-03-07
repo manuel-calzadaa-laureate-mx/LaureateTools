@@ -21,9 +21,11 @@ def split_table_name_into_package_and_table_name(obj_name: str) -> dict:
     parts = obj_name.split(".", 1)  # Split only at the first dot
     return {"prefix": parts[0] if len(parts) > 1 else None, "name": parts[-1]}
 
+
 def get_all_current_owners(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> list:
     all_owners_fetchall = get_all_owners(database_environment=database_environment)
     return [row[0] for row in all_owners_fetchall]
+
 
 class MultiCounter:
     def __init__(self):
@@ -74,28 +76,40 @@ class MultiCounter:
         self._set_counter(key, value)
 
 
+def extract_object_structure(object_name: str) -> dict:
+    # Check if the table name is at least 5 characters long
+    if len(object_name) < 5:
+        raise ValueError(f"Invalid table name: {object_name} is too short.")
 
-def extract_table_info(table_name: str) -> dict:
-    # Extract prefix: first two characters, where the second character must be "Z"
-    if len(table_name) >= 2 and table_name[1] == "Z":
-        prefix = table_name[:2]
-    else:
-        raise ValueError(f"Invalid table name: {table_name} does not meet the criteria.")
+    # Extract department (first character)
+    department = object_name[0]
 
-    # Extract base: check if "TB" exists, and use the part after it
-    if "TB" in table_name:
-        base_start = table_name.index("TB") + 2
-        base = table_name[base_start:]
-    else:
-        # If "TB" is not present, use the part after the prefix
-        base = table_name[2:]
+    # Extract custom (second character, must be 'Z')
+    custom = object_name[1]
+    if custom != "Z":
+        raise ValueError(f"Invalid table name: {object_name} does not have 'Z' as the second character.")
+
+    # Extract object identification (third and fourth characters)
+    object_identification = object_name[2:4]
+
+    # Extract module (fifth character)
+    module = object_name[4]
+
+    # Extract base (sixth character to the end)
+    base = object_name[5:]
 
     # Return the extracted values
     return {
-        "prefix": prefix,
-        "base": base,
-        "table_name": table_name
+        "department": department,
+        "custom": custom,
+        "prefix": department + custom,
+        "object_identification": object_identification,
+        "module": module,
+        "base": base + module,
+        "only_base": base,
+        "object_name": object_name
     }
+
 
 def refactor_tagged_text(original_text: str, tags: list[str], replacement_text: list[str]) -> str:
     if len(tags) != len(replacement_text):
@@ -105,4 +119,3 @@ def refactor_tagged_text(original_text: str, tags: list[str], replacement_text: 
         original_text = original_text.replace(tag, replacement)
 
     return original_text
-

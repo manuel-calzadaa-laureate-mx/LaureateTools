@@ -3,7 +3,7 @@
     "synonym": "CREATE PUBLIC SYNONYM {object} FOR UVM.{object};",
     "grants": {
       "table": {
-        "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{object} TO {owner};",
+        "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{prefix}TB{base} TO {owner};",
         "owner": [
           "BANINST1",
           "SATURN",
@@ -16,7 +16,7 @@
         ]
       },
       "package": {
-        "script": "GRANT EXECUTE, DEBUG ON UVM.{object} TO {owner};",
+        "script": "GRANT EXECUTE, DEBUG ON UVM.{prefix}PK{base} TO {owner};",
         "owner": [
           "BANINST1",
           "SATURN",
@@ -29,7 +29,7 @@
         ]
       },
       "sequence": {
-        "script": "GRANT ALTER, SELECT ON UVM.{object} TO {owner} WITH GRANT OPTION;",
+        "script": "GRANT ALTER, SELECT ON UVM.{prefix}SE{base} TO {owner} WITH GRANT OPTION;",
         "owner": [
           "BANINST1",
           "SATURN",
