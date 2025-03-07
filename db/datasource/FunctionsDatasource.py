@@ -22,7 +22,7 @@ def get_packaged_object_owner(object_dict: dict, db_pool: OracleDBConnectionPool
 
 
 def get_independent_object_owners(object_dict: dict, db_pool: OracleDBConnectionPool) -> list:
-    with db_pool.get_connection as connection:
+    with db_pool.get_connection() as connection:
         cursor = connection.cursor()
 
         """Retrieve the owners for independent functions."""

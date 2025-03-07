@@ -1,5 +1,3 @@
-import cx_Oracle
-
 from db.OracleDatabaseTools import OracleDBConnectionPool
 
 
@@ -41,33 +39,34 @@ def query_all_procedures_by_package(connection, package):
     return procedures
 
 
-def query_all_procedures_by_owner_and_list_of_procedures(connection: cx_Oracle.Connection, owner: str,
+def query_all_procedures_by_owner_and_list_of_procedures(db_pool: OracleDBConnectionPool, owner: str,
                                                          list_of_procedures: [str]):
     """
     Query the ALL_PROCEDURES table to get procedures for the given owner and procedure.
     """
-    # Create placeholders for the list of procedures
-    placeholders = ", ".join([":proc" + str(i) for i in range(len(list_of_procedures))])
+    with db_pool.get_connection() as connection:
+        # Create placeholders for the list of procedures
+        placeholders = ", ".join([":proc" + str(i) for i in range(len(list_of_procedures))])
 
-    # Dynamically create the query
-    query = f"""
-        SELECT OWNER, PACKAGE_NAME, OBJECT_NAME AS PROCEDURE_NAME
-        FROM ALL_PROCEDURES
-        WHERE OWNER = :owner AND OBJECT_NAME IN ({placeholders})
-    """
+        # Dynamically create the query
+        query = f"""
+            SELECT OWNER, PACKAGE_NAME, OBJECT_NAME AS PROCEDURE_NAME
+            FROM ALL_PROCEDURES
+            WHERE OWNER = :owner AND OBJECT_NAME IN ({placeholders})
+        """
 
-    # Bind parameters
-    params = {"owner": owner}
-    params.update({f"proc{i}": proc for i, proc in enumerate(list_of_procedures)})
+        # Bind parameters
+        params = {"owner": owner}
+        params.update({f"proc{i}": proc for i, proc in enumerate(list_of_procedures)})
 
-    # Execute the query
-    cursor = connection.cursor()
-    cursor.execute(query, params)
+        # Execute the query
+        cursor = connection.cursor()
+        cursor.execute(query, params)
 
-    # Fetch results
-    procedures = [{"owner": row[0], "package": row[1], "procedure_name": row[2]} for row in cursor.fetchall()]
-    cursor.close()
-    return procedures
+        # Fetch results
+        procedures = [{"owner": row[0], "package": row[1], "procedure_name": row[2]} for row in cursor.fetchall()]
+        cursor.close()
+        return procedures
 
 
 def query_sources(db_pool: OracleDBConnectionPool, owner: str, package: str = None, procedure: str = None,

@@ -3,9 +3,8 @@ import logging
 import os
 from enum import Enum
 
-import cx_Oracle
-
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject, TableObject
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.SequenceDatasource import fetch_attributes_for_sequences
 from db.datasource.TablesDatasource import fetch_table_columns_for_tables_grouped_by_schema_and_table_name, \
     fetch_table_attributes_for_tables_grouped_by_schema_and_table_name, \
@@ -276,15 +275,15 @@ def extract_unique_dependencies_types_from_data_file(
         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
 
 
-def extract_triggers_from_database(connection: cx_Oracle.Connection, unique_triggers: [str]):
+def extract_triggers_from_database(db_pool: OracleDBConnectionPool, unique_triggers: [str]):
     """
     Generate a JSON file containing metadata for given tables across all accessible schemas.
 
+    :param db_pool:
     :param unique_triggers:
-    :param connection:
     """
     # Fetch metadata
-    triggers = fetch_triggers_elements_from_database(connection, unique_triggers)
+    triggers = fetch_triggers_elements_from_database(db_pool=db_pool, trigger_names=unique_triggers)
 
     # Construct JSON structure
     triggers_metadata = []
@@ -309,15 +308,15 @@ def extract_triggers_from_database(connection: cx_Oracle.Connection, unique_trig
     return json.dumps(triggers_metadata, indent=4)
 
 
-def extract_sequences_attributes_from_database(connection: cx_Oracle.Connection, unique_sequences: [str]) -> dict:
+def extract_sequences_attributes_from_database(db_pool: OracleDBConnectionPool, unique_sequences: [str]) -> dict:
     """
     Generate a JSON file containing metadata for given tables across all accessible schemas.
 
+    :param db_pool:
     :param unique_sequences:
-    :param connection:
     """
     # Fetch metadata
-    sequences = fetch_attributes_for_sequences(connection, unique_sequences)
+    sequences = fetch_attributes_for_sequences(db_pool=db_pool, sequence_names=unique_sequences)
 
     # Construct JSON structure
     sequence_metadata = []
@@ -472,21 +471,22 @@ def get_trigger_names_and_status(triggers: dict, schema: str, table_name: str):
     ]
 
 
-def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table_names: [str]):
+def extract_table_metadata_from_database(db_pool: OracleDBConnectionPool, table_names: [str]):
     """
     Generate a JSON file containing metadata for given tables across all accessible schemas.
 
-    :param connection:
+    :param db_pool:
     :param table_names: List of table names (e.g., ["SZTBLAN", "ANOTHER_TABLE"])
-    :param output_file: The output file to save the generated JSON
     """
     # Fetch metadata
-    columns = fetch_table_columns_for_tables_grouped_by_schema_and_table_name(connection, table_names)
-    attributes = fetch_table_attributes_for_tables_grouped_by_schema_and_table_name(connection, table_names)
-    comments = fetch_column_comments_for_tables_grouped_by_schema_and_table_name(connection, table_names)
-    indexes = fetch_full_indexes_for_tables_grouped_by_schema_and_table_name(connection, table_names)
-    triggers = fetch_triggers_for_tables(connection, table_names)
-    # sequences = fetch_sequences_names_for_tables(connection,table_names)
+    columns = fetch_table_columns_for_tables_grouped_by_schema_and_table_name(db_pool=db_pool, table_names=table_names)
+    attributes = fetch_table_attributes_for_tables_grouped_by_schema_and_table_name(db_pool=db_pool,
+                                                                                    table_names=table_names)
+    comments = fetch_column_comments_for_tables_grouped_by_schema_and_table_name(db_pool=db_pool,
+                                                                                 table_names=table_names)
+    indexes = fetch_full_indexes_for_tables_grouped_by_schema_and_table_name(db_pool=db_pool, table_names=table_names)
+    triggers = fetch_triggers_for_tables(db_pool=db_pool, table_names=table_names)
+    # sequences = fetch_sequences_names_for_tables(db_pool=db_pool, table_names=table_names)
 
     # Construct JSON structure
     table_metadata = []
@@ -515,15 +515,14 @@ def extract_table_metadata_from_database(connection: cx_Oracle.Connection, table
     return json.dumps(table_metadata, indent=4)
 
 
-def add_base_tables_manager():
+def add_base_tables_manager(db_pool: OracleDBConnectionPool):
     logging.info("Starting: add base tables to object data")
     unique_tables = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.TABLE,
                                                                      environment=DatabaseEnvironment.BANNER9,
                                                                      is_custom=False)
 
     if unique_tables:
-        connection = get_db_connection(DatabaseEnvironment.BANNER9)
-        json_attributes_from_tables = extract_table_metadata_from_database(connection, unique_tables)
+        json_attributes_from_tables = extract_table_metadata_from_database(db_pool=db_pool, table_names=unique_tables)
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=
         json_attributes_from_tables)
         logging.info(f"Added {len(unique_tables)} base tables to object data")
@@ -533,7 +532,7 @@ def add_base_tables_manager():
     logging.info("Ending: add base tables to object data")
 
 
-def add_custom_sequences_manager():
+def add_custom_sequences_manager(db_pool: OracleDBConnectionPool, database_environment: DatabaseEnvironment):
     logging.info("Starting: add custom sequences to object data")
 
     unique_sequences = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.SEQUENCE,
@@ -542,8 +541,8 @@ def add_custom_sequences_manager():
     # Check if the list is not empty
     if unique_sequences:
         # Proceed only if unique_sequences is not empty
-        connection = get_db_connection(DatabaseEnvironment.BANNER9)
-        json_attributes_from_sequences = extract_sequences_attributes_from_database(connection, unique_sequences)
+        json_attributes_from_sequences = extract_sequences_attributes_from_database(db_pool=db_pool,
+                                                                                    unique_sequences=unique_sequences)
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=
         json_attributes_from_sequences)
         logging.info(f"Added {len(unique_sequences)} custom sequences to object data")
@@ -552,7 +551,8 @@ def add_custom_sequences_manager():
     logging.info("Ending: add custom sequences to object data")
 
 
-def add_custom_tables_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9):
+def add_custom_tables_manager(db_pool: OracleDBConnectionPool,
+                              database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9):
     logging.info("Starting: add custom tables to object data")
 
     unique_tables = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.TABLE,
@@ -563,8 +563,7 @@ def add_custom_tables_manager(database_environment: DatabaseEnvironment = Databa
         unique_tables.update(additional_tables)
 
     if unique_tables:
-        connection = get_db_connection(database_environment)
-        json_attributes_from_tables = extract_table_metadata_from_database(connection, unique_tables)
+        json_attributes_from_tables = extract_table_metadata_from_database(db_pool=db_pool, table_names=unique_tables)
         add_new_object_to_data_file(database_environment, new_json_data=
         json_attributes_from_tables)
     else:
@@ -572,7 +571,7 @@ def add_custom_tables_manager(database_environment: DatabaseEnvironment = Databa
     logging.info("Ending: add custom tables to object data")
 
 
-def add_custom_triggers_manager():
+def add_custom_triggers_manager(db_pool: OracleDBConnectionPool):
     logging.info("Starting: add custom tables to object data")
 
     unique_triggers = extract_table_unique_dependencies_types_from_data_file(table_object_type=TableObject.TRIGGER,
@@ -580,8 +579,7 @@ def add_custom_triggers_manager():
     # Check if the list is not empty
     if unique_triggers:
         # Proceed only if unique_triggers is not empty
-        connection = get_db_connection(DatabaseEnvironment.BANNER9)
-        json_attributes_from_triggers = extract_triggers_from_database(connection=connection,
+        json_attributes_from_triggers = extract_triggers_from_database(db_pool=db_pool,
                                                                        unique_triggers=unique_triggers)
 
         add_new_object_to_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=

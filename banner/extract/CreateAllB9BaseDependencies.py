@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 
 if __name__ == "__main__":
-    db_pool_banner9 = OracleDBConnectionPool(DatabaseEnvironment.BANNER9)
+    db_pool_banner9 = OracleDBConnectionPool(database_name=DatabaseEnvironment.BANNER9)
 
     find_missing_procedures_manager(db_pool=db_pool_banner9)
     create_source_code_manager(db_pool=db_pool_banner9)

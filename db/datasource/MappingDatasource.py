@@ -48,7 +48,7 @@ def query_mapping_table(db_pool: OracleDBConnectionPool) -> list[dict]:
     Returns:
         list: A list of dictionaries containing all fields of the matched rows.
     """
-    with db_pool.get_connection as connection:
+    with db_pool.get_connection() as connection:
         cursor = connection.cursor()
 
         # Construct the query with a bind variable for each name
@@ -85,7 +85,7 @@ def query_mapping_by_b7_names(db_pool: OracleDBConnectionPool, b7_names: []) -> 
     if not b7_names:
         return []
 
-    with db_pool.get_connection as connection:
+    with db_pool.get_connection() as connection:
         cursor = connection.cursor()
 
         # Construct the query with a bind variable for each name
@@ -124,7 +124,7 @@ def query_mapping_by_b7_names(db_pool: OracleDBConnectionPool, b7_names: []) -> 
 
 
 def query_mapping_by_b7_name(db_pool: OracleDBConnectionPool, b7_name: str) -> dict:
-    with db_pool.get_connection as connection:
+    with db_pool.get_connection() as connection:
         cursor = connection.cursor()
         query = """
         SELECT 
@@ -166,7 +166,7 @@ def insert_mapping_data(db_pool: OracleDBConnectionPool, rows_to_insert: List[Di
         :param rows_to_insert:
         :param db_pool:
     """
-    with db_pool.get_connection as connection:
+    with db_pool.get_connection() as connection:
         cursor = connection.cursor()
 
     if not rows_to_insert:
