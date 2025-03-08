@@ -1,6 +1,7 @@
 import logging
 
 from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from files.B9CompletedProceduresFile import create_source_code_manager
 from files.B9DependencyFile import find_all_dependencies_manager
 from files.B9IncompleteProceduresFile import find_missing_procedures_manager
@@ -11,7 +12,12 @@ logging.basicConfig(
 )
 
 if __name__ == "__main__":
-    find_missing_procedures_manager()
-    create_source_code_manager(database_environment=DatabaseEnvironment.BANNER9)
-    find_all_dependencies_manager(database_environment=DatabaseEnvironment.BANNER9)
+    banner9_environment = DatabaseEnvironment.BANNER9
+    db_pool_banner9 = OracleDBConnectionPool(database_name=banner9_environment)
+
+    find_missing_procedures_manager(db_pool=db_pool_banner9)
+    create_source_code_manager(db_pool=db_pool_banner9, database_environment=banner9_environment)
+    find_all_dependencies_manager(db_pool=db_pool_banner9)
+
+    db_pool_banner9.close_pool()
     # create_package_specification_source_code_manager(database_environment=DatabaseEnvironment.BANNER9)

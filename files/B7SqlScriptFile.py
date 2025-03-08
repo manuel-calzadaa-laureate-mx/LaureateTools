@@ -234,7 +234,7 @@ def build_synonym_section(synonym: str) -> str:
     return synonym_script
 
 
-def build_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> list[
+def build_create_table_script_data(requested_environment: DatabaseEnvironment) -> list[
     dict]:
     object_data = get_object_data_mapped_by_names_by_environment_and_type(database_environment=requested_environment,
                                                                           object_data_type=ObjectDataTypes.TABLE.value)
@@ -419,8 +419,8 @@ def build_create_trigger_script(trigger_info: dict) -> str:
     return trigger_script.strip()
 
 
-def create_table_scripts_manager():
-    scripts_data = build_create_table_script_data()
+def create_table_scripts_manager(database_environment: DatabaseEnvironment):
+    scripts_data = build_create_table_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
 
 
@@ -430,12 +430,12 @@ def get_scripts_folder_path() -> str:
     return source_folder
 
 
-def build_create_sequences_script_data():
+def build_create_sequences_script_data(database_environment: DatabaseEnvironment):
     pass
 
 
-def create_sequence_scripts_manager():
-    scripts_data = build_create_sequences_script_data()
+def create_sequence_scripts_manager(database_environment: DatabaseEnvironment):
+    scripts_data = build_create_sequences_script_data(database_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
 
 
