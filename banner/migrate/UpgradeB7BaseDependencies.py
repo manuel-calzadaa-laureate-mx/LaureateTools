@@ -8,10 +8,9 @@ if __name__ == "__main__":
     add_custom_sequences_manager()
 
     ## ADD CUSTOM BANNER 7 TABLES
-    add_custom_tables_manager()
+    add_custom_tables_manager(database_environment=DatabaseEnvironment.BANNER7)
 
     ## ADD CUSTOM BANNER 9 TABLES
     add_custom_tables_manager(database_environment=DatabaseEnvironment.BANNER9)
 
     add_custom_triggers_manager()
-

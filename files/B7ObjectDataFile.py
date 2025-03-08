@@ -535,7 +535,7 @@ def add_custom_sequences_manager():
     logging.info("Ending: add custom sequences to object data")
 
 
-def add_custom_tables_manager(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7):
+def add_custom_tables_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: add custom tables to object data")
 
     unique_tables = extract_unique_dependencies_types_from_data_file(database_object_type=DatabaseObject.TABLE,
