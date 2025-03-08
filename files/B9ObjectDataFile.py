@@ -364,9 +364,10 @@ def add_new_environment(new_environment: DatabaseEnvironment):
 
 
 def _get_generic_object_data_mapped_by_names_by_environment_and_type(
-        object_data_type: str = "TABLE",
-        database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9,
-        data_fetcher=None  # Function to fetch the JSON data
+
+        database_environment: DatabaseEnvironment,
+        data_fetcher: object = None,
+        object_data_type: str = "TABLE"  # Function to fetch the JSON data
 ) -> dict:
     if data_fetcher is None:
         raise ValueError("A data fetcher function must be provided.")
@@ -385,15 +386,15 @@ def _get_generic_object_data_mapped_by_names_by_environment_and_type(
     return object_data_dictionary
 
 
-def get_object_data_mapped_by_names_by_environment_and_type(object_data_type: str = "TABLE",
-                                                            database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
+def get_object_data_mapped_by_names_by_environment_and_type(
+        database_environment: DatabaseEnvironment, object_data_type: str = "TABLE") -> dict:
     return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
                                                                             database_environment=database_environment,
                                                                             data_fetcher=get_object_data())
 
 
-def get_migrated_object_data_mapped_by_names_by_environment_and_type(object_data_type: str = "TABLE",
-                                                                     database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
+def get_migrated_object_data_mapped_by_names_by_environment_and_type(
+        database_environment: DatabaseEnvironment, object_data_type: str = "TABLE") -> dict:
     return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
                                                                             database_environment=database_environment,
                                                                             data_fetcher=get_migrated_object_data())
@@ -589,12 +590,12 @@ def add_custom_triggers_manager(db_pool: OracleDBConnectionPool):
     logging.info("Ending: add custom tables to object data")
 
 
-def migrate_banner9_sequences_manager(refactor_table_names: bool = True):
-    unique_sequences = extract_unique_dependencies_types_from_data_file(environment=DatabaseEnvironment.BANNER9,
+def migrate_banner9_sequences_manager(database_environment: DatabaseEnvironment, refactor_table_names: bool = True):
+    unique_sequences = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                         database_object_type=DatabaseObject.SEQUENCE,
                                                                         is_custom=True)
     sequence_object_data = get_object_data_mapped_by_names_by_environment_and_type(
-        object_data_type=ObjectDataTypes.SEQUENCE.value, database_environment=DatabaseEnvironment.BANNER9)
+        object_data_type=ObjectDataTypes.SEQUENCE.value, database_environment=database_environment)
 
     for one_sequence in unique_sequences:
         current_sequence = sequence_object_data[one_sequence]
@@ -621,8 +622,8 @@ def migrate_banner9_sequences_manager(refactor_table_names: bool = True):
             add_or_update_object_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=new_sequence)
 
 
-def migrate_banner9_tables_manager(refactor_table_names: bool = True):
-    unique_tables = extract_unique_dependencies_types_from_data_file(environment=DatabaseEnvironment.BANNER9,
+def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment, refactor_table_names: bool = True):
+    unique_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                      database_object_type=DatabaseObject.TABLE,
                                                                      is_custom=True)
     object_data = get_object_data()
@@ -635,12 +636,12 @@ def migrate_banner9_tables_manager(refactor_table_names: bool = True):
                                                       b9_owner=b9_esquema)
 
         add_or_update_object_data_file(new_json_data=converted_table_data,
-                                       environment=DatabaseEnvironment.BANNER9)
+                                       environment=database_environment)
 
 
-def migrate_banner9_package_manager():
+def migrate_banner9_package_manager(database_environment: DatabaseEnvironment):
     packages_from_object_data = get_object_data_mapped_by_names_by_environment_and_type(
-        object_data_type=DatabaseObject.PACKAGE.name, database_environment=DatabaseEnvironment.BANNER9)
+        object_data_type=DatabaseObject.PACKAGE.name, database_environment=database_environment)
     for one_package in packages_from_object_data:
         add_or_update_object_data_file(new_json_data=packages_from_object_data[one_package],
-                                       environment=DatabaseEnvironment.BANNER9)
+                                       environment=database_environment)

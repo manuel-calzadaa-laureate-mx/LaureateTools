@@ -53,8 +53,8 @@ def _write_completed_procedures_data(completed_data_to_append):
                        is_append=True)
 
 
-def update_missing_procedures_to_add_manager(objects: list[dict], db_pool=OracleDBConnectionPool,
-                                             database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> None:
+def update_missing_procedures_to_add_manager(objects: list[dict], db_pool: OracleDBConnectionPool,
+                                             database_environment: DatabaseEnvironment) -> None:
     logging.info("Starting: update missing procedures to add")
     object_data_to_append = _find_missing_data_to_add(objects=objects, db_pool=db_pool,
                                                       database_environment=database_environment)
@@ -63,21 +63,21 @@ def update_missing_procedures_to_add_manager(objects: list[dict], db_pool=Oracle
 
 
 def _find_missing_data_to_add(objects: list[dict], db_pool: OracleDBConnectionPool,
-                              database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> \
+                              database_environment: DatabaseEnvironment) -> \
         list[list]:
     """Update the procedures file based on whether the function is packaged or independent."""
     hidden_dependencies = []
     for one_object in objects:
         logging.info(f"Processing function: {one_object}")
         if one_object["PACKAGE"]:
-            result = get_packaged_object_owner(object_dict=one_object)
+            result = get_packaged_object_owner(db_pool=db_pool, object_dict=one_object)
             logging.info(f"packaged object: {result}")
             if result is None:
                 logging.info(f"Could not retrieve owner/package/procedure for {one_object}")
                 # check if package is really the owner
-                all_owners = get_all_current_owners()
+                all_owners = get_all_current_owners(db_pool=db_pool)
                 # retrieve the "package" value
-                supposed_owner, object_name = split_table_name_into_package_and_table_name(one_object)
+                supposed_owner, object_name = split_table_name_into_package_and_table_name(obj_name=one_object)
                 if supposed_owner in all_owners:
                     hidden_dependencies.append([supposed_owner, None, object_name, None])
                     logging.info(f"Success! it was the owner {one_object}")
@@ -192,6 +192,7 @@ def _process_source_code_extraction(db_pool: OracleDBConnectionPool, data: dict)
             package_source_code = None
             if package:
                 package_source_code = query_sources(
+                    db_pool=db_pool,
                     owner=owner,
                     package=package
                 )

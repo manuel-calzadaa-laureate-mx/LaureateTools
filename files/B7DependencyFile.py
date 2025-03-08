@@ -237,7 +237,7 @@ def find_all_dependencies_manager(db_pool: OracleDBConnectionPool,
                                                  database_environment=DatabaseEnvironment.BANNER7)
 
         # Step 4: Find the source code for missing objects
-        create_source_code_manager()
+        create_source_code_manager(db_pool=db_pool)
 
 
 def resolve_dependency(owners: list, obj_name: str) -> dict:

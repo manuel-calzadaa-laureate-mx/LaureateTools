@@ -1,6 +1,7 @@
 import logging
 import os
 
+from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.ProceduresDatasource import query_all_procedures_by_owner_and_package
 from files.B9CompletedProceduresFile import get_completed_procedures_file_path
@@ -23,19 +24,19 @@ def get_incomplete_procedures() -> list[dict]:
     return read_csv_file(get_incomplete_procedures_file_path())
 
 
-def find_missing_procedures_manager(db_pool: OracleDBConnectionPool):
+def find_missing_procedures_manager(db_pool: OracleDBConnectionPool, database_environment=DatabaseEnvironment):
     """This process takes the input csv file Incomplete_Procedures.csv
     and finds all the procedures and functions that belong to a package.
     Then it creates a new file called Complete_Procedures.csv with the full data
     :param db_pool: """
     logging.info("Starting: looking for missing procedures")
     csv_rows = get_incomplete_procedures()
-    processed_data = _process_missing_procedures(db_pool=db_pool, rows=csv_rows)
+    processed_data = _process_missing_procedures(db_pool=db_pool, rows=csv_rows, environment=database_environment)
     write_csv_file(get_completed_procedures_file_path(), processed_data)
     logging.info("Ending: looking for missing procedures")
 
 
-def _process_missing_procedures(rows: list, db_pool: OracleDBConnectionPool):
+def _process_missing_procedures(rows: list, db_pool: OracleDBConnectionPool, environment: DatabaseEnvironment):
     """Process the data, querying missing procedures where needed.
     :param db_pool:
     """

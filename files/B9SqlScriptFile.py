@@ -240,7 +240,7 @@ def build_synonym_section(synonym: str) -> str:
     return synonym_script
 
 
-def build_create_table_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> list[
+def build_create_table_script_data(requested_environment: DatabaseEnvironment) -> list[
     dict]:
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
@@ -426,9 +426,9 @@ def build_create_trigger_script(trigger_info: dict) -> str:
     return trigger_script.strip()
 
 
-def create_table_scripts_manager():
+def create_table_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: create table script generator")
-    scripts_data = build_create_table_script_data()
+    scripts_data = build_create_table_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
     logging.info("Ending: create table script generator")
 
@@ -439,7 +439,7 @@ def get_scripts_folder_path() -> str:
     return source_folder
 
 
-def build_create_sequences_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> \
+def build_create_sequences_script_data(requested_environment: DatabaseEnvironment) -> \
         list[dict]:
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
@@ -509,9 +509,9 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
     return scripts
 
 
-def create_sequence_scripts_manager():
+def create_sequence_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: create sequence script generator")
-    scripts_data = build_create_sequences_script_data()
+    scripts_data = build_create_sequences_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
     logging.info("Ending: create sequence script generator")
 

@@ -39,7 +39,6 @@ def get_package_records(package_owner: str, package_names: list[str],
         cursor.execute(query, params)
         rows = cursor.fetchall()
         cursor.close()
-        connection.close()
         return rows
 
 
@@ -79,5 +78,4 @@ def get_package_record(package_owner: str, package_name: str,
         cursor.execute(query, {'package_owner': package_owner, 'package_name': package_name})
         rows = cursor.fetchall()
         cursor.close()
-        connection.close()
         return rows
