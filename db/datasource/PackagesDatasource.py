@@ -12,6 +12,9 @@ def get_package_records(package_owner: str, package_names: list[str],
 
        Returns:
            List[Tuple]: A list of tuples containing the source code records for the specified packages.
+           :param package_names:
+           :param package_owner:
+           :param db_pool:
        """
     with db_pool.get_connection() as connection:
         cursor = connection.cursor()

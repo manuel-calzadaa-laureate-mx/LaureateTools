@@ -159,7 +159,7 @@ def append_package_dependencies():
     logging.info("New rows added to 'dependencies.csv'.")
 
 
-def find_all_dependencies_manager(db_pool: OracleDBConnectionPool):
+def find_all_dependencies_manager(db_pool: OracleDBConnectionPool, database_environment: DatabaseEnvironment):
     last_remaining_objects = []
     while True:
         # Step 1: find and write all current dependencies
@@ -191,7 +191,7 @@ def find_all_dependencies_manager(db_pool: OracleDBConnectionPool):
                                                  db_pool=db_pool)
 
         # Step 4: Find the source code for missing objects
-        create_source_code_manager(db_pool=db_pool)
+        create_source_code_manager(db_pool=db_pool, database_environment=database_environment)
 
         # Step 5: Maybe the remaining object doesn't have dependencies
         last_remaining_objects = remaining_objects

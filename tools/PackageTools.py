@@ -1,6 +1,7 @@
 import sqlparse
 
 from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.PackagesDatasource import get_package_records, get_package_record
 from tools.SqlScriptTools import format_sql_by_steps
 
@@ -193,9 +194,9 @@ def extract_and_format_objects(lines: list[dict]) -> list[dict]:
 
 
 def get_packages_as_list(package_owner: str, package_names: list[str],
-                         database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9) -> dict:
+                         db_pool: OracleDBConnectionPool) -> dict:
     package_records = get_package_records(package_owner=package_owner, package_names=package_names,
-                                          database_environment=database_environment)
+                                          db_pool=db_pool)
     package_dictionary = _convert_package_records_to_dictionary(package_rows=package_records)
     grouped_package = _group_package_dictionary_by_name_and_type(package_dictionary=package_dictionary)
     return grouped_package

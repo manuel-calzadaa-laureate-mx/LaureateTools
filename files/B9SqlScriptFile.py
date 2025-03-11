@@ -5,7 +5,7 @@ from typing import Dict
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
 from files.B9ObjectDataFile import ObjectDataTypes, \
     get_migrated_object_data_mapped_by_names_by_environment_and_type
-from tools.PackageTools import get_packages_as_list, package_specification_extract_and_format
+from files.SourceCodeFile import get_source_code_folder
 from tools.SqlScriptTools import SqlScriptFilenamePrefix
 
 SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"
@@ -31,6 +31,17 @@ def build_header_section(filename: str):
     return (f"{PROMPT}{LINEFEED}"
             f"{PROMPT} [INI] ** Ejecutando {filename}{LINEFEED}"
             f"{PROMPT}{LINEFEED}")
+
+
+def build_footer_section(filename):
+    return (f"{PROMPT}{LINEFEED}"
+            f"{PROMPT} [FIN] ** Creando {filename}{LINEFEED}"
+            f"{PROMPT}{LINEFEED}"
+            f"{LINEFEED}"
+            f"BEGIN{LINEFEED}"
+            f"  NULL;{LINEFEED}"
+            f"END{END_OF_SENTENCE}"
+            f"{get_show_errors_block()}")
 
 
 def build_create_table_section(obj: Dict) -> str:
@@ -163,17 +174,6 @@ def _extract_value(value):
     if isinstance(value, set) and value:
         return next(iter(value))  # Extract first element from set
     return value  # Return string directly if not a set
-
-
-def build_footer_section(filename):
-    return (f"{PROMPT}{LINEFEED}"
-            f"{PROMPT} [FIN] ** Creando {filename}{LINEFEED}"
-            f"{PROMPT}{LINEFEED}"
-            f"{LINEFEED}"
-            f"BEGIN{LINEFEED}"
-            f"  NULL;{LINEFEED}"
-            f"END{END_OF_SENTENCE}"
-            f"{get_show_errors_block()}")
 
 
 def build_sequence_section(sequences: list) -> str:
@@ -516,55 +516,130 @@ def create_sequence_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Ending: create sequence script generator")
 
 
-def build_create_package_script_data(requested_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9):
+def build_create_package_script_data(requested_environment: DatabaseEnvironment):
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
         object_data_type=ObjectDataTypes.PACKAGE.value)
-    object_data_keys = list(object_data.keys())
-    all_packages_as_list = get_packages_as_list(package_owner='UVM',
-                                                package_names=object_data_keys,
-                                                database_environment=DatabaseEnvironment.BANNER9)
 
     scripts = []
-    for one_package_key in all_packages_as_list:
-        one_package = all_packages_as_list.get(one_package_key)
-        object_name = one_package.get("name")
-        object_owner = one_package.get("owner")
+    source_folder_path = get_source_code_folder(database_environment=requested_environment)
 
-        one_package_global_code = one_package.get("code")
-        package_specifications_code = one_package_global_code.get("PACKAGE")
-        package_specifications_code_lines = package_specifications_code.get("lines")
+    # Get the directory of the current script (B9SqlScriptFile.py)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
-        package_specifications_unformatted = package_specification_extract_and_format(
-            lines=package_specifications_code_lines)
+    # Navigate to the workfiles/b9_scripts folder
+    workfiles_dir = os.path.join(script_dir, source_folder_path)
 
-        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{object_name}", object_owner, "KP"]
+    # Normalize the path to resolve '..' and other relative components
+    workfiles_dir = os.path.normpath(workfiles_dir)
+
+    ## loop object_data get file path for PACKAGE SPECS
+    for key, value in object_data.items():
+        package_owner = value.get("owner")
+        package_name = value.get("name")
+        root = "NONE"
+        ## search {owner}.{package_name}.NONE.sql
+        package_specification_file_name = f"{package_owner}.{package_name}.{root}.sql"
+        package_specificacion_file_path = os.path.join(workfiles_dir, package_specification_file_name)
+
+        ## read package specification file
+        # Read package specification file
+        package_specification_list = [f"---------------------------- "
+                                      f"CREATE PACKAGE {package_name} SPECIFICATION"
+                                      f"---------------------------- "]
+
+        with open(package_specificacion_file_path, 'r') as file:
+            package_specification_list.append(LINEFEED)
+            package_specification_list.append("CREATE " + file.read())
+            package_specification_list.append(LINEFEED)
+            package_specification_list.append(get_show_errors_block())
+            package_specification_list.append(LINEFEED)
+
+        # Initialize package body
+        package_body_list = [f"---------------------------- "
+                             f"CREATE PACKAGE {package_name} BODY"
+                             f"---------------------------- "]
+
+        package_body_list.append(LINEFEED)
+        package_body_list.append(f"CREATE PACKAGE {package_name} BODY AS")
+        package_body_list.append(LINEFEED)
+
+        dependencies = value.get("dependencies")
+        for function in dependencies.get("functions"):
+            function_name = function.get("name")
+            function_file_name = f"{package_owner}.{package_name}.{function_name}.sql"
+            function_file_path = os.path.join(workfiles_dir, function_file_name)
+
+            with open(function_file_path, 'r') as file:
+                package_body_list.append(f"-- FUNCTION {function_name}")
+                package_body_list.append(LINEFEED)
+                package_body_list.append(file.read())
+                package_body_list.append(LINEFEED)
+
+        for procedure in dependencies.get("procedures"):
+            procedure_name = procedure.get("name")
+            procedure_file_name = f"{package_owner}.{package_name}.{procedure_name}.sql"
+            procedure_file_path = os.path.join(workfiles_dir, procedure_file_name)
+
+            try:
+                with open(procedure_file_path, 'r') as file:
+                    package_body_list.append(f"-- PROCEDURE {procedure_name}")
+                    package_body_list.append(LINEFEED)
+                    package_body_list.append(file.read())
+                    package_body_list.append(LINEFEED)
+            except UnicodeError:
+                logging.info(f"Procedure {procedure_name} has an undefined character")
+
+        package_body_list.append(f"END {package_name};")
+        package_body_list.append(LINEFEED)
+        package_body_list.append(get_show_errors_block())
+
+        ## create PACKAGE filename
+        ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{KP}.{GNT}.{SYN}.sql
+
+        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{package_name}", package_owner, "KP"]
 
         # Join all parts with a dot and add the file extension
         filename = ".".join(filename_parts) + ".sql"
 
+        ## PACKAGE SPECIFICATION SECTION
+        package_specifications = ''.join(
+            one_package_specification for one_package_specification in package_specification_list)
+
+        ## PACKAGE BODY SECTION
+        package_body = ''.join(one_package_body for one_package_body in package_body_list)
+
+        ## HEADER SECTION
         header_section = build_header_section(filename)
 
-        drop_object_section = f"-- Eliminaciones{LINEFEED}{LINEFEED}"
+        ## DROP SECTION
+        #     drop_object_section = f"-- Eliminaciones{LINEFEED}{LINEFEED}"
+        #
+        #     # for drop_element in drop_elements:
+        #     #     drop_object_section += f"-- DROP SEQUENCE {drop_element["name"]}{END_OF_SENTENCE}"
+        #
 
-        # for drop_element in drop_elements:
-        #     drop_object_section += f"-- DROP SEQUENCE {drop_element["name"]}{END_OF_SENTENCE}"
-
+        ## GRANTS SECTION
         grants = []
+
+        ## SYNONYMS SECTION
         synonyms = ""
 
+        ## FOOTER SECTION
         footer_section = build_footer_section(filename)
 
         script = (f"{header_section}"
                   f"{LINEFEED}"
-                  f"{drop_object_section}"
+                  # f"{drop_object_section}"
                   f"{LINEFEED}"
-                  # f"{package_specifications}"
+                  f"{package_specifications}"
                   f"{LINEFEED}"
-                  f"{grants}"
+                  f"{package_body}"
                   f"{LINEFEED}"
-                  f"{synonyms}"
-                  f"{LINEFEED}"
+                  # f"{grants}"
+                  # f"{LINEFEED}"
+                  # f"{synonyms}"
+                  # f"{LINEFEED}"
                   f"{footer_section}")
 
         scripts.append({
@@ -575,9 +650,9 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment 
     return scripts
 
 
-def create_packages_scripts_manager():
+def create_packages_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: create packages script generator")
-    scripts_data = build_create_package_script_data()
+    scripts_data = build_create_package_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
     logging.info("Starting: create packages script generator")
 

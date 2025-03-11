@@ -8,6 +8,7 @@ from db.datasource.ProceduresDatasource import query_sources
 from files.SourceCodeFile import get_source_code_folder
 from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
 from tools.FileTools import read_csv_file, write_csv_file
+from tools.PackageTools import get_packages_as_list
 
 COMPLETED_PROCEDURES_FILE_PATH = "../workfiles/b9_output/completed_procedures.csv"
 
@@ -170,8 +171,9 @@ def _write_extracted_data_to_source_code_files(extracted_data: dict, source_code
 
 
 def create_source_code_manager(db_pool: OracleDBConnectionPool,
-                               database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9):
+                               database_environment: DatabaseEnvironment):
     """Read, process, and write extracted source code.
+    :param database_environment:
     :param db_pool:
     """
     logging.info("Starting: extract source code")
@@ -277,21 +279,59 @@ def get_completed_procedures() -> list[dict]:
     return read_csv_file(get_completed_procedures_file_path())
 
 
-if __name__ == "__main__":
-    create_source_code_manager()
+def _group_package_specification_data(csv_data):
+    pass
 
 
-def create_package_specification_source_code_manager(
-        database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER9):
+def create_package_specification_source_code_manager(db_pool: OracleDBConnectionPool,
+                                                     database_environment: DatabaseEnvironment):
     """Read, process, and write extracted source code."""
     logging.info("Starting: extract package specification source code")
     script_dir = os.path.dirname(os.path.abspath(__file__))
     completed_procedures_csv_file_path = os.path.join(script_dir, get_completed_procedures_file_path())
     csv_data = read_csv_file(completed_procedures_csv_file_path)
-    # grouped_data = _group_package_specification_data(csv_data)
-    # grouped_data = _group_data_into_packages(csv_data)
-    # extracted_data = _process_source_code_extraction(grouped_data)
-    # source_code_folder = os.path.join(script_dir, get_source_code_folder(database_environment))
-    # _write_extracted_data_to_source_code_files(extracted_data, source_code_folder)
+
+    ## Extract unique package names
+    package_names = set()
+    for row in csv_data:
+        package_name = row.get("Package")
+        if package_name:
+            package_names.add(package_name)
+
+    ## Extract package specification code:
+    all_package_records = get_packages_as_list(package_owner="UVM", package_names=list(package_names), db_pool=db_pool)
+
+    # Initialize the extracted_data dictionary
+    extracted_data = {'source_codes': []}
+
+    for one_package_name, one_package_attributes in all_package_records.items():
+        # Extract the package owner
+        package_owner = one_package_attributes.get("owner")
+
+        # Extract the PACKAGE and PACKAGE BODY sections
+        package_specs_code = one_package_attributes.get('code', {}).get('PACKAGE', {}).get('lines', [])
+        package_body_code = one_package_attributes.get('code', {}).get('PACKAGE BODY', {}).get('lines', [])
+
+        # Combine the lines into a single string for each section
+        def combine_lines(lines):
+            return ''.join(line['text'] for line in lines)
+
+        package_specs_code_str = combine_lines(package_specs_code)
+        package_body_code_str = combine_lines(package_body_code)
+
+        # Create the file name
+        file_name = f"{package_owner}.{one_package_name}.NONE.sql"
+
+        # Append the file name and source code to the extracted_data dictionary
+        extracted_data['source_codes'].append({
+            'file_name': file_name,
+            'source_code': package_specs_code_str  # Use package_specs_code_str for the package specification
+        })
+    source_code_folder = os.path.join(script_dir, get_source_code_folder(database_environment))
+    _write_extracted_data_to_source_code_files(extracted_data, source_code_folder)
 
     logging.info("Ending: extract source code")
+
+
+if __name__ == "__main__":
+    create_source_code_manager()
