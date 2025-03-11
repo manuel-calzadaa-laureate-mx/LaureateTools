@@ -105,7 +105,7 @@ def extract_object_structure(object_name: str) -> dict:
         "prefix": department + custom,
         "object_identification": object_identification,
         "module": module,
-        "base": base + module,
+        "base": module + base,
         "only_base": base,
         "object_name": object_name
     }
