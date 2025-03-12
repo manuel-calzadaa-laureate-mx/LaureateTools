@@ -31,7 +31,8 @@ def get_show_errors_block():
 def build_header_section(filename: str):
     return (f"{PROMPT}{LINEFEED}"
             f"{PROMPT} [INI] ** Ejecutando {filename}{LINEFEED}"
-            f"{PROMPT}{LINEFEED}")
+            f"{PROMPT}{LINEFEED}"
+            f"SET SERVEROUTPUT ON{LINEFEED}")
 
 
 def get_package_opening_statement():
@@ -174,7 +175,7 @@ def build_drop_section(drop_objects: list[dict]) -> str:
     object_types = ['TABLE', 'SEQUENCE', 'SYNONYM']
 
     # Initialize the drop section with the header
-    drop_section = f"-- Eliminaciones{LINEFEED}{LINEFEED}"
+    drop_section = f"-- Eliminaciones{LINEFEED}"
 
     # Loop through each object type and append the drop statement if the key exists
     for obj_type in object_types:
@@ -370,7 +371,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
             # custom_trigger_section = build_trigger_section(triggers=value.get("triggers", {}))
             sequence_name = table_sequences[0].get("name")
             custom_grant_section = build_grant_section(grants=table_sequences[0].get("grants"))
-            custom_synonym_section = build_synonym_section(synonym=table_sequences[0].get("synonyms"))
+            custom_synonym_section = build_synonym_section(synonym=table_sequences[0].get("synonym"))
             if custom_synonym_section:
                 drop_elements.append({"type": {DatabaseObject.SYNONYM.name},
                                       "owner": {object_owner},
@@ -425,6 +426,76 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
             })
 
             ##CREATE TRIGGER DATA
+
+            drop_elements = []
+            table_name = value["name"]
+            object_type = value["type"]
+            object_owner = value['owner']
+            table_triggers = value['triggers']
+
+            # custom_sequences_section = build_sequence_section(sequences=value.get("sequences", {}))
+            # if custom_sequences_section:
+            #     for custom_sequence in value.get("sequences", {}):
+            #         drop_elements.append({"type": DatabaseObject.TRIGGER.name,
+            #                               "owner": {object_owner},
+            #                               "table": {table_name},
+            #                               "name": custom_sequence.get("name")})
+            custom_trigger_section = build_trigger_section(triggers=value.get("triggers", {}))
+            trigger_name = table_triggers[0].get("name")
+            # custom_grant_section = build_grant_section(grants=table_sequences[0].get("grants"))
+            # custom_synonym_section = build_synonym_section(synonym=table_sequences[0].get("synonyms"))
+            # if custom_synonym_section:
+            #     drop_elements.append({"type": {DatabaseObject.SYNONYM.name},
+            #                           "owner": {object_owner},
+            #                           "table": {table_name},
+            #                           "name": {table_name}})
+            # Start with the fixed parts of the filename
+            filename_parts = [f"{SqlScriptFilenamePrefix.TRIGGER.value}{trigger_name}", object_owner, "TR"]
+
+            # Conditionally add "IDX", "SEQ", and "TR" based on sections
+            # if index_section.strip():  # Ensure there's meaningful content in the index section
+            #     filename_parts.append("IDX")
+            # if custom_sequences_section.strip():  # Check if the sequences section has data
+            #     filename_parts.append("SEQ")
+            # if custom_trigger_section.strip():  # Check if the triggers section has data
+            #     filename_parts.append("TR")
+            # if custom_grant_section.strip():
+            #     filename_parts.append("GNT")
+            # if custom_synonym_section.strip():
+            #     filename_parts.append("SYN")
+
+            # Join all parts with a dot and add the file extension
+            filename = ".".join(filename_parts) + ".sql"
+
+            header_section = build_header_section(filename)
+            drop_object_section = build_drop_section(drop_elements)
+            footer_section = build_footer_section(filename)
+
+            script = (f"{header_section}"
+                      f"{LINEFEED}"
+                      f"{drop_object_section}"
+                      f"{LINEFEED}"
+                      # f"{create_table_section}"
+                      # f"{tablespace_section}"
+                      # f"{LINEFEED}"
+                      # f"{comments_section}"
+                      # f"{LINEFEED}"
+                      # f"{index_section}"
+                      # f"{LINEFEED}"
+                      # f"{custom_sequences_section}"
+                      # f"{LINEFEED}"
+                      f"{custom_trigger_section}"
+                      f"{LINEFEED}"
+                      # f"{custom_grant_section}"
+                      # f"{LINEFEED}"
+                      # f"{custom_synonym_section}"
+                      # f"{LINEFEED}"
+                      f"{footer_section}")
+
+            scripts.append({
+                "file_name": filename,
+                "script": script
+            })
 
     return scripts
 
