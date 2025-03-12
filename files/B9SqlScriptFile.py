@@ -616,10 +616,10 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         drop_object_section += f"-- DROP PACKAGE {package_name}{END_OF_SENTENCE}"
 
         ## GRANTS SECTION
-        grants = []
+        grants = build_grant_section(grants=value["grants"])
 
         ## SYNONYMS SECTION
-        synonyms = ""
+        synonyms = build_synonym_section(synonym=value["synonym"])
 
         ## FOOTER SECTION
         footer_section = build_footer_section(filename)
@@ -632,10 +632,10 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
                   f"{LINEFEED}"
                   f"{package_body}"
                   f"{LINEFEED}"
-                  # f"{grants}"
-                  # f"{LINEFEED}"
-                  # f"{synonyms}"
-                  # f"{LINEFEED}"
+                  f"{grants}"
+                  f"{LINEFEED}"
+                  f"{synonyms}"
+                  f"{LINEFEED}"
                   f"{footer_section}")
 
         scripts.append({

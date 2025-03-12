@@ -1,17 +1,18 @@
 import csv
 import heapq
-from collections import defaultdict, deque
+from collections import defaultdict
 
 from files.B9DependencyFile import get_dependency_file_path
 from tools.FileTools import read_csv_file
 
 OBJECT_WEIGHTS = {
-    'TABLE': 1000,       # Highest priority (but processed last due to min-heap)
-    'SEQUENCE': 1000,    # Highest priority (but processed last due to min-heap)
-    'PROCEDURE': 2,      # Lower priority
-    'FUNCTION': 2,       # Lower priority
-    'PACKAGE': 1         # Lowest priority
+    'TABLE': 1000,  # Highest priority (but processed last due to min-heap)
+    'SEQUENCE': 1000,  # Highest priority (but processed last due to min-heap)
+    'PROCEDURE': 2,  # Lower priority
+    'FUNCTION': 2,  # Lower priority
+    'PACKAGE': 1  # Lowest priority
 }
+
 
 def assign_package_weights(packages_with_deps):
     # Assign weights based on dependency depth
@@ -23,6 +24,7 @@ def assign_package_weights(packages_with_deps):
         package_weights[pkg] = weight
 
     return package_weights
+
 
 def topological_sort(graph, in_degree, nodes, package_weights):
     heap = []
@@ -58,6 +60,7 @@ def topological_sort(graph, in_degree, nodes, package_weights):
     else:
         raise Exception("Cycle detected in the dependency graph")
 
+
 def identify_packages_with_dependencies(dependencies):
     packages_with_deps = set()
 
@@ -80,9 +83,10 @@ def identify_packages_with_dependencies(dependencies):
 
     return packages_with_deps
 
+
 def parse_csv(file_path):
     dependencies = []
-    with open(file_path, mode='r') as file:
+    with open(file_path, mode='r', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         for row in reader:
             if row['STATUS'] == 'OK':
@@ -97,12 +101,14 @@ def parse_csv(file_path):
                 })
     return dependencies
 
+
 def write_csv(file_path, data, header):
     with open(file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(header)
         for order, (obj_type, obj_package, obj_name) in enumerate(data, start=1):
             writer.writerow([order, obj_package, obj_type, obj_name])
+
 
 def build_graph(dependencies, packages_with_deps):
     graph = defaultdict(list)
@@ -128,7 +134,7 @@ def build_graph(dependencies, packages_with_deps):
             continue
 
         ## Skip BASE objects
-        if dep['DEPENDENCY_TYPE'] in ["TABLE","SEQUENCE"] and not dep['DEPENDENCY_NAME'].startswith("TZ"):
+        if dep['DEPENDENCY_TYPE'] in ["TABLE", "SEQUENCE"] and not dep['DEPENDENCY_NAME'].startswith("TZ"):
             continue
 
         nodes.add(obj)
@@ -138,6 +144,7 @@ def build_graph(dependencies, packages_with_deps):
             in_degree[dep_obj] += 1
 
     return graph, in_degree, nodes
+
 
 def main():
     input_csv = get_dependency_file_path()
@@ -156,6 +163,7 @@ def main():
 
     # Write install.csv (reverse order)
     write_csv(install_csv, reversed(sorted_order), ['ORDER', 'PACKAGE_TYPE', 'OBJECT_TYPE', 'OBJECT_NAME'])
+
 
 if __name__ == '__main__':
     main()

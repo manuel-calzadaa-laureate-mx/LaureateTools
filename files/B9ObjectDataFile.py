@@ -153,7 +153,7 @@ def add_or_update_object_data_file(environment: DatabaseEnvironment, new_json_da
 
     # Ensure file exists and has valid JSON
     if os.path.exists(object_data_file) and os.path.getsize(object_data_file) > 0:
-        with open(object_data_file, "r") as file:
+        with open(object_data_file, "r", encoding='utf-8') as file:
             try:
                 data = json.load(file)
             except json.JSONDecodeError:

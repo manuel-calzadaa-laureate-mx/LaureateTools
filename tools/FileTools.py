@@ -20,7 +20,7 @@ def write_json_file(json_data: dict, output_filename: str) -> None:
 
 def read_json_file(input_filename: str) -> dict:
     try:
-        with open(input_filename, 'r') as file:
+        with open(input_filename, 'r', encoding='utf-8') as file:
             return json.load(file)
     except FileNotFoundError:
         raise FileNotFoundError(f"The file '{input_filename}' was not found.")
@@ -28,7 +28,7 @@ def read_json_file(input_filename: str) -> dict:
         raise ValueError(f"The file '{input_filename}' is not a valid JSON file.")
 
 
-def read_csv_file(input_file: str)-> list[dict]:
+def read_csv_file(input_file: str) -> list[dict]:
     """Read the input CSV file into memory as a list of dictionaries."""
     if not os.path.exists(input_file):  # Check if file exists
         return []

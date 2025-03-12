@@ -62,6 +62,7 @@ def _is_valid_mapping_data_row(mapping_data_row: dict) -> bool:
         return False
     return True
 
+
 def get_filtered_mapping_data_by_type_and_is_mapped_for_banner9(mapping_object_types: MappingFileTypes) -> list[dict]:
     mapping_data = get_mapping_data_by_type_and_is_mapped(mapping_object_types=mapping_object_types)
     filtered_mapping_data = []
@@ -72,6 +73,7 @@ def get_filtered_mapping_data_by_type_and_is_mapped_for_banner9(mapping_object_t
             continue
         filtered_mapping_data.append(one_mapping_data)
     return filtered_mapping_data
+
 
 def get_filtered_mapping_data_by_type_and_is_mapped_for_banner7(mapping_object_types: MappingFileTypes) -> list[dict]:
     mapping_data = get_mapping_data_by_type_and_is_mapped(mapping_object_types=mapping_object_types)
@@ -110,7 +112,7 @@ def get_mapping_data_by_type_and_is_mapped(mapping_object_types: MappingFileType
 def write_mapping_file(mapping_data: list[dict]) -> None:
     mapping_file_path = get_mapping_file_path()
 
-    with open(mapping_file_path, mode="w", newline="") as file:
+    with open(mapping_file_path, mode="w", newline="", encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=[
             "IS_MAPPED",
             "B7_TIPO", "B7_ESQUEMA", "B7_PAQUETE", "B7_NOMBRE",
