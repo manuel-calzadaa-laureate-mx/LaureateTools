@@ -158,10 +158,10 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
     sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
     triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
 
-    table_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
-    sequence_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
-                                       grant_type=GrantType.SEQUENCE)
-    grants = {"grants": table_grants.get("grants", []) + sequence_grants.get("grants", [])}
+    grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
+    # sequence_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
+    #                                    grant_type=GrantType.SEQUENCE)
+    # grants = {"grants": table_grants.get("grants", []) + sequence_grants.get("grants", [])}
 
     synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
     new_table = {

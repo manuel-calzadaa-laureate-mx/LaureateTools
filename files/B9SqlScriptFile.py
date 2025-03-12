@@ -257,6 +257,11 @@ def build_synonym_section(synonym: str) -> str:
 
 def build_create_table_script_data(requested_environment: DatabaseEnvironment) -> list[
     dict]:
+    """
+        Create 3 files: one for the Trigger, one for the Sequence, and one for the Table
+    :param requested_environment:
+    :return:
+    """
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
         object_data_type=ObjectDataTypes.TABLE.value)
@@ -264,6 +269,8 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
 
     for key, value in object_data.items():
         if value["name"]:
+
+            ## CREATE TABLE DATA
             drop_elements = []
             table_name = value["name"]
             object_type = value["type"]
@@ -281,14 +288,14 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
             index_section = build_indexes_and_primary_key_section(value.get("indexes", {}),
                                                                   object_owner,
                                                                   table_name)
-            custom_sequences_section = build_sequence_section(sequences=value.get("sequences", {}))
-            if custom_sequences_section:
-                for custom_sequence in value.get("sequences", {}):
-                    drop_elements.append({"type": DatabaseObject.SEQUENCE.name,
-                                          "owner": {object_owner},
-                                          "table": {table_name},
-                                          "name": custom_sequence.get("name")})
-            custom_trigger_section = build_trigger_section(triggers=value.get("triggers", {}))
+            # custom_sequences_section = build_sequence_section(sequences=value.get("sequences", {}))
+            # if custom_sequences_section:
+            #     for custom_sequence in value.get("sequences", {}):
+            #         drop_elements.append({"type": DatabaseObject.SEQUENCE.name,
+            #                               "owner": {object_owner},
+            #                               "table": {table_name},
+            #                               "name": custom_sequence.get("name")})
+            # custom_trigger_section = build_trigger_section(triggers=value.get("triggers", {}))
 
             custom_grant_section = build_grant_section(grants=value.get("grants", {}))
             custom_synonym_section = build_synonym_section(synonym=value.get("synonym"))
@@ -303,10 +310,10 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
             # Conditionally add "IDX", "SEQ", and "TR" based on sections
             if index_section.strip():  # Ensure there's meaningful content in the index section
                 filename_parts.append("IDX")
-            if custom_sequences_section.strip():  # Check if the sequences section has data
-                filename_parts.append("SEQ")
-            if custom_trigger_section.strip():  # Check if the triggers section has data
-                filename_parts.append("TR")
+            # if custom_sequences_section.strip():  # Check if the sequences section has data
+            #     filename_parts.append("SEQ")
+            # if custom_trigger_section.strip():  # Check if the triggers section has data
+            #     filename_parts.append("TR")
             if custom_grant_section.strip():
                 filename_parts.append("GNT")
             if custom_synonym_section.strip():
@@ -330,10 +337,10 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
                       f"{LINEFEED}"
                       f"{index_section}"
                       f"{LINEFEED}"
-                      f"{custom_sequences_section}"
-                      f"{LINEFEED}"
-                      f"{custom_trigger_section}"
-                      f"{LINEFEED}"
+                      # f"{custom_sequences_section}"
+                      # f"{LINEFEED}"
+                      # f"{custom_trigger_section}"
+                      # f"{LINEFEED}"
                       f"{custom_grant_section}"
                       f"{LINEFEED}"
                       f"{custom_synonym_section}"
@@ -344,6 +351,80 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
                 "file_name": filename,
                 "script": script
             })
+
+            ## CREATE SEQUENCE DATA
+
+            drop_elements = []
+            table_name = value["name"]
+            object_type = value["type"]
+            object_owner = value['owner']
+            table_sequences = value['sequences']
+
+            custom_sequences_section = build_sequence_section(sequences=value.get("sequences", {}))
+            if custom_sequences_section:
+                for custom_sequence in value.get("sequences", {}):
+                    drop_elements.append({"type": DatabaseObject.SEQUENCE.name,
+                                          "owner": {object_owner},
+                                          "table": {table_name},
+                                          "name": custom_sequence.get("name")})
+            # custom_trigger_section = build_trigger_section(triggers=value.get("triggers", {}))
+            sequence_name = table_sequences[0].get("name")
+            custom_grant_section = build_grant_section(grants=table_sequences[0].get("grants"))
+            custom_synonym_section = build_synonym_section(synonym=table_sequences[0].get("synonyms"))
+            if custom_synonym_section:
+                drop_elements.append({"type": {DatabaseObject.SYNONYM.name},
+                                      "owner": {object_owner},
+                                      "table": {table_name},
+                                      "name": {table_name}})
+            # Start with the fixed parts of the filename
+            filename_parts = [f"{SqlScriptFilenamePrefix.SEQUENCE.value}{sequence_name}", object_owner, "SEQ"]
+
+            # Conditionally add "IDX", "SEQ", and "TR" based on sections
+            # if index_section.strip():  # Ensure there's meaningful content in the index section
+            #     filename_parts.append("IDX")
+            # if custom_sequences_section.strip():  # Check if the sequences section has data
+            #     filename_parts.append("SEQ")
+            # if custom_trigger_section.strip():  # Check if the triggers section has data
+            #     filename_parts.append("TR")
+            if custom_grant_section.strip():
+                filename_parts.append("GNT")
+            if custom_synonym_section.strip():
+                filename_parts.append("SYN")
+
+            # Join all parts with a dot and add the file extension
+            filename = ".".join(filename_parts) + ".sql"
+
+            header_section = build_header_section(filename)
+            drop_object_section = build_drop_section(drop_elements)
+            footer_section = build_footer_section(filename)
+
+            script = (f"{header_section}"
+                      f"{LINEFEED}"
+                      f"{drop_object_section}"
+                      f"{LINEFEED}"
+                      # f"{create_table_section}"
+                      # f"{tablespace_section}"
+                      # f"{LINEFEED}"
+                      # f"{comments_section}"
+                      # f"{LINEFEED}"
+                      # f"{index_section}"
+                      # f"{LINEFEED}"
+                      f"{custom_sequences_section}"
+                      f"{LINEFEED}"
+                      # f"{custom_trigger_section}"
+                      # f"{LINEFEED}"
+                      f"{custom_grant_section}"
+                      f"{LINEFEED}"
+                      f"{custom_synonym_section}"
+                      f"{LINEFEED}"
+                      f"{footer_section}")
+
+            scripts.append({
+                "file_name": filename,
+                "script": script
+            })
+
+            ##CREATE TRIGGER DATA
 
     return scripts
 
@@ -489,8 +570,8 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
             sequences_script += get_show_errors()
             sequences_script += LINEFEED
 
-            filename_parts = [f"{SqlScriptFilenamePrefix.SEQUENCE.value}{object_name}", object_owner, "SEQ"]
-
+            filename_parts = [f"{SqlScriptFilenamePrefix.SEQUENCE.value}{object_name}", object_owner, "SEQ", "GNT",
+                              "SYN"]
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
 

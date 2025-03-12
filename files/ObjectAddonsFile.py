@@ -71,6 +71,10 @@ def _get_custom_sequences(json_data: dict, b9_table_name: str):
     extracted_table_info = extract_object_structure(object_name=b9_table_name)
     prefix = extracted_table_info.get("prefix")
     base = extracted_table_info.get("base")
+    sequence_name = f"{prefix}SE{base}"
+    sequences_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
+                                        grant_type=GrantType.SEQUENCE)
+    sequences_synonyms = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
 
     sequences = [
         {
@@ -81,7 +85,9 @@ def _get_custom_sequences(json_data: dict, b9_table_name: str):
             "start_with": field["start_with"],
             "max_value": field["max_value"],
             "cycle": field["cycle"],
-            "cache": field["cache"]
+            "cache": field["cache"],
+            "grants": sequences_grants["grants"],
+            "synonym": sequences_synonyms
         }
         for field in fields
     ]
@@ -131,7 +137,7 @@ def _get_custom_all_table_grants(json_data: dict, object_name: str):
     return {"grants": merged_grants}
 
 
-def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType = GrantType.TABLE):
+def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType):
     # Navigate to the grant type within the JSON structure
     fields = json_data["root"]["grants"][grant_type.value]
     script_template = fields["script"]
