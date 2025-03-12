@@ -18,7 +18,7 @@ def upload_mapping_file(mapping_file_name: str) -> List[Dict[str, str]]:
     """
     rows_to_insert = []
 
-    with open(mapping_file_name, mode='r') as file:
+    with open(mapping_file_name, mode='r', encoding='utf-8') as file:
         reader = csv.DictReader(file)
 
         for row in reader:

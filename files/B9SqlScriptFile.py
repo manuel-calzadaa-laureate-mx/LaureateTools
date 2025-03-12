@@ -594,9 +594,9 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         package_body_list.append(get_show_errors_block())
 
         ## create PACKAGE filename
-        ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{KP}.{GNT}.{SYN}.sql
+        ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{PK}.{GNT}.{SYN}.sql
 
-        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{package_name}", package_owner, "KP"]
+        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{package_name}", package_owner, "PK", "GNT", "SYN"]
 
         # Join all parts with a dot and add the file extension
         filename = ".".join(filename_parts) + ".sql"
@@ -662,7 +662,7 @@ def _write_script_files(scripts_data):
         file_path = os.path.join(scripts_folder_path, file_name)
 
         # Write the script to the file
-        with open(file_path, 'w') as file:
+        with open(file_path, 'w', encoding='utf-8') as file:
             file.write(script_content)
 
         logging.info(f"Saved script for table '{file_name}' to '{file_path}'")

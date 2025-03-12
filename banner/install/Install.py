@@ -103,7 +103,7 @@ def parse_csv(file_path):
 
 
 def write_csv(file_path, data, header):
-    with open(file_path, mode='w', newline='') as file:
+    with open(file_path, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(header)
         for order, (obj_type, obj_package, obj_name) in enumerate(data, start=1):

@@ -186,7 +186,7 @@ def add_or_update_object_data_file(environment: DatabaseEnvironment, new_json_da
         })
 
     # Write back to the file
-    with open(object_data_file, "w") as file:
+    with open(object_data_file, "w", encoding='utf-8') as file:
         json.dump(data, file, indent=4)
 
 

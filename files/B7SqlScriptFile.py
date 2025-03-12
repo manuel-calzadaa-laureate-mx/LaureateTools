@@ -448,7 +448,7 @@ def _write_script_files(scripts_data):
         file_path = os.path.join(scripts_folder_path, file_name)
 
         # Write the script to the file
-        with open(file_path, 'w') as file:
+        with open(file_path, 'w', encoding='utf-8') as file:
             file.write(script_content)
 
         logging.info(f"Saved script for table '{file_name}' to '{file_path}'")
