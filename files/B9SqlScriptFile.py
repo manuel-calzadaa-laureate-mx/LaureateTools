@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
@@ -31,6 +32,20 @@ def build_header_section(filename: str):
     return (f"{PROMPT}{LINEFEED}"
             f"{PROMPT} [INI] ** Ejecutando {filename}{LINEFEED}"
             f"{PROMPT}{LINEFEED}")
+
+
+def get_package_opening_statement():
+    return (f"SELECT TO_CHAR(SYSDATE,'DD/MON/YYYY HH24:MI') Fecha_Hora_Inicio from dual;"
+            f"{LINEFEED}")
+
+
+def get_package_body_closing_statement(package_name: str):
+    return (f"select text "
+            f"from user_errors "
+            f"where upper(name) = '{package_name}'"
+            f"and upper(type) = 'PACKAGE BODY';"
+            f""
+            f"select TO_CHAR(SYSDATE,'DD/MON/YYYY HH24:MI') Fecha_Hora_Fin from dual;")
 
 
 def build_footer_section(filename):
@@ -516,6 +531,20 @@ def create_sequence_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Ending: create sequence script generator")
 
 
+def replace_package_header(text, package_name, owner):
+    pattern = re.compile(rf'.*?\b{re.escape(package_name)}\b', re.IGNORECASE)
+    match = pattern.search(text)
+
+    if match:
+        start_pos = match.end() - len(package_name)
+        new_text = text[start_pos:]
+        new_text = f"CREATE OR REPLACE PACKAGE {owner}.{new_text}"
+
+        return new_text
+    else:
+        return text
+
+
 def build_create_package_script_data(requested_environment: DatabaseEnvironment):
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
@@ -549,7 +578,8 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
 
         with open(package_specificacion_file_path, 'r', encoding='utf-8') as file:
             package_specification_list.append(LINEFEED)
-            package_specification_list.append("CREATE " + file.read())
+            package_specification_list.append(
+                replace_package_header(text=file.read(), package_name=package_name, owner=package_owner))
             package_specification_list.append(LINEFEED)
             package_specification_list.append(get_show_errors_block())
             package_specification_list.append(LINEFEED)
@@ -560,7 +590,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
                              f"---------------------------- "]
 
         package_body_list.append(LINEFEED)
-        package_body_list.append(f"CREATE PACKAGE {package_name} BODY AS")
+        package_body_list.append(f"CREATE OR REPLACE PACKAGE {package_name} BODY IS")
         package_body_list.append(LINEFEED)
 
         dependencies = value.get("dependencies")
@@ -624,7 +654,9 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         ## FOOTER SECTION
         footer_section = build_footer_section(filename)
 
-        script = (f"{header_section}"
+        script = (f"{get_package_opening_statement()}"
+                  f"{LINEFEED}"
+                  f"{header_section}"
                   f"{LINEFEED}"
                   f"{drop_object_section}"
                   f"{LINEFEED}"
@@ -632,10 +664,12 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
                   f"{LINEFEED}"
                   f"{package_body}"
                   f"{LINEFEED}"
-                  f"{grants}"
+                  f"{get_package_body_closing_statement(package_name)}"
                   f"{LINEFEED}"
-                  f"{synonyms}"
-                  f"{LINEFEED}"
+                  # f"{grants}"
+                  # f"{LINEFEED}"
+                  # f"{synonyms}"
+                  # f"{LINEFEED}"
                   f"{footer_section}")
 
         scripts.append({
