@@ -542,13 +542,12 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         package_specification_file_name = f"{package_owner}.{package_name}.{root}.sql"
         package_specificacion_file_path = os.path.join(workfiles_dir, package_specification_file_name)
 
-        ## read package specification file
         # Read package specification file
         package_specification_list = [f"---------------------------- "
                                       f"CREATE PACKAGE {package_name} SPECIFICATION"
                                       f"---------------------------- "]
 
-        with open(package_specificacion_file_path, 'r') as file:
+        with open(package_specificacion_file_path, 'r', encoding='utf-8') as file:
             package_specification_list.append(LINEFEED)
             package_specification_list.append("CREATE " + file.read())
             package_specification_list.append(LINEFEED)
@@ -570,7 +569,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
             function_file_name = f"{package_owner}.{package_name}.{function_name}.sql"
             function_file_path = os.path.join(workfiles_dir, function_file_name)
 
-            with open(function_file_path, 'r') as file:
+            with open(function_file_path, 'r', encoding='utf-8') as file:
                 package_body_list.append(f"-- FUNCTION {function_name}")
                 package_body_list.append(LINEFEED)
                 package_body_list.append(file.read())
@@ -582,13 +581,13 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
             procedure_file_path = os.path.join(workfiles_dir, procedure_file_name)
 
             try:
-                with open(procedure_file_path, 'r') as file:
+                with open(procedure_file_path, 'r', encoding='utf-8') as file:
                     package_body_list.append(f"-- PROCEDURE {procedure_name}")
                     package_body_list.append(LINEFEED)
                     package_body_list.append(file.read())
                     package_body_list.append(LINEFEED)
-            except UnicodeError:
-                logging.info(f"Procedure {procedure_name} has an undefined character")
+            except UnicodeError as e:
+                logging.info(f"Procedure {procedure_name} has an undefined character {e}")
 
         package_body_list.append(f"END {package_name};")
         package_body_list.append(LINEFEED)
@@ -613,11 +612,8 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         header_section = build_header_section(filename)
 
         ## DROP SECTION
-        #     drop_object_section = f"-- Eliminaciones{LINEFEED}{LINEFEED}"
-        #
-        #     # for drop_element in drop_elements:
-        #     #     drop_object_section += f"-- DROP SEQUENCE {drop_element["name"]}{END_OF_SENTENCE}"
-        #
+        drop_object_section = f"-- REMOVALS {LINEFEED}{LINEFEED}"
+        drop_object_section += f"-- DROP PACKAGE {package_name}{END_OF_SENTENCE}"
 
         ## GRANTS SECTION
         grants = []
@@ -630,7 +626,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
 
         script = (f"{header_section}"
                   f"{LINEFEED}"
-                  # f"{drop_object_section}"
+                  f"{drop_object_section}"
                   f"{LINEFEED}"
                   f"{package_specifications}"
                   f"{LINEFEED}"
@@ -673,4 +669,4 @@ def _write_script_files(scripts_data):
 
 
 if __name__ == "__main__":
-    build_create_package_script_data()
+    build_create_package_script_data(requested_environment=DatabaseEnvironment.BANNER9)

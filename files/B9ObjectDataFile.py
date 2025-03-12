@@ -364,7 +364,6 @@ def add_new_environment(new_environment: DatabaseEnvironment):
 
 
 def _get_generic_object_data_mapped_by_names_by_environment_and_type(
-
         database_environment: DatabaseEnvironment,
         data_fetcher: object = None,
         object_data_type: str = "TABLE"  # Function to fetch the JSON data
@@ -387,14 +386,14 @@ def _get_generic_object_data_mapped_by_names_by_environment_and_type(
 
 
 def get_object_data_mapped_by_names_by_environment_and_type(
-        database_environment: DatabaseEnvironment, object_data_type: str = "TABLE") -> dict:
+        database_environment: DatabaseEnvironment, object_data_type: str) -> dict:
     return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
                                                                             database_environment=database_environment,
                                                                             data_fetcher=get_object_data())
 
 
 def get_migrated_object_data_mapped_by_names_by_environment_and_type(
-        database_environment: DatabaseEnvironment, object_data_type: str = "TABLE") -> dict:
+        database_environment: DatabaseEnvironment, object_data_type: str) -> dict:
     return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
                                                                             database_environment=database_environment,
                                                                             data_fetcher=get_migrated_object_data())
@@ -642,6 +641,15 @@ def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment, re
 def migrate_banner9_package_manager(database_environment: DatabaseEnvironment):
     packages_from_object_data = get_object_data_mapped_by_names_by_environment_and_type(
         object_data_type=DatabaseObject.PACKAGE.name, database_environment=database_environment)
-    for one_package in packages_from_object_data:
-        add_or_update_object_data_file(new_json_data=packages_from_object_data[one_package],
+
+    for package_name, package_dependencies in packages_from_object_data.items():
+        grants = read_custom_data(grant_type=GrantType.PACKAGE, object_addon_type=ObjectAddonType.GRANTS,
+                                  b9_object_name=package_name)
+        synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=package_name)
+
+        # Add grants and synonyms to the package data
+        packages_from_object_data[package_name]["grants"] = grants["grants"]
+        packages_from_object_data[package_name]["synonym"] = synonyms
+
+        add_or_update_object_data_file(new_json_data=packages_from_object_data[package_name],
                                        environment=database_environment)
