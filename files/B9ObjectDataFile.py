@@ -593,15 +593,19 @@ def migrate_banner9_sequences_manager(database_environment: DatabaseEnvironment,
     unique_sequences = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                         database_object_type=DatabaseObject.SEQUENCE,
                                                                         is_custom=True)
+
     sequence_object_data = get_object_data_mapped_by_names_by_environment_and_type(
         object_data_type=ObjectDataTypes.SEQUENCE.value, database_environment=database_environment)
 
     for one_sequence in unique_sequences:
+
         current_sequence = sequence_object_data[one_sequence]
         sequence_name = current_sequence["name"]
         grants = read_custom_data(grant_type=GrantType.SEQUENCE, object_addon_type=ObjectAddonType.GRANTS,
                                   b9_object_name=sequence_name)
+
         synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=sequence_name)
+
         if current_sequence:
             new_sequence = {
                 "owner": current_sequence["owner"],
@@ -618,6 +622,7 @@ def migrate_banner9_sequences_manager(database_environment: DatabaseEnvironment,
                 "grants": grants["grants"],
                 "synonym": synonyms,
             }
+
             add_or_update_object_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=new_sequence)
 
 

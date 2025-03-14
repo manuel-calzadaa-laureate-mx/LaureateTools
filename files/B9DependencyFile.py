@@ -1,5 +1,4 @@
 import logging
-import logging
 import os
 
 import pandas as pd
@@ -159,6 +158,29 @@ def append_package_dependencies():
     logging.info("New rows added to 'dependencies.csv'.")
 
 
+def fix_dependencies_file():
+    # Step 1: Read the CSV file
+    rows = get_dependencies_data()
+
+    # Step 2: Create a dictionary for rows where OBJECT_PACKAGE is 'NONE'
+    dependency_dict = {}
+    for row in rows:
+        if row['OBJECT_PACKAGE'] == 'NONE' and row['DEPENDENCY_NAME']:
+            dependency_dict[row['DEPENDENCY_NAME']] = row['DEPENDENCY_TYPE']
+
+    # Step 3: Filter rows based on the dictionary
+    filtered_rows = []
+    for row in rows:
+        if row['DEPENDENCY_NAME'] in dependency_dict:
+            if row['DEPENDENCY_TYPE'] == dependency_dict[row['DEPENDENCY_NAME']]:
+                filtered_rows.append(row)
+        else:
+            filtered_rows.append(row)
+
+    # Step 4: Write the filtered rows back to a new CSV file
+    write_csv_file(output_file=get_dependency_file_path(), data_to_write=filtered_rows, is_append=False)
+
+
 def find_all_dependencies_manager(db_pool: OracleDBConnectionPool, database_environment: DatabaseEnvironment):
     last_remaining_objects = []
     while True:
@@ -198,6 +220,7 @@ def find_all_dependencies_manager(db_pool: OracleDBConnectionPool, database_envi
 
     append_package_dependencies()
     ## add sources for package specifications
+    fix_dependencies_file()
 
 
 def resolve_dependency(owners: list, obj_name: str) -> dict:
@@ -403,3 +426,4 @@ def complete_dependency_file():
 if __name__ == "__main__":
     complete_dependency_file()
     # find_all_dependencies_manager(database_environment=DatabaseEnvironment.BANNER9)
+    fix_dependencies_file()

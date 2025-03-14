@@ -28,15 +28,16 @@ def find_missing_procedures_manager(db_pool: OracleDBConnectionPool, database_en
     """This process takes the input csv file Incomplete_Procedures.csv
     and finds all the procedures and functions that belong to a package.
     Then it creates a new file called Complete_Procedures.csv with the full data
+    :param database_environment:
     :param db_pool: """
     logging.info("Starting: looking for missing procedures")
     csv_rows = get_incomplete_procedures()
-    processed_data = _process_missing_procedures(db_pool=db_pool, rows=csv_rows, environment=database_environment)
+    processed_data = _process_missing_procedures(db_pool=db_pool, rows=csv_rows)
     write_csv_file(get_completed_procedures_file_path(), processed_data)
     logging.info("Ending: looking for missing procedures")
 
 
-def _process_missing_procedures(rows: list, db_pool: OracleDBConnectionPool, environment: DatabaseEnvironment):
+def _process_missing_procedures(rows: list, db_pool: OracleDBConnectionPool):
     """Process the data, querying missing procedures where needed.
     :param db_pool:
     """
@@ -58,4 +59,4 @@ def _process_missing_procedures(rows: list, db_pool: OracleDBConnectionPool, env
 
 
 if __name__ == "__main__":
-    find_missing_procedures_manager()
+    print("hi")

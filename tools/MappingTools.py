@@ -2,6 +2,7 @@ from enum import Enum
 from itertools import chain
 
 from db.DatabaseProperties import DatabaseEnvironment
+from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.MappingDatasource import query_mapping_table, query_mapping_table_by_object_type
 from files.B7ObjectDataFile import get_object_data_mapped_by_names_by_environment
 
@@ -29,18 +30,19 @@ def get_mapping_data_for_one_type_mapped_by_b7_object_name(mapping_object_type: 
     return {}
 
 
-def _get_mapping_data_mapped_by_b7_object_name() -> dict:
+def _get_mapping_data_mapped_by_b7_object_name(db_pool: OracleDBConnectionPool) -> dict:
     mapped_data = {}
-    mapping_records = query_mapping_table()
+    mapping_records = query_mapping_table(db_pool=db_pool)
     for mapping_record in mapping_records:
         b7_name = mapping_record.get('GZTBTMPEO_B7_NOMBRE', '')
         if b7_name:
             mapped_data[b7_name] = mapping_record
     return mapped_data
 
-def _get_mapping_data_mapped_by_b9_object_name() -> dict:
+
+def _get_mapping_data_mapped_by_b9_object_name(db_pool: OracleDBConnectionPool) -> dict:
     mapped_data = {}
-    mapping_records = query_mapping_table()
+    mapping_records = query_mapping_table(db_pool=db_pool)
     for mapping_record in mapping_records:
         b9_name = mapping_record.get('GZTBTMPEO_B9_NOMBRE', '')
         if b9_name:
@@ -48,10 +50,10 @@ def _get_mapping_data_mapped_by_b9_object_name() -> dict:
     return mapped_data
 
 
-def _extract_banner7_mapping_data():
+def _extract_banner7_mapping_data(db_pool: OracleDBConnectionPool):
     object_data_mapped_by_names = get_object_data_mapped_by_names_by_environment(
         database_environment=DatabaseEnvironment.BANNER7)
-    mapping_records_mapped_by_b7_names = _get_mapping_data_mapped_by_b7_object_name()
+    mapping_records_mapped_by_b7_names = _get_mapping_data_mapped_by_b7_object_name(db_pool=db_pool)
 
     mapping_data = []
 
@@ -86,10 +88,11 @@ def _extract_banner7_mapping_data():
 
     return mapping_data
 
-def _extract_banner9_mapping_data():
+
+def _extract_banner9_mapping_data(db_pool: OracleDBConnectionPool):
     object_data_mapped_by_names = get_object_data_mapped_by_names_by_environment(
         database_environment=DatabaseEnvironment.BANNER9)
-    mapping_records_mapped_by_b9_names = _get_mapping_data_mapped_by_b9_object_name()
+    mapping_records_mapped_by_b9_names = _get_mapping_data_mapped_by_b9_object_name(db_pool=db_pool)
 
     mapping_data = []
 
@@ -124,10 +127,10 @@ def _extract_banner9_mapping_data():
 
     return mapping_data
 
-def build_mapping_data() -> list[dict]:
 
-    banner7_mapping_data = _extract_banner7_mapping_data()
-    banner9_mapping_data = _extract_banner9_mapping_data()
+def build_mapping_data(db_pool: OracleDBConnectionPool) -> list[dict]:
+    banner7_mapping_data = _extract_banner7_mapping_data(db_pool=db_pool)
+    banner9_mapping_data = _extract_banner9_mapping_data(db_pool=db_pool)
     mapping_data = list(chain(banner7_mapping_data, banner9_mapping_data))
     return mapping_data
 

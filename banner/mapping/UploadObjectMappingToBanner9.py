@@ -1,10 +1,6 @@
 import csv
 from typing import List, Dict
 
-from db.DatabaseProperties import DatabaseEnvironment
-from db.OracleDatabaseTools import get_db_connection
-from db.datasource.MappingDatasource import insert_mapping_data
-
 
 def upload_mapping_file(mapping_file_name: str) -> List[Dict[str, str]]:
     """
@@ -52,8 +48,8 @@ def upload_mapping_file(mapping_file_name: str) -> List[Dict[str, str]]:
 if __name__ == "__main__":
     mapping_input_file = "../banner9/mapping.csv"
     db_config = '../../db_config.json'
-    db_connection = get_db_connection(database_name=DatabaseEnvironment.BANNER9)
-    mapping = upload_mapping_file(mapping_file_name=mapping_input_file)
-    print(mapping)
-    insert_mapping_data(rows_to_insert=mapping)
-    db_connection.close()
+    # db_connection = get_db_connection(database_name=DatabaseEnvironment.BANNER9)
+    # mapping = upload_mapping_file(mapping_file_name=mapping_input_file)
+    # print(mapping)
+    # insert_mapping_data(rows_to_insert=mapping)
+    # db_connection.close()
