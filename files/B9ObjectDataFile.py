@@ -223,6 +223,44 @@ def extract_table_unique_dependencies_types_from_data_file(
         raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
 
 
+def extract_unique_object_types_from_data_file(
+        environment: DatabaseEnvironment,
+        database_object_type: DatabaseObject,
+        is_custom: bool = True
+) -> set[str]:
+    """
+    Extracts all unique object names from a JSON file filtered by a specific environment and object type.
+
+    Parameters:
+        environment (DatabaseEnvironment): The environment to filter by.
+        is_custom (bool, optional): Filter for custom dependencies if the object type is 'TABLE'.
+
+    Returns:
+        list: A sorted list of unique dependency names.
+        :param environment:
+        :param is_custom:
+        :param database_object_type:
+    """
+
+    data = get_object_data()
+
+    # Ensure root exists and is a list
+    if 'root' not in data or not isinstance(data['root'], list):
+        raise ValueError("Invalid JSON structure: 'root' key not found or not a list.")
+
+    object_names = set()
+    # Iterate through root objects and filter by environment
+    for item in data['root']:
+        if item.get('environment').upper() == environment.name:
+            objects = item.get('objects', [])
+            for obj in objects:
+                object_type = obj.get("type")
+                if object_type == database_object_type.name and obj.get('custom') == is_custom:
+                    object_names.add(obj.get('name').upper())
+
+    return object_names
+
+
 def extract_unique_dependencies_types_from_data_file(
         environment: DatabaseEnvironment,
         database_object_type: DatabaseObject,
@@ -240,39 +278,32 @@ def extract_unique_dependencies_types_from_data_file(
     Returns:
         list: A sorted list of unique dependency names.
     """
-    input_file_name = get_object_data_file_path()
-    try:
-        with open(input_file_name, 'r') as file:
-            data = json.load(file)
 
-        # Ensure root exists and is a list
-        if 'root' not in data or not isinstance(data['root'], list):
-            raise ValueError("Invalid JSON structure: 'root' key not found or not a list.")
+    data = get_object_data()
 
-        dependency_names = set()
-        # Iterate through root objects and filter by environment
-        for item in data['root']:
-            if item.get('environment').upper() == environment.name:
-                objects = item.get('objects', [])
-                for obj in objects:
-                    object_type = obj.get("type")
-                    if object_type in ["PROCEDURE", "FUNCTION"]:
-                        dependencies = obj.get('dependencies', {})
-                        dependency_objects = dependencies.get(database_object_type.value, [])
-                        for dependency in dependency_objects:
-                            # Apply custom filter if the object type is TABLE
-                            if database_object_type.name.upper() == DatabaseObject.TABLE.name and is_custom:
-                                if dependency.get('custom') == is_custom:
-                                    dependency_names.add(dependency.get('name').upper())
-                            else:
+    # Ensure root exists and is a list
+    if 'root' not in data or not isinstance(data['root'], list):
+        raise ValueError("Invalid JSON structure: 'root' key not found or not a list.")
+
+    dependency_names = set()
+    # Iterate through root objects and filter by environment
+    for item in data['root']:
+        if item.get('environment').upper() == environment.name:
+            objects = item.get('objects', [])
+            for obj in objects:
+                object_type = obj.get("type")
+                if object_type in ["PROCEDURE", "FUNCTION"]:
+                    dependencies = obj.get('dependencies', {})
+                    dependency_objects = dependencies.get(database_object_type.value, [])
+                    for dependency in dependency_objects:
+                        # Apply custom filter if the object type is TABLE
+                        if database_object_type.name.upper() == DatabaseObject.TABLE.name and is_custom:
+                            if dependency.get('custom') == is_custom:
                                 dependency_names.add(dependency.get('name').upper())
+                        else:
+                            dependency_names.add(dependency.get('name').upper())
 
-        return dependency_names
-
-    except FileNotFoundError:
-        raise FileNotFoundError(f"The file '{input_file_name}' was not found.")
-    except json.JSONDecodeError:
-        raise ValueError(f"The file '{input_file_name}' is not a valid JSON file.")
+    return dependency_names
 
 
 def extract_triggers_from_database(db_pool: OracleDBConnectionPool, unique_triggers: [str]):
@@ -627,14 +658,19 @@ def migrate_banner9_sequences_manager(database_environment: DatabaseEnvironment,
 
 
 def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment, refactor_table_names: bool = True):
-    unique_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
-                                                                     database_object_type=DatabaseObject.TABLE,
-                                                                     is_custom=True)
+    unique_dependency_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
+                                                                                database_object_type=DatabaseObject.TABLE,
+                                                                                is_custom=True)
+    unique_object_tables = extract_unique_object_types_from_data_file(environment=database_environment,
+                                                                      database_object_type=DatabaseObject.TABLE,
+                                                                      is_custom=True)
+
     object_data = get_object_data()
+    unique_tables = unique_dependency_tables.union(unique_object_tables)
+
     for one_table in unique_tables:
         b9_nombre = one_table
         b9_esquema = "UVM"
-
         converted_table_data = migrate_b9_table_to_b9(json_data=object_data,
                                                       b9_table_name=b9_nombre,
                                                       b9_owner=b9_esquema)
