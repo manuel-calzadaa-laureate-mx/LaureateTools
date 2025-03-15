@@ -103,36 +103,50 @@ def convert_object_to_banner9(object_type: ObjectType, object_owner: str, object
     }
 
 
-def migrate_b9_sequence_to_b9(json_data: dict, b9_sequence_name: str,
-                              b9_owner: str = "UVM") -> dict:
-    # Find the original table
-    original_sequence = None
-    for env in json_data.get("root", []):
-        if env.get("environment") != DatabaseEnvironment.BANNER9.value:
-            continue
-        for obj in env.get("objects", []):
-            if obj.get("name") == b9_sequence_name:
-                original_sequence = obj
-                break
-        if original_sequence:
-            break
+def migrate_trigger_to_b9(b9_table_name: str,
+                          b9_owner: str = "UVM") -> list[dict]:
+    custom_triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
+    new_triggers = []
+    for custom_trigger in custom_triggers:
+        trigger_name = custom_trigger.get("name")
 
-    if not original_sequence:
-        raise ValueError(f"Original table '{b9_sequence_name}' not found in the JSON data.")
+        new_trigger = {
+            "name": trigger_name,
+            "type": "TRIGGER",
+            "owner": b9_owner,
+            "trigger": custom_trigger
+        }
+        new_triggers.append(new_trigger)
 
-    grants = read_custom_data(b9_object_name=b9_sequence_name, object_addon_type=ObjectAddonType.GRANTS,
-                              grant_type=GrantType.SEQUENCE)
-    synonym = read_custom_data(b9_object_name=b9_sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
-    new_table = {
-        "name": b9_sequence_name,
-        "type": "TABLE",
-        "owner": b9_owner,
-        "custom": original_sequence.get("custom", True),
-        "grants": grants["grants"],
-        "synonym": synonym,
-    }
+    return new_triggers
 
-    return new_table
+
+def migrate_sequence_to_b9(b9_table_name: str,
+                           b9_owner: str = "UVM") -> list[dict]:
+    custom_sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
+    new_sequences = []
+    for custom_sequence in custom_sequences:
+        sequence_name = custom_sequence.get("name")
+        grants = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.GRANTS,
+                                  grant_type=GrantType.SEQUENCE)
+        synonym = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
+        new_sequence = {
+            "name": sequence_name,
+            "type": "SEQUENCE",
+            "owner": b9_owner,
+            "min_value": custom_sequence.get("start_with"),
+            "max_value": custom_sequence.get("max_value"),
+            "increment_by": custom_sequence.get("increment_by"),
+            "cycle_flag": "N",
+            "order_flag": "N",
+            "cache_size": custom_sequence.get("cache"),
+            "last_number": 1,
+            "grants": grants["grants"],
+            "synonym": synonym,
+        }
+        new_sequences.append(new_sequence)
+
+    return new_sequences
 
 
 def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
@@ -173,8 +187,8 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
         "attributes": original_table.get("attributes", {}),
         "comments": comments["comments"],
         "indexes": indexes["indexes"],
-        "sequences": sequences["sequences"],
-        "triggers": triggers["triggers"],
+        # "sequences": sequences["sequences"],
+        # "triggers": triggers["triggers"],
         "grants": grants["grants"],
         "synonym": synonym,
     }

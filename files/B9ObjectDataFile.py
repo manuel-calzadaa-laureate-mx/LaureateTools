@@ -16,7 +16,7 @@ from files.ObjectAddonsFile import read_custom_data, GrantType, ObjectAddonType
 from files.TablesFile import get_tables_by_environment
 from tools.BusinessRulesTools import is_custom_table
 from tools.FileTools import read_json_file, write_json_file
-from tools.MigrationTools import migrate_b9_table_to_b9
+from tools.MigrationTools import migrate_b9_table_to_b9, migrate_sequence_to_b9, migrate_trigger_to_b9
 
 OBJECT_DATA_JSON = "../workfiles/b9_output/object_data.json"
 MIGRATED_OBJECT_DATA_JSON = "../workfiles/b9_output/migrated_object_data.json"
@@ -657,7 +657,7 @@ def migrate_banner9_sequences_manager(database_environment: DatabaseEnvironment,
             add_or_update_object_data_file(environment=DatabaseEnvironment.BANNER9, new_json_data=new_sequence)
 
 
-def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment, refactor_table_names: bool = True):
+def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment):
     unique_dependency_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                                 database_object_type=DatabaseObject.TABLE,
                                                                                 is_custom=True)
@@ -694,3 +694,44 @@ def migrate_banner9_package_manager(database_environment: DatabaseEnvironment):
 
         add_or_update_object_data_file(new_json_data=packages_from_object_data[package_name],
                                        environment=database_environment)
+
+
+def migrate_addon_sequence_manager(database_environment: DatabaseEnvironment):
+    unique_dependency_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
+                                                                                database_object_type=DatabaseObject.TABLE,
+                                                                                is_custom=True)
+    unique_object_tables = extract_unique_object_types_from_data_file(environment=database_environment,
+                                                                      database_object_type=DatabaseObject.TABLE,
+                                                                      is_custom=True)
+
+    unique_tables = unique_dependency_tables.union(unique_object_tables)
+
+    for one_table in unique_tables:
+        b9_nombre = one_table
+        b9_esquema = "UVM"
+        custom_sequences_addon_data = migrate_sequence_to_b9(b9_table_name=b9_nombre,
+                                                             b9_owner=b9_esquema)
+        for custom_sequence_addon_data in custom_sequences_addon_data:
+            add_or_update_object_data_file(new_json_data=custom_sequence_addon_data,
+                                           environment=database_environment)
+
+
+def migrate_addon_trigger_manager(database_environment: DatabaseEnvironment):
+    unique_dependency_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
+                                                                                database_object_type=DatabaseObject.TABLE,
+                                                                                is_custom=True)
+    unique_object_tables = extract_unique_object_types_from_data_file(environment=database_environment,
+                                                                      database_object_type=DatabaseObject.TABLE,
+                                                                      is_custom=True)
+
+    unique_tables = unique_dependency_tables.union(unique_object_tables)
+
+    for one_table in unique_tables:
+        b9_nombre = one_table
+        b9_esquema = "UVM"
+        custom_sequences_addon_data = migrate_trigger_to_b9(b9_table_name=b9_nombre,
+                                                            b9_owner=b9_esquema)
+
+        for custom_sequence_addon_data in custom_sequences_addon_data:
+            add_or_update_object_data_file(new_json_data=custom_sequence_addon_data,
+                                           environment=database_environment)

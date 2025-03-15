@@ -72,26 +72,17 @@ def _get_custom_sequences(json_data: dict, b9_table_name: str):
     prefix = extracted_table_info.get("prefix")
     base = extracted_table_info.get("base")
     sequence_name = f"{prefix}SE{base}"
-    sequences_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
-                                        grant_type=GrantType.SEQUENCE)
-    sequences_synonyms = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
 
-    sequences = [
-        {
-            "name": refactor_tagged_text(original_text=field["name"],
-                                         tags=["{prefix}", "{base}"],
-                                         replacement_text=[prefix, base]),
-            "increment_by": field["increment_by"],
-            "start_with": field["start_with"],
-            "max_value": field["max_value"],
-            "cycle": field["cycle"],
-            "cache": field["cache"],
-            "grants": sequences_grants["grants"],
-            "synonym": sequences_synonyms
-        }
-        for field in fields
-    ]
-    return {"sequences": sequences}
+    sequence = [{
+        "name": sequence_name,
+        "increment_by": field["increment_by"],
+        "start_with": field["start_with"],
+        "max_value": field["max_value"],
+        "cycle": field["cycle"],
+        "cache": field["cache"],
+    } for field in fields]
+
+    return sequence
 
 
 def get_custom_indexes() -> dict:
@@ -125,16 +116,16 @@ def _get_custom_indexes(json_data: dict):
     return {"indexes": transformed_indexes}
 
 
-def _get_custom_all_table_grants(json_data: dict, object_name: str):
-    table_grants = _get_custom_grants(json_data=json_data, object_name=object_name)
-
-    ## Get the sequence names:
-    custom_sequences = _get_custom_sequences(json_data=json_data, b9_table_name=object_name)
-    sequence_names = [sequence['name'] for sequence in custom_sequences['sequences']]
-    sequence_grants = get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names,
-                                                         grant_type=GrantType.SEQUENCE)
-    merged_grants = table_grants.get("grants", []) + sequence_grants.get("grants", [])
-    return {"grants": merged_grants}
+# def _get_custom_all_table_grants(json_data: dict, object_name: str):
+#     table_grants = _get_custom_grants(json_data=json_data, object_name=object_name)
+#
+#     ## Get the sequence names:
+#     custom_sequences = _get_custom_sequences(json_data=json_data, b9_table_name=object_name)
+#     sequence_names = [sequence['name'] for sequence in custom_sequences['sequences']]
+#     sequence_grants = get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names,
+#                                                          grant_type=GrantType.SEQUENCE)
+#     merged_grants = table_grants.get("grants", []) + sequence_grants.get("grants", [])
+#     return {"grants": merged_grants}
 
 
 def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType):
@@ -202,7 +193,7 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
         }
         for field in fields
     ]
-    return {"triggers": triggers}
+    return triggers
 
 
 def read_custom_data(b9_object_name: str, object_addon_type: ObjectAddonType, grant_type: GrantType = GrantType.TABLE):
@@ -225,7 +216,6 @@ def read_custom_data(b9_object_name: str, object_addon_type: ObjectAddonType, gr
         return _get_custom_triggers(json_data=json_custom_data, b9_table_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.GRANTS:
         return _get_custom_grants(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type)
-        # return _get_custom_all_table_grants(json_data=json_custom_data, object_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.SYNONYMS:
         return _get_custom_synonym(json_data=json_custom_data, b9_table_name=b9_object_name)
     else:
