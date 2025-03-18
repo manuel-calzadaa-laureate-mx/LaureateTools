@@ -32,6 +32,12 @@ class ObjectDataTypes(Enum):
     FUNCTION = "FUNCTION"
 
 
+class ObjectOriginType(Enum):
+    MANUAL = 'MANUAL'  ## objects added by new_table.csv file
+    ADDON = 'ADDON'  ## added by object_addon.json file
+    DEPENDENCY = 'DEPENDENCY'  ## added by dependency analysis
+
+
 def create_object_base_manager():
     dependencies_data = get_dependencies_data()
     object_data = _convert_dependencies_file_to_json_object(dependencies_data=dependencies_data)

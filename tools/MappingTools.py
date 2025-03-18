@@ -89,9 +89,9 @@ def _extract_banner7_mapping_data(db_pool: OracleDBConnectionPool):
     return mapping_data
 
 
-def _extract_banner9_mapping_data(db_pool: OracleDBConnectionPool):
+def _extract_mapping_data(db_pool: OracleDBConnectionPool, database_environment: DatabaseEnvironment):
     object_data_mapped_by_names = get_object_data_mapped_by_names_by_environment(
-        database_environment=DatabaseEnvironment.BANNER9)
+        database_environment=database_environment)
     mapping_records_mapped_by_b9_names = _get_mapping_data_mapped_by_b9_object_name(db_pool=db_pool)
 
     mapping_data = []
@@ -130,7 +130,8 @@ def _extract_banner9_mapping_data(db_pool: OracleDBConnectionPool):
 
 def build_mapping_data(db_pool: OracleDBConnectionPool) -> list[dict]:
     banner7_mapping_data = _extract_banner7_mapping_data(db_pool=db_pool)
-    banner9_mapping_data = _extract_banner9_mapping_data(db_pool=db_pool)
+    banner9_mapping_data = _extract_mapping_data(db_pool=db_pool,
+                                                 database_environment=DatabaseEnvironment.BANNER9)
     mapping_data = list(chain(banner7_mapping_data, banner9_mapping_data))
     return mapping_data
 

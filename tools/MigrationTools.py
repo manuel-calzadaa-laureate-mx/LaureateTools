@@ -3,7 +3,7 @@ from enum import Enum
 from db.DatabaseProperties import DatabaseEnvironment
 from files.ObjectAddonsFile import read_custom_data, ObjectAddonType, get_custom_indexes, GrantType
 from files.TableColumnSubstituteFile import get_tables_column_substitute_file
-from tools.CommonTools import MultiCounter, refactor_tagged_text, extract_object_structure
+from tools.CommonTools import MultiCounter, refactor_tagged_text, extract_object_structure, ObjectOriginType
 
 
 class ObjectType(Enum):
@@ -111,6 +111,7 @@ def migrate_trigger_to_b9(b9_table_name: str,
         trigger_name = custom_trigger.get("name")
 
         new_trigger = {
+            "origin": ObjectOriginType.ADDON.value,
             "name": trigger_name,
             "type": "TRIGGER",
             "owner": b9_owner,
@@ -131,6 +132,7 @@ def migrate_sequence_to_b9(b9_table_name: str,
                                   grant_type=GrantType.SEQUENCE)
         synonym = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
         new_sequence = {
+            "origin": ObjectOriginType.ADDON.value,
             "name": sequence_name,
             "type": "SEQUENCE",
             "owner": b9_owner,
@@ -179,6 +181,7 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
 
     synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
     new_table = {
+        "origin": original_table.get("origin", ObjectOriginType.DEPENDENCY.value),
         "name": b9_table_name,
         "type": "TABLE",
         "owner": b9_owner,

@@ -223,6 +223,4 @@ def _convert_package_records_to_dictionary(package_rows):
 
 
 if __name__ == "__main__":
-    package = get_packages_as_list(package_names=['FZPKC_CONTA_ELECT_UVM'], package_owner="UVM",
-                                   database_environment=DatabaseEnvironment.BANNER9)
-    print(package)
+    print("hi")

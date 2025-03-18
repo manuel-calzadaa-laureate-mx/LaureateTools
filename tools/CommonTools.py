@@ -1,5 +1,13 @@
+from enum import Enum
+
 from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.AllSourcesDatasource import get_all_owners
+
+
+class ObjectOriginType(Enum):
+    MANUAL = 'MANUAL'  ## objects added by new_table.csv file
+    ADDON = 'ADDON'  ## added by object_addon.json file
+    DEPENDENCY = 'DEPENDENCY'  ## added by dependency analysis
 
 
 def split_table_name_into_package_and_table_name(obj_name: str) -> dict:

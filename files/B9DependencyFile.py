@@ -425,5 +425,4 @@ def complete_dependency_file():
 
 if __name__ == "__main__":
     complete_dependency_file()
-    # find_all_dependencies_manager(database_environment=DatabaseEnvironment.BANNER9)
     fix_dependencies_file()
