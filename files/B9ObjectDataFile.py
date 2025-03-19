@@ -711,16 +711,18 @@ def migrate_banner9_package_manager(database_environment: DatabaseEnvironment):
         object_data_type=DatabaseObject.PACKAGE.name, database_environment=database_environment)
 
     for package_name, package_dependencies in packages_from_object_data.items():
-        grants = read_custom_data(grant_type=GrantType.PACKAGE, object_addon_type=ObjectAddonType.GRANTS,
-                                  b9_object_name=package_name)
-        synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=package_name)
+        object_status = package_dependencies.get("object_status", ObjectTargetType.SKIP.value)
+        if object_status == ObjectTargetType.INSTALL.value:
+            grants = read_custom_data(grant_type=GrantType.PACKAGE, object_addon_type=ObjectAddonType.GRANTS,
+                                      b9_object_name=package_name)
+            synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=package_name)
 
-        # Add grants and synonyms to the package data
-        packages_from_object_data[package_name]["grants"] = grants["grants"]
-        packages_from_object_data[package_name]["synonym"] = synonyms
+            # Add grants and synonyms to the package data
+            packages_from_object_data[package_name]["grants"] = grants["grants"]
+            packages_from_object_data[package_name]["synonym"] = synonyms
 
-        add_or_update_object_data_file(new_json_data=packages_from_object_data[package_name],
-                                       environment=database_environment)
+            add_or_update_object_data_file(new_json_data=packages_from_object_data[package_name],
+                                           environment=database_environment)
 
 
 def migrate_addon_sequence_manager(database_environment: DatabaseEnvironment):
