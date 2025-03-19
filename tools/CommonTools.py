@@ -4,6 +4,12 @@ from db.OracleDatabaseTools import OracleDBConnectionPool
 from db.datasource.AllSourcesDatasource import get_all_owners
 
 
+class ObjectTargetType(Enum):
+    MISSING = 'MISSING'
+    INSTALL = 'INSTALL'
+    SKIP = 'SKIP'
+
+
 class ObjectOriginType(Enum):
     MANUAL = 'MANUAL'  ## objects added by new_table.csv file
     ADDON = 'ADDON'  ## added by object_addon.json file

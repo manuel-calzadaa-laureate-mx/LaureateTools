@@ -3,6 +3,7 @@ import heapq
 from collections import defaultdict
 
 from files.B9DependencyFile import get_dependency_file_path
+from tools.CommonTools import ObjectTargetType
 from tools.FileTools import read_csv_file
 
 OBJECT_WEIGHTS = {
@@ -89,7 +90,7 @@ def parse_csv(file_path):
     with open(file_path, mode='r', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            if row['STATUS'] == 'OK':
+            if row['STATUS'] != ObjectTargetType.MISSING:
                 if row['DEPENDENCY_TYPE'] == "TABLE" and not row['DEPENDENCY_NAME'].startswith("TZ"):
                     continue
                 dependencies.append({

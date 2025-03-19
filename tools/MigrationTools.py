@@ -3,7 +3,8 @@ from enum import Enum
 from db.DatabaseProperties import DatabaseEnvironment
 from files.ObjectAddonsFile import read_custom_data, ObjectAddonType, get_custom_indexes, GrantType
 from files.TableColumnSubstituteFile import get_tables_column_substitute_file
-from tools.CommonTools import MultiCounter, refactor_tagged_text, extract_object_structure, ObjectOriginType
+from tools.CommonTools import MultiCounter, refactor_tagged_text, extract_object_structure, ObjectOriginType, \
+    ObjectTargetType
 
 
 class ObjectType(Enum):
@@ -111,6 +112,7 @@ def migrate_trigger_to_b9(b9_table_name: str,
         trigger_name = custom_trigger.get("name")
 
         new_trigger = {
+            "object_status": ObjectTargetType.INSTALL.value,
             "origin": ObjectOriginType.ADDON.value,
             "name": trigger_name,
             "type": "TRIGGER",
@@ -132,6 +134,7 @@ def migrate_sequence_to_b9(b9_table_name: str,
                                   grant_type=GrantType.SEQUENCE)
         synonym = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
         new_sequence = {
+            "status": ObjectTargetType.INSTALL.value,
             "origin": ObjectOriginType.ADDON.value,
             "name": sequence_name,
             "type": "SEQUENCE",
@@ -171,27 +174,20 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
     columns = _refactor_table_columns(original_table.get("columns", []), b9_table_name, b9_table_name)
     comments = _refactor_table_comments(original_table.get("comments", {}), b9_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b9_table_name, b9_table_name)
-    sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
-    triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
-
     grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
-    # sequence_grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
-    #                                    grant_type=GrantType.SEQUENCE)
-    # grants = {"grants": table_grants.get("grants", []) + sequence_grants.get("grants", [])}
-
     synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
+    custom_table = original_table.get("custom", True),
     new_table = {
+        "object_status": ObjectTargetType.INSTALL.value if custom_table else ObjectTargetType.SKIP,
         "origin": original_table.get("origin", ObjectOriginType.DEPENDENCY.value),
         "name": b9_table_name,
         "type": "TABLE",
         "owner": b9_owner,
-        "custom": original_table.get("custom", True),
+        "custom": custom_table,
         "columns": columns["columns"],
         "attributes": original_table.get("attributes", {}),
         "comments": comments["comments"],
         "indexes": indexes["indexes"],
-        # "sequences": sequences["sequences"],
-        # "triggers": triggers["triggers"],
         "grants": grants["grants"],
         "synonym": synonym,
     }

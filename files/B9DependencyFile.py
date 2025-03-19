@@ -5,12 +5,13 @@ import pandas as pd
 
 from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import OracleDBConnectionPool
-from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager
+from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager, \
+    get_completed_procedures_name_list
 from files.DependencyFile import extract_unique_existing_objects, extract_object_with_missing_status, \
     filter_missing_status_dependencies, find_delta_of_missing_dependencies, \
     is_object_dependency_procedure_or_function, is_object_need_process
 from files.SourceCodeFile import extract_all_dependencies_from_one_source_code_data, get_source_code_folder
-from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name
+from tools.CommonTools import get_all_current_owners, split_table_name_into_package_and_table_name, ObjectTargetType
 from tools.FileTools import write_csv_file, read_csv_file, read_json_file
 
 DEPENDENCIES_FILE_PATH = "../workfiles/b9_output/dependencies.csv"
@@ -101,7 +102,7 @@ def _write_dependencies_file(dependencies_data: list[dict]):
 
 
 def append_package_dependencies():
-    import pandas as pd
+    installable_package_list = get_completed_procedures_name_list()
 
     # Load the CSV file into a DataFrame
     dependencies_file = get_dependency_file_path()
@@ -132,9 +133,10 @@ def append_package_dependencies():
             # Get the corresponding row to copy OBJECT_OWNER, OBJECT_TYPE, etc.
             original_row = package_rows[package_rows['OBJECT_NAME'] == object_name].iloc[0]
 
+            status = ObjectTargetType.INSTALL.value if package in installable_package_list else ObjectTargetType.SKIP.value
             # Build the new row
             new_row = {
-                'STATUS': 'OK',  # Default status
+                'STATUS': status,
                 'OBJECT_OWNER': original_row['OBJECT_OWNER'],
                 'OBJECT_TYPE': 'PACKAGE',
                 'OBJECT_PACKAGE': 'NONE',  # Set as NONE for the root
@@ -290,6 +292,8 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
     current_owners = get_all_current_owners(db_pool=db_pool)
     dependencies_data = get_dependencies_data()
 
+    installable_packages_list = get_completed_procedures_name_list()
+
     for filename in os.listdir(source_folder):
         logging.info("Reading this source code file: %s", filename)
 
@@ -327,9 +331,11 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                 for dep_type, dep_names in dependencies_map.items():
                     for dep_name in dep_names:
                         resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dep_name)
+                        object_status = ObjectTargetType.INSTALL.value if (
+                                                                                  object_package or object_name) in installable_packages_list else ObjectTargetType.SKIP.value
 
                         dependencies.append({
-                            "STATUS": "OK",
+                            "STATUS": object_status,
                             "OBJECT_OWNER": object_owner,
                             "OBJECT_TYPE": object_type,
                             "OBJECT_PACKAGE": object_package,
@@ -342,7 +348,7 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
             else:
                 logging.info(f"data not found for file: {filename}, adding as missing dependency")
                 dependencies.append({
-                    "STATUS": "MISSING",
+                    "STATUS": ObjectTargetType.MISSING.value,
                     "OBJECT_OWNER": object_owner,
                     "OBJECT_TYPE": None,
                     "OBJECT_PACKAGE": object_package,
@@ -359,7 +365,7 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
             object_name = filename.split('.')[2]  # Assuming the file name is the object name
             logging.info(f"skipping empty sql file: {filename}, adding as missing dependency ")
             dependencies.append({
-                "STATUS": "MISSING",
+                "STATUS": ObjectTargetType.MISSING.value,
                 "OBJECT_OWNER": object_owner,
                 "OBJECT_TYPE": None,
                 "OBJECT_PACKAGE": object_package,
@@ -401,26 +407,30 @@ def complete_dependency_file():
     dependency_file = get_dependency_file_path()
     object_data = _get_object_data()
 
-    # Step 1: Read the dependencies.csv file
-    dependencies_df = pd.read_csv(dependency_file)
+    try:
 
-    # Step 2: Identify rows where DEPENDENCY_OWNER is missing
-    missing_owner_rows = dependencies_df[dependencies_df['DEPENDENCY_OWNER'].isna()]
+        # Step 1: Read the dependencies.csv file
+        dependencies_df = pd.read_csv(dependency_file)
 
-    # Create a dictionary to map name to owner
-    name_to_owner_map = {}
-    for root in object_data['root']:
-        for obj in root['objects']:
-            name_to_owner_map[obj['name']] = obj['owner']
+        # Step 2: Identify rows where DEPENDENCY_OWNER is missing
+        missing_owner_rows = dependencies_df[dependencies_df['DEPENDENCY_OWNER'].isna()]
 
-    # Step 4: Update the missing DEPENDENCY_OWNER values
-    for index, row in missing_owner_rows.iterrows():
-        dependency_name = row['DEPENDENCY_NAME']
-        if dependency_name in name_to_owner_map:
-            dependencies_df.at[index, 'DEPENDENCY_OWNER'] = name_to_owner_map[dependency_name]
+        # Create a dictionary to map name to owner
+        name_to_owner_map = {}
+        for root in object_data['root']:
+            for obj in root['objects']:
+                name_to_owner_map[obj['name']] = obj['owner']
 
-    # Step 5: Save the updated dependencies.csv file
-    dependencies_df.to_csv(dependency_file, index=False)
+        # Step 4: Update the missing DEPENDENCY_OWNER values
+        for index, row in missing_owner_rows.iterrows():
+            dependency_name = row['DEPENDENCY_NAME']
+            if dependency_name in name_to_owner_map:
+                dependencies_df.at[index, 'DEPENDENCY_OWNER'] = name_to_owner_map[dependency_name]
+
+        # Step 5: Save the updated dependencies.csv file
+        dependencies_df.to_csv(dependency_file, index=False)
+    except FileNotFoundError:
+        logging.error("Dependencies.csv file not found, please execute CreateAllBaseDependencies process first")
 
 
 if __name__ == "__main__":

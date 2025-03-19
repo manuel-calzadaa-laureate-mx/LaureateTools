@@ -279,10 +279,6 @@ def get_completed_procedures() -> list[dict]:
     return read_csv_file(get_completed_procedures_file_path())
 
 
-def _group_package_specification_data(csv_data):
-    pass
-
-
 def create_package_specification_source_code_manager(db_pool: OracleDBConnectionPool,
                                                      database_environment: DatabaseEnvironment):
     """Read, process, and write extracted source code."""
@@ -333,5 +329,15 @@ def create_package_specification_source_code_manager(db_pool: OracleDBConnection
     logging.info("Ending: extract source code")
 
 
+def get_completed_procedures_name_list() -> list:
+    """Read, process, and write extracted source code."""
+    logging.info("Starting: extract package specification source code")
+    all_completed_procedures = get_completed_procedures()
+    packages = set()
+    for row in all_completed_procedures:
+        packages.add(row.get("Package"))
+    return list(packages)
+
+
 if __name__ == "__main__":
-    create_source_code_manager()
+    print(get_completed_procedures_name_list())

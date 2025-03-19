@@ -15,7 +15,7 @@ from files.B9DependencyFile import get_dependencies_data
 from files.ObjectAddonsFile import read_custom_data, GrantType, ObjectAddonType
 from files.TablesFile import get_tables_by_environment
 from tools.BusinessRulesTools import is_custom_table
-from tools.CommonTools import ObjectOriginType
+from tools.CommonTools import ObjectOriginType, ObjectTargetType
 from tools.FileTools import read_json_file, write_json_file
 from tools.MigrationTools import migrate_b9_table_to_b9, migrate_sequence_to_b9, migrate_trigger_to_b9
 
@@ -56,7 +56,7 @@ def _convert_dependencies_file_to_json_object(dependencies_data: list[dict]) -> 
     for row in dependencies_data:
         obj_status = row['STATUS']
 
-        if obj_status != "OK":
+        if obj_status == ObjectTargetType.MISSING:
             continue
 
         obj_owner = row['OBJECT_OWNER']
@@ -69,6 +69,7 @@ def _convert_dependencies_file_to_json_object(dependencies_data: list[dict]) -> 
         # Initialize the object if it doesn't exist
         if obj_name not in objects_dict:
             objects_dict[obj_name] = {
+                "object_status": obj_status,
                 "origin": ObjectOriginType.DEPENDENCY.value,
                 "type": obj_type,
                 "owner": obj_owner,
@@ -325,6 +326,7 @@ def extract_triggers_from_database(db_pool: OracleDBConnectionPool,
     triggers_metadata = []
     for trigger in triggers:
         trigger_entry = {
+            "object_status": ObjectTargetType.SKIP.value,
             "origin": object_origin.value,
             "owner": trigger.get("owner"),
             "name": trigger.get("trigger_name"),
@@ -362,6 +364,7 @@ def extract_sequences_attributes_from_database(db_pool: OracleDBConnectionPool,
     sequence_metadata = []
     for sequence in sequences:
         sequence_entry = {
+            "status": ObjectTargetType.INSTALL.value,
             "origin": object_origin.value,
             "owner": sequence.get("sequence_owner"),
             "name": sequence.get("sequence_name"),
@@ -541,13 +544,14 @@ def extract_table_metadata_from_database(db_pool: OracleDBConnectionPool,
                 {"name": column_name, "comment": comment}
                 for column_name, comment in raw_comments.items()
             ]
-
+            custom_table = is_custom_table(table_name)
             table_entry = {
+                "object_status": ObjectTargetType.INSTALL.value if custom_table else ObjectTargetType.SKIP.value,
                 "origin": object_origin.value,
                 "name": table_name,
                 "type": "TABLE",
                 "owner": schema,
-                "custom": is_custom_table(table_name),
+                "custom": custom_table,
                 "columns": columns[schema].get(table_name, []),
                 "attributes": attributes.get(schema, {}).get(table_name, {}),
                 "comments": transformed_comments,
@@ -631,7 +635,6 @@ def add_custom_triggers_manager(db_pool: OracleDBConnectionPool, database_enviro
                                                                              environment=database_environment)
     # Check if the list is not empty
     if unique_triggers:
-        # Proceed only if unique_triggers is not empty
         json_attributes_from_triggers = extract_triggers_from_database(db_pool=db_pool,
                                                                        unique_triggers=unique_triggers,
                                                                        object_origin=ObjectOriginType.DEPENDENCY)
