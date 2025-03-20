@@ -335,7 +335,13 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                 for dep_type, dep_names in dependencies_map.items():
                     for dep_name in dep_names:
                         resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dep_name)
-                        object_status = ObjectTargetType.INSTALL.value if object_package or object_name in installable_packages_list else ObjectTargetType.SKIP.value
+
+                        object_status = (
+                            ObjectTargetType.INSTALL.value
+                            if any(item in installable_packages_list for item in (object_package, object_name))
+                            else ObjectTargetType.SKIP.value
+                        )
+
                         dependencies.append({
                             "STATUS": object_status,
                             "OBJECT_OWNER": object_owner,
