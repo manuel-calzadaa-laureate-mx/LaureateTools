@@ -802,3 +802,12 @@ def migrate_functions_manager(database_environment: DatabaseEnvironment):
     for one_object_data in object_data:
         if one_object_data.get("object_status") == ObjectTargetType.INSTALL.value:
             add_or_update_object_data_file(environment=database_environment, new_json_data=one_object_data)
+
+
+def migrate_procedures_manager(database_environment: DatabaseEnvironment):
+    object_data = get_only_filtered_objects(database_environment=database_environment,
+                                            object_type=ObjectDataTypes.PROCEDURE)
+
+    for one_object_data in object_data:
+        if one_object_data.get("object_status") == ObjectTargetType.INSTALL.value:
+            add_or_update_object_data_file(environment=database_environment, new_json_data=one_object_data)
