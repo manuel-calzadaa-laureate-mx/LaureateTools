@@ -4,7 +4,7 @@ import re
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
-from files.B9ObjectDataFile import ObjectDataTypes, \
+from files.ObjectDataFile import ObjectDataTypes, \
     get_migrated_object_data_mapped_by_names_by_environment_and_type
 from files.SourceCodeFile import get_source_code_folder
 from tools.SqlScriptTools import SqlScriptFilenamePrefix

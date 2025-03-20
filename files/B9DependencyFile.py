@@ -16,6 +16,7 @@ from tools.FileTools import write_csv_file, read_csv_file, read_json_file
 
 DEPENDENCIES_FILE_PATH = "../workfiles/b9_output/dependencies.csv"
 MISSING_DEPENDENCIES_FILE_PATH = "../workfiles/b9_output/missing_dependencies.csv"
+_OBJECT_DATA_JSON = "../workfiles/b9_output/object_data.json"
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -322,7 +323,10 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
             if source_code_lines:
 
                 first_row_of_source_code_lines = source_code_lines[0].strip().upper()
-                object_type = "PROCEDURE" if "PROCEDURE" in first_row_of_source_code_lines else "FUNCTION"
+                object_type = find_object_type_from_first_source_code_line(first_row_of_source_code_lines)
+
+                if object_type == "UNKNOWN":
+                    continue
 
                 # Extract dependencies
                 dependencies_map = extract_all_dependencies_from_one_source_code_data(source_code_lines)
@@ -331,9 +335,7 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                 for dep_type, dep_names in dependencies_map.items():
                     for dep_name in dep_names:
                         resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dep_name)
-                        object_status = ObjectTargetType.INSTALL.value if (
-                                                                                  object_package or object_name) in installable_packages_list else ObjectTargetType.SKIP.value
-
+                        object_status = ObjectTargetType.INSTALL.value if object_package or object_name in installable_packages_list else ObjectTargetType.SKIP.value
                         dependencies.append({
                             "STATUS": object_status,
                             "OBJECT_OWNER": object_owner,
@@ -378,6 +380,16 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
     return dependencies
 
 
+def find_object_type_from_first_source_code_line(first_row_of_source_code_lines: str):
+    valid_object_types = ("PROCEDURE", "FUNCTION")
+    object_type = "UNKNOWN"
+    for obj_type in valid_object_types:
+        if obj_type in first_row_of_source_code_lines:
+            object_type = obj_type
+            break
+    return object_type
+
+
 def get_dependency_file_path():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_folder = os.path.join(script_dir, DEPENDENCIES_FILE_PATH)
@@ -388,9 +400,6 @@ def get_missing_dependencies_file_path():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_folder = os.path.join(script_dir, MISSING_DEPENDENCIES_FILE_PATH)
     return source_folder
-
-
-_OBJECT_DATA_JSON = "../workfiles/b9_output/object_data.json"
 
 
 def _get_object_data_file_path() -> str:

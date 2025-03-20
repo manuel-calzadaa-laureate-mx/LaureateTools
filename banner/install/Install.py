@@ -8,9 +8,10 @@ from tools.FileTools import read_csv_file
 
 OBJECT_WEIGHTS = {
     'TABLE': 1000,  # Highest priority (but processed last due to min-heap)
-    'SEQUENCE': 1000,  # Highest priority (but processed last due to min-heap)
+    'SEQUENCE': 900,  # Highest priority (but processed last due to min-heap)
+    'TRIGGER': 800,
+    'FUNCTION': 3,  # Lower priority
     'PROCEDURE': 2,  # Lower priority
-    'FUNCTION': 2,  # Lower priority
     'PACKAGE': 1  # Lowest priority
 }
 

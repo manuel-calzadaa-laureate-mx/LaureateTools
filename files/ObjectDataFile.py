@@ -245,7 +245,7 @@ def extract_unique_object_types_from_data_file(
         :param database_object_type:
     """
 
-    data = get_object_data()
+    data = get_full_object_data()
 
     # Ensure root exists and is a list
     if 'root' not in data or not isinstance(data['root'], list):
@@ -282,7 +282,7 @@ def extract_unique_dependencies_types_from_data_file(
         list: A sorted list of unique dependency names.
     """
 
-    data = get_object_data()
+    data = get_full_object_data()
 
     # Ensure root exists and is a list
     if 'root' not in data or not isinstance(data['root'], list):
@@ -433,7 +433,7 @@ def get_object_data_mapped_by_names_by_environment_and_type(
         database_environment: DatabaseEnvironment, object_data_type: str) -> dict:
     return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
                                                                             database_environment=database_environment,
-                                                                            data_fetcher=get_object_data())
+                                                                            data_fetcher=get_full_object_data())
 
 
 def get_migrated_object_data_mapped_by_names_by_environment_and_type(
@@ -446,7 +446,7 @@ def get_migrated_object_data_mapped_by_names_by_environment_and_type(
 def get_object_data_mapped_by_names_by_environment(
         database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> dict:
     object_data_dictionary = {}
-    object_data = get_object_data()  # Fetch JSON data
+    object_data = get_full_object_data()  # Fetch JSON data
 
     for one_root in object_data.get("root", []):  # Ensure "root" exists
         if one_root.get("environment") == database_environment.value:
@@ -462,7 +462,7 @@ def get_object_data_names_by_environment(
         database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7
 ) -> list[str]:
     object_data_names = []
-    object_data = get_object_data()  # Fetch JSON data
+    object_data = get_full_object_data()  # Fetch JSON data
 
     for one_root in object_data.get("root", []):  # Ensure "root" exists
         if one_root.get("environment") == database_environment.value:
@@ -472,9 +472,38 @@ def get_object_data_names_by_environment(
     return object_data_names
 
 
-def get_object_data() -> dict:
+def get_full_object_data() -> dict:
     config_file = get_object_data_file_path()
     return read_json_file(config_file)
+
+
+def get_only_objects(database_environment: DatabaseEnvironment) -> list[dict]:
+    config_file = get_object_data_file_path()
+    object_data = read_json_file(config_file)
+    root_data = object_data.get("root", {})
+    only_objects = []
+    for one_root_data in root_data:
+        if one_root_data.get("environment", "") == database_environment.value:
+            environment_objects = one_root_data.get("objects", {})
+            for one_object in environment_objects:
+                only_objects.append(one_object)
+
+    return only_objects
+
+
+def get_only_filtered_objects(database_environment: DatabaseEnvironment, object_type: ObjectDataTypes) -> list[dict]:
+    config_file = get_object_data_file_path()
+    object_data = read_json_file(config_file)
+    root_data = object_data.get("root", {})
+    only_objects = []
+    for one_root_data in root_data:
+        if one_root_data.get("environment", "") == database_environment.value:
+            environment_objects = one_root_data.get("objects", {})
+            for one_object in environment_objects:
+                if one_object.get("type") == object_type.value:
+                    only_objects.append(one_object)
+
+    return only_objects
 
 
 def get_migrated_object_data() -> dict:
@@ -646,7 +675,7 @@ def add_custom_triggers_manager(db_pool: OracleDBConnectionPool, database_enviro
     logging.info("Ending: add custom tables to object data")
 
 
-def migrate_banner9_sequences_manager(database_environment: DatabaseEnvironment):
+def migrate_sequences_manager(database_environment: DatabaseEnvironment):
     unique_sequences = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                         database_object_type=DatabaseObject.SEQUENCE,
                                                                         is_custom=True)
@@ -684,7 +713,7 @@ def migrate_banner9_sequences_manager(database_environment: DatabaseEnvironment)
             add_or_update_object_data_file(environment=database_environment, new_json_data=new_sequence)
 
 
-def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment):
+def migrate_tables_manager(database_environment: DatabaseEnvironment):
     unique_dependency_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                                 database_object_type=DatabaseObject.TABLE,
                                                                                 is_custom=True)
@@ -692,7 +721,7 @@ def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment):
                                                                       database_object_type=DatabaseObject.TABLE,
                                                                       is_custom=True)
 
-    object_data = get_object_data()
+    object_data = get_full_object_data()
     unique_tables = unique_dependency_tables.union(unique_object_tables)
 
     for one_table in unique_tables:
@@ -706,7 +735,7 @@ def migrate_banner9_tables_manager(database_environment: DatabaseEnvironment):
                                        environment=database_environment)
 
 
-def migrate_banner9_package_manager(database_environment: DatabaseEnvironment):
+def migrate_packages_manager(database_environment: DatabaseEnvironment):
     packages_from_object_data = get_object_data_mapped_by_names_by_environment_and_type(
         object_data_type=DatabaseObject.PACKAGE.name, database_environment=database_environment)
 
@@ -725,7 +754,7 @@ def migrate_banner9_package_manager(database_environment: DatabaseEnvironment):
                                            environment=database_environment)
 
 
-def migrate_addon_sequence_manager(database_environment: DatabaseEnvironment):
+def migrate_addon_sequences_manager(database_environment: DatabaseEnvironment):
     unique_dependency_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                                 database_object_type=DatabaseObject.TABLE,
                                                                                 is_custom=True)
@@ -745,7 +774,7 @@ def migrate_addon_sequence_manager(database_environment: DatabaseEnvironment):
                                            environment=database_environment)
 
 
-def migrate_addon_trigger_manager(database_environment: DatabaseEnvironment):
+def migrate_addon_triggers_manager(database_environment: DatabaseEnvironment):
     unique_dependency_tables = extract_unique_dependencies_types_from_data_file(environment=database_environment,
                                                                                 database_object_type=DatabaseObject.TABLE,
                                                                                 is_custom=True)
@@ -764,3 +793,12 @@ def migrate_addon_trigger_manager(database_environment: DatabaseEnvironment):
         for custom_sequence_addon_data in custom_sequences_addon_data:
             add_or_update_object_data_file(new_json_data=custom_sequence_addon_data,
                                            environment=database_environment)
+
+
+def migrate_functions_manager(database_environment: DatabaseEnvironment):
+    object_data = get_only_filtered_objects(database_environment=database_environment,
+                                            object_type=ObjectDataTypes.FUNCTION)
+
+    for one_object_data in object_data:
+        if one_object_data.get("object_status") == ObjectTargetType.INSTALL.value:
+            add_or_update_object_data_file(environment=database_environment, new_json_data=one_object_data)
