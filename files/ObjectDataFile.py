@@ -65,6 +65,7 @@ def _convert_dependencies_file_to_json_object(dependencies_data: list[dict]) -> 
         obj_name = row['OBJECT_NAME']
         dep_type = row['DEPENDENCY_TYPE']
         dep_name = row['DEPENDENCY_NAME']
+        dep_package = row['DEPENDENCY_PACKAGE']
 
         # Initialize the object if it doesn't exist
         if obj_name not in objects_dict:
@@ -86,18 +87,29 @@ def _convert_dependencies_file_to_json_object(dependencies_data: list[dict]) -> 
         # Add the dependency name to the appropriate list
         if dep_type == "TABLE":
             if is_custom_table(dep_name):
-                objects_dict[obj_name]["dependencies"]["tables"].append({"name": dep_name, "custom": True})
+                objects_dict[obj_name]["dependencies"]["tables"].append(
+                    {"type": "TABLE", "package": None, "name": dep_name, "custom": True, "local": None,
+                     "deployment": None})
             else:
-                objects_dict[obj_name]["dependencies"]["tables"].append({"name": dep_name, "custom": False})
+                objects_dict[obj_name]["dependencies"]["tables"].append(
+                    {"type": "TABLE", "package": None, "name": dep_name, "custom": False, "local": None,
+                     "deployment": None})
         elif dep_type == "LOCAL_FUNCTION":
-            objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name, "local": True})
+            objects_dict[obj_name]["dependencies"]["functions"].append(
+                {"type": "FUNCTION", "package": None, "name": dep_name, "custom": None, "local": True,
+                 "deployment": None})
         elif dep_type == "FUNCTION":
-            objects_dict[obj_name]["dependencies"]["functions"].append({"name": dep_name, "local": False})
+            objects_dict[obj_name]["dependencies"]["functions"].append(
+                {"type": "FUNCTION", "package": dep_package, "name": dep_name, "custom": None, "local": False,
+                 "deployment": None})
         elif dep_type == "SEQUENCE":
-            objects_dict[obj_name]["dependencies"]["sequences"].append({"name": dep_name, "deployment": "external",
-                                                                        })
+            objects_dict[obj_name]["dependencies"]["sequences"].append(
+                {"type": "SEQUENCE", "package": None, "name": dep_name, "custom": None, "local": None,
+                 "deployment": "external"})
         elif dep_type == "PROCEDURE":
-            objects_dict[obj_name]["dependencies"]["procedures"].append({"name": dep_name})
+            objects_dict[obj_name]["dependencies"]["procedures"].append(
+                {"type": "PROCEDURE", "package": dep_package, "name": dep_name, "custom": None, "local": None,
+                 "deployment": None})
     # Convert the dictionary to a list and add it to json_data
 
     json_data["root"][0]["objects"] = list(objects_dict.values())
@@ -440,7 +452,7 @@ def get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment: DatabaseEnvironment, object_data_type: str) -> dict:
     return _get_generic_object_data_mapped_by_names_by_environment_and_type(object_data_type=object_data_type,
                                                                             database_environment=database_environment,
-                                                                            data_fetcher=get_migrated_object_data())
+                                                                            data_fetcher=get_full_migrated_object_data())
 
 
 def get_object_data_mapped_by_names_by_environment(
@@ -477,6 +489,20 @@ def get_full_object_data() -> dict:
     return read_json_file(config_file)
 
 
+def get_only_migrated_objects(database_environment: DatabaseEnvironment) -> list[dict]:
+    config_file = get_migrated_object_data_file_path()
+    object_data = read_json_file(config_file)
+    root_data = object_data.get("root", {})
+    only_objects = []
+    for one_root_data in root_data:
+        if one_root_data.get("environment", "") == database_environment.value:
+            environment_objects = one_root_data.get("objects", {})
+            for one_object in environment_objects:
+                only_objects.append(one_object)
+
+    return only_objects
+
+
 def get_only_objects(database_environment: DatabaseEnvironment) -> list[dict]:
     config_file = get_object_data_file_path()
     object_data = read_json_file(config_file)
@@ -487,6 +513,22 @@ def get_only_objects(database_environment: DatabaseEnvironment) -> list[dict]:
             environment_objects = one_root_data.get("objects", {})
             for one_object in environment_objects:
                 only_objects.append(one_object)
+
+    return only_objects
+
+
+def get_only_filtered_migrated_objects(database_environment: DatabaseEnvironment, object_type: ObjectDataTypes) -> list[
+    dict]:
+    config_file = get_migrated_object_data_file_path()
+    object_data = read_json_file(config_file)
+    root_data = object_data.get("root", {})
+    only_objects = []
+    for one_root_data in root_data:
+        if one_root_data.get("environment", "") == database_environment.value:
+            environment_objects = one_root_data.get("objects", {})
+            for one_object in environment_objects:
+                if one_object.get("type") == object_type.value:
+                    only_objects.append(one_object)
 
     return only_objects
 
@@ -506,7 +548,7 @@ def get_only_filtered_objects(database_environment: DatabaseEnvironment, object_
     return only_objects
 
 
-def get_migrated_object_data() -> dict:
+def get_full_migrated_object_data() -> dict:
     config_file = get_migrated_object_data_file_path()
     return read_json_file(config_file)
 
