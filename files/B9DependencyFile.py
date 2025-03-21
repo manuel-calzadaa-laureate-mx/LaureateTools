@@ -297,7 +297,8 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
 
     for filename in os.listdir(source_folder):
         logging.info("Reading this source code file: %s", filename)
-
+        if filename == 'UVM.TZPKFPLIA.FN_FILL_OUT_REFBANK.sql':
+            print("hi")
         # Determine the object type (PROCEDURE/FUNCTION) and object name
         object_owner = filename.split('.')[0]
         object_package = filename.split('.')[1]
@@ -312,6 +313,12 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                                        object_package=object_package,
                                        object_name=object_name):
             continue
+
+        object_status = (
+            ObjectTargetType.INSTALL.value
+            if any(item in installable_packages_list for item in (object_package, object_name))
+            else ObjectTargetType.SKIP.value
+        )
 
         if filename.endswith(".sql"):
             file_path = os.path.join(source_folder, filename)
@@ -330,29 +337,37 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
 
                 # Extract dependencies
                 dependencies_map = extract_all_dependencies_from_one_source_code_data(source_code_lines)
+                dependencies_map_has_values = any(item for item in dependencies_map.values())
 
-                # Store dependencies in a list of dictionaries
-                for dep_type, dep_names in dependencies_map.items():
-                    for dep_name in dep_names:
-                        resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dep_name)
+                if dependencies_map_has_values:
+                    # Store dependencies in a list of dictionaries
+                    for dep_type, dep_names in dependencies_map.items():
+                        for dep_name in dep_names:
+                            resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dep_name)
 
-                        object_status = (
-                            ObjectTargetType.INSTALL.value
-                            if any(item in installable_packages_list for item in (object_package, object_name))
-                            else ObjectTargetType.SKIP.value
-                        )
-
-                        dependencies.append({
-                            "STATUS": object_status,
-                            "OBJECT_OWNER": object_owner,
-                            "OBJECT_TYPE": object_type,
-                            "OBJECT_PACKAGE": object_package,
-                            "OBJECT_NAME": object_name,
-                            "DEPENDENCY_OWNER": resolved_dependencies["owner"],
-                            "DEPENDENCY_TYPE": dep_type,
-                            "DEPENDENCY_PACKAGE": resolved_dependencies["package"],
-                            "DEPENDENCY_NAME": resolved_dependencies["name"],
-                        })
+                            dependencies.append({
+                                "STATUS": object_status,
+                                "OBJECT_OWNER": object_owner,
+                                "OBJECT_TYPE": object_type,
+                                "OBJECT_PACKAGE": object_package,
+                                "OBJECT_NAME": object_name,
+                                "DEPENDENCY_OWNER": resolved_dependencies["owner"],
+                                "DEPENDENCY_TYPE": dep_type,
+                                "DEPENDENCY_PACKAGE": resolved_dependencies["package"],
+                                "DEPENDENCY_NAME": resolved_dependencies["name"],
+                            })
+                else:
+                    dependencies.append({
+                        "STATUS": object_status,
+                        "OBJECT_OWNER": object_owner,
+                        "OBJECT_TYPE": object_type,
+                        "OBJECT_PACKAGE": object_package,
+                        "OBJECT_NAME": object_name,
+                        "DEPENDENCY_OWNER": None,
+                        "DEPENDENCY_TYPE": None,
+                        "DEPENDENCY_PACKAGE": None,
+                        "DEPENDENCY_NAME": None,
+                    })
             else:
                 logging.info(f"data not found for file: {filename}, adding as missing dependency")
                 dependencies.append({
