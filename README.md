@@ -84,7 +84,7 @@ FindAllMissingProcedures)
 
 - [x] Migrate Functions from DataObject file to MigratedDataObject file
 - [x] Migrate Procedures from DataObject file to MigratedDataObject file
-- [] Create install_dependencies.csv file with all ObjectTargetType.INSTALL types from MigratedDataObject File
+- [x] Create install_dependencies.csv file with all ObjectTargetType.INSTALL types from MigratedDataObject File
 - [] Use install_dependencies.csv file to find the order of install and rollback using graphs
 - [] Add filename to install and rollback files
 
