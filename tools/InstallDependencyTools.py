@@ -16,14 +16,14 @@ def create_install_dependency_data(migrated_object_data: list[dict]):
         # Handle empty or invalid dependencies
         if not all_dependencies or not any(all_dependencies.values()):
             migrated_dependency = {
-                "OBJECT_PACKAGE": object_package if object_package else 'NONE',
+                "OBJECT_PACKAGE": object_package if object_package != 'NONE' else None,
                 "OBJECT_TYPE": object_type,
                 "OBJECT_NAME": object_name,
                 "OBJECT_OWNER": object_owner,
-                "DEPENDENCY_PACKAGE": 'NONE',
-                "DEPENDENCY_TYPE": 'NONE',
-                "DEPENDENCY_NAME": 'NONE',
-                "DEPENDENCY_OWNER": 'NONE',
+                "DEPENDENCY_PACKAGE": None,
+                "DEPENDENCY_TYPE": None,
+                "DEPENDENCY_NAME": None,
+                "DEPENDENCY_OWNER": None,
             }
             migrated_dependencies_list.append(migrated_dependency)
             continue
@@ -37,14 +37,14 @@ def create_install_dependency_data(migrated_object_data: list[dict]):
                     dependency_owner = dependency_value.get("owner")
 
                     migrated_dependency = {
-                        "OBJECT_PACKAGE": object_package if object_package else 'NONE',
+                        "OBJECT_PACKAGE": object_package if object_package != 'NONE' else None,
                         "OBJECT_TYPE": object_type,
                         "OBJECT_NAME": object_name,
                         "OBJECT_OWNER": object_owner,
-                        "DEPENDENCY_PACKAGE": dependency_package if dependency_package else 'NONE',
+                        "DEPENDENCY_PACKAGE": dependency_package if dependency_package else None,
                         "DEPENDENCY_TYPE": dependency_type,
                         "DEPENDENCY_NAME": dependency_name,
-                        "DEPENDENCY_OWNER": dependency_owner if dependency_owner else 'NONE',
+                        "DEPENDENCY_OWNER": dependency_owner if dependency_owner else None,
                     }
                     migrated_dependencies_list.append(migrated_dependency)
 
