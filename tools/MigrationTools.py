@@ -110,6 +110,9 @@ def migrate_trigger_to_b9(b9_table_name: str,
     new_triggers = []
     for custom_trigger in custom_triggers:
         trigger_name = custom_trigger.get("name")
+        object_structure = extract_object_structure(b9_table_name)
+        prefix = object_structure.get("prefix")
+        base = object_structure.get("base")
 
         new_trigger = {
             "object_status": ObjectTargetType.INSTALL.value,
@@ -117,7 +120,32 @@ def migrate_trigger_to_b9(b9_table_name: str,
             "name": trigger_name,
             "type": "TRIGGER",
             "owner": b9_owner,
-            "trigger": custom_trigger
+            "trigger": custom_trigger,
+            "dependencies": {
+                "tables": [
+                    {
+                        "type": "TABLE",
+                        "package": None,
+                        "name": f"{prefix}TB{base}",
+                        "custom": True,
+                        "local": None,
+                        "deployment": None
+                    }
+                ],
+                "functions": [],
+                "sequences": [
+                    {
+                        "type": "SEQUENCE",
+                        "package": None,
+                        "name": f"{prefix}SE{base}",
+                        "custom": None,
+                        "local": None,
+                        "deployment": "external"
+                    }
+                ],
+                "procedures": []
+
+            }
         }
         new_triggers.append(new_trigger)
 
@@ -235,8 +263,6 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     columns = _refactor_table_columns(original_table.get("columns", []), b7_table_name, b9_table_name)
     comments = _refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
-    sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
-    triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
     grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
     synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
     new_table = {
@@ -248,8 +274,6 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
         "attributes": original_table.get("attributes", {}),
         "comments": comments["comments"],
         "indexes": indexes["indexes"],
-        "sequences": sequences["sequences"],
-        "triggers": triggers["triggers"],
         "grants": grants["grants"],
         "synonym": synonym,
     }

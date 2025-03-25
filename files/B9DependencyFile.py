@@ -297,8 +297,7 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
 
     for filename in os.listdir(source_folder):
         logging.info("Reading this source code file: %s", filename)
-        if filename == 'UVM.TZPKFPLIA.FN_FILL_OUT_REFBANK.sql':
-            print("hi")
+
         # Determine the object type (PROCEDURE/FUNCTION) and object name
         object_owner = filename.split('.')[0]
         object_package = filename.split('.')[1]
