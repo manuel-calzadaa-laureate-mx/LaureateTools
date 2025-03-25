@@ -30,6 +30,5 @@ def write_install_dependencies_file(install_dependencies_data: list[dict]):
         install_dependencies_data (list[dict]): The dependency data to be written.
     """
     install_dependency_file = get_install_dependency_file_path()
-    is_append = os.path.exists(install_dependency_file)  # Check if file exists
 
-    write_csv_file(output_file=install_dependency_file, data_to_write=install_dependencies_data, is_append=is_append)
+    write_csv_file(output_file=install_dependency_file, data_to_write=install_dependencies_data)

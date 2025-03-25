@@ -27,11 +27,18 @@ class Node:
         if child not in self.children:
             self.children.append(child)
 
-        # Set parent
-        if parent:
-            child.parent = parent
-        else:
-            child.parent = self
+        # Set parent (if provided, else use self)
+        child.parent = parent if parent else self
+
+        # Compute depth of child (distance from ROOT)
+        depth = 0
+        current = child.parent
+        while current and current.name != "ROOT":
+            depth += 1
+            current = current.parent
+
+        # Weight increment: inversely proportional to depth
+        child.weight += 1 / (depth + 1)  # +1 to avoid division by zero
 
     def __repr__(self):
         return (f"Node(name={self.name}, "
@@ -112,15 +119,11 @@ def get_or_create_node(name: str, nodes: dict, data: dict = None, weight: int = 
     :param weight: Weight of the node (int).
     :return: The node (Node) or None if name is empty.
     """
-    if not name:  # empty string check
+    if not name:
         return None
-
     if name not in nodes:
         nodes[name] = Node(name, data, weight)
     else:
         if data is not None:
             nodes[name].data = data
-        if weight != 0:
-            nodes[name].weight = weight
-
     return nodes[name]

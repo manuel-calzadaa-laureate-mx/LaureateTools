@@ -4,12 +4,12 @@ from graphs.Node import get_or_create_node, Node
 
 def create_install_dependency_ordered_manager():
     install_dependency_ordered_data = get_install_dependencies_data()
-    nodes_data = build_dag_from_csv(install_dependency_ordered_data)
+    nodes_data = build_dag_nodes_from_csv(install_dependency_ordered_data)
     ordered_nodes = nodes_data.get_nodes_sorted_bottom_up()
     print(ordered_nodes)
 
 
-def build_dag_from_csv(csv_data: list[dict]):
+def build_dag_nodes_from_csv(csv_data: list[dict]):
     """
     Build a DAG from CSV data.
 
@@ -49,16 +49,16 @@ def build_dag_from_csv(csv_data: list[dict]):
             continue
 
         """
-        CASES:
-        PKG1    OBJ1    PKG1    OBJ2 a)
-        PKG1    OBJ1    PKG2    OBJ2 b)
-        PKG1    OBJ1    NONE    OBJ2 c) 
-        PKG1    OBJ1    NONE    NONE d)
+        CASES: FULL OBJECT (ROOT OR NON-ROOT)
+        PACKAGE     OBJECT      DEP_PACKAGE     DEP_OBJECT
+        PKG1        OBJ1        PKG1            OBJ2        a)
+        PKG1        OBJ1        PKG2            OBJ2        b)
+        PKG1        OBJ1        NONE            OBJ2        c) 
+        PKG1        OBJ1        NONE            NONE        d)
         """
         if object_package:
             if dependency_package:
                 if object_package == dependency_package:
-                    print("a")
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
                         current_node.parent.add_child(current_node)
@@ -70,7 +70,6 @@ def build_dag_from_csv(csv_data: list[dict]):
                     continue
 
                 if object_package != dependency_package:
-                    print("b")
 
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(object_package, nodes=nodes, weight=0)
@@ -85,7 +84,6 @@ def build_dag_from_csv(csv_data: list[dict]):
 
             if not dependency_package:
                 if dependency_name:
-                    print("c")
                     ## add dependency with root parent
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
@@ -97,7 +95,6 @@ def build_dag_from_csv(csv_data: list[dict]):
                     continue
 
                 if not dependency_name:
-                    print("d")
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
                         current_node.parent.add_child(current_node)
@@ -105,15 +102,17 @@ def build_dag_from_csv(csv_data: list[dict]):
                     continue
 
         """
-        CASES:        
-        NONE    OBJ1    PKG1    OBJ1 e)
-        NONE    OBJ1    NONE    NONE f)
+        CASES: ROOT OBJECT -> FULL DEPENDENCY (ROOT OR NON-ROOT)     
+        PACKAGE     OBJECT      DEP_PACKAGE     DEP_OBJECT        
+        NONE        OBJ1        PKG1            OBJ2        e)
+        NONE        OBJ1        NONE            NONE        f)
+        NONE        OBJ1        NONE            OBJ2        g)
+        NONE        OBJ1        PKG1            NONE        ERROR!
+        
         """
         if not object_package:
             if dependency_package:
-                print("e")
                 if dependency_package == object_name:
-                    print("e + son of package")
                     ## add parent
                     if not current_node.parent:
                         current_node.parent = root
@@ -130,11 +129,18 @@ def build_dag_from_csv(csv_data: list[dict]):
                     continue
 
             if not dependency_package:
-                print("f")
-                if not current_node.parent:
-                    current_node.parent = root
-                current_node.children = []
-                root.add_child(current_node)
-                continue
+                if dependency_name:
+                    if not current_node.parent:
+                        current_node.parent = root
+                        root.add_child(current_node)
+                    new_child = get_or_create_node(name=dependency_name, weight=0, nodes=nodes)
+                    current_node.add_child(new_child, parent=root)
+                    continue
+
+                if not dependency_name:
+                    if not current_node.parent:
+                        current_node.parent = root
+                        root.add_child(current_node)
+                    continue
 
     return root
