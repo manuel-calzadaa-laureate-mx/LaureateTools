@@ -91,6 +91,57 @@ class MultiCounter:
 
 
 def extract_object_structure(object_name: str) -> dict:
+    """Extracts and validates the structure of a custom database object name following Banner standards.
+
+       The function parses object names according to the following positional structure:
+       - Position 1: Department code (Banner nomenclature, excluding W, Y, and Z)
+       - Position 2: Must be 'Z' (indicates customization)
+       - Positions 3-4: Object type identification (2-character code)
+       - Position 5: Module identifier
+       - Positions 6+: Base name of the object
+
+       Args:
+           object_name (str): The database object name to parse. Must be at least 5 characters long.
+
+       Returns:
+           dict: A dictionary containing all extracted components with the following keys:
+               - department: The department code (first character)
+               - custom: The customization indicator (always 'Z')
+               - prefix: Combined department and custom characters (first two characters)
+               - object_identification: The 2-character object type code
+               - module: The module identifier (fifth character)
+               - base: Combined module and remaining characters
+               - only_base: The remaining characters after position 5
+               - object_name: The original input string
+
+       Raises:
+           ValueError: If any of these conditions occur:
+               - Input is shorter than 5 characters
+               - Second character is not 'Z'
+
+       Examples:
+           >>> extract_object_structure("TZTBFDOCE")
+           {
+               'department': 'T',
+               'custom': 'Z',
+               'prefix': 'TZ',
+               'object_identification': 'TB',
+               'module': 'F',
+               'base': 'FDOCE',
+               'only_base': 'DOCE',
+               'object_name': 'SZTBEDOCE'
+           }
+
+           Typical object type identifications:
+           - 'TB' for tables
+           - 'PR' for procedures
+           - 'FN' for functions
+           - 'TY' for types
+           - 'PK' for packages
+           - 'VI' for views
+           - 'TE' for temporary tables
+           - 'SE' for sequences
+       """
     # Check if the table name is at least 5 characters long
     if len(object_name) < 5:
         raise ValueError(f"Invalid table name: {object_name} is too short.")
