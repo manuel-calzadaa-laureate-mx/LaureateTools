@@ -14,8 +14,8 @@ def print_hierarchy_dfs(node: Node, indent: int = 0):
     # Print current node with indentation
     parent_name = node.parent.name if node.parent else "None"
     print(
-        "  " * indent + f"{parent_name} -> {node.name} (weight={node.weight}) [children: {[c.name for c in node.children]}]")
+        "  " * indent + f"{parent_name} -> {node.name} (weight={node.weight}) [children: {[c.name for c in node.dependencies]}]")
 
     # Recursively print children
-    for child in node.children:
+    for child in node.dependencies:
         print_hierarchy_dfs(child, indent + 1)

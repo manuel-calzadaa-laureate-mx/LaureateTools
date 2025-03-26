@@ -18,8 +18,8 @@ def print_hierarchy_bfs(root: Node):
         node = queue.popleft()
         parent_name = node.parent.name if node.parent else "None"
         print(
-            f"{parent_name} -> {node.name} {node.data} (weight={node.weight}) [children: {[c.name for c in node.children]}]")
+            f"{parent_name} -> {node.name} {node.data} (weight={node.weight}) [children: {[c.name for c in node.dependencies]}]")
 
         # Enqueue children
-        for child in node.children:
+        for child in node.dependencies:
             queue.append(child)

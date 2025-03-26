@@ -54,23 +54,23 @@ def build_dag_nodes_from_csv(csv_data: list[dict]):
                 if object_package == dependency_package:  ## OBJECT AND DEPENDENCY HAVE THE SAME PARENT
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
-                        current_node.parent.add_child(current_node)
-                    new_child = get_or_create_node(name=dependency_name, data=
+                        current_node.parent.add_dependency(current_node)
+                    new_dependency = get_or_create_node(name=dependency_name, data=
                     {"type": dependency_type, "package": dependency_package}, weight=0, nodes=nodes)
 
-                    current_node.add_child(child=new_child)
+                    current_node.add_dependency(dependency=new_dependency)
                     continue
 
                 if object_package != dependency_package:  ## OBJECT AND DEPENDENCY HAVE DIFFERENT PARENTS
 
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(object_package, nodes=nodes, weight=0)
-                        current_node.parent.add_child(current_node)
-                    new_child = get_or_create_node(dependency_name, data=
+                        current_node.parent.add_dependency(current_node)
+                    new_dependency = get_or_create_node(dependency_name, data=
                     {"type": dependency_type, "package": dependency_package}, weight=0, nodes=nodes)
                     dependency_object_parent = get_or_create_node(name=dependency_package, nodes=nodes, weight=0)
 
-                    current_node.add_child(child=new_child, parent=dependency_object_parent)
+                    current_node.add_dependency(dependency=new_dependency, parent=dependency_object_parent)
                     continue
 
             if not dependency_package:  ## DEPENDENCY PARENT IS ROOT
@@ -78,18 +78,18 @@ def build_dag_nodes_from_csv(csv_data: list[dict]):
                     ## add dependency with root parent
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
-                        current_node.parent.add_child(current_node)
-                    new_child = get_or_create_node(dependency_name,
-                                                   data={"type": dependency_type, "package": dependency_package},
-                                                   weight=0, nodes=nodes)
-                    current_node.add_child(child=new_child, parent=root)
+                        current_node.parent.add_dependency(current_node)
+                    new_dependency = get_or_create_node(dependency_name,
+                                                        data={"type": dependency_type, "package": dependency_package},
+                                                        weight=0, nodes=nodes)
+                    current_node.add_dependency(dependency=new_dependency, parent=root)
                     continue
 
-                if not dependency_name:  ## OBJECT IS CHILDLESS
+                if not dependency_name:  ## OBJECT IS DEPENDENCY-LESS
                     if not current_node.parent:
                         current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
-                        current_node.parent.add_child(current_node)
-                    ## this node is childless
+                        current_node.parent.add_dependency(current_node)
+                    ## this node is dependency-less
                     continue
 
         """
@@ -107,31 +107,31 @@ def build_dag_nodes_from_csv(csv_data: list[dict]):
                     ## add parent
                     if not current_node.parent:
                         current_node.parent = root
-                        root.add_child(current_node)
-                    ## create new child
-                    new_child = get_or_create_node(dependency_name,
-                                                   data={"type": dependency_type, "package": dependency_package},
-                                                   weight=0, nodes=nodes)
+                        root.add_dependency(current_node)
+                    ## create new dependency
+                    new_dependency = get_or_create_node(dependency_name,
+                                                        data={"type": dependency_type, "package": dependency_package},
+                                                        weight=0, nodes=nodes)
 
-                    ## if child is parentless create placeholder
-                    if not new_child.parent:
-                        new_child.parent = get_or_create_node(name=dependency_package, weight=0, nodes=nodes)
-                    current_node.add_child(new_child)
+                    ## if dependency is parentless create placeholder
+                    if not new_dependency.parent:
+                        new_dependency.parent = get_or_create_node(name=dependency_package, weight=0, nodes=nodes)
+                    current_node.add_dependency(new_dependency)
                     continue
 
             if not dependency_package:  ## DEPENDENCY PARENT IS ROOT
                 if dependency_name:  ## NORMAL DEPENDENCY
                     if not current_node.parent:
                         current_node.parent = root
-                        root.add_child(current_node)
-                    new_child = get_or_create_node(name=dependency_name, weight=0, nodes=nodes)
-                    current_node.add_child(new_child, parent=root)
+                        root.add_dependency(current_node)
+                    new_dependency = get_or_create_node(name=dependency_name, weight=0, nodes=nodes)
+                    current_node.add_dependency(new_dependency, parent=root)
                     continue
 
-                if not dependency_name:  ## OBJECT IS CHILDLESS
+                if not dependency_name:  ## OBJECT IS DEPENDENCY-LESS
                     if not current_node.parent:
                         current_node.parent = root
-                        root.add_child(current_node)
+                        root.add_dependency(current_node)
                     continue
 
     return root
