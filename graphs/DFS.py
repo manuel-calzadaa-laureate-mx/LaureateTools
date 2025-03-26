@@ -1,6 +1,9 @@
+from typing import Dict
+
 from graphs.Node import Node
 
 
+## Depth-First Search
 def print_hierarchy_dfs(node: Node, indent: int = 0):
     """
     Print the hierarchy recursively using DFS (pre-order traversal).
@@ -19,3 +22,17 @@ def print_hierarchy_dfs(node: Node, indent: int = 0):
     # Recursively print children
     for child in node.dependencies:
         print_hierarchy_dfs(child, indent + 1)
+
+
+def collect_all_nodes_using_dfs(root: Node) -> Dict[str, Node]:
+    nodes = {}
+
+    def dfs(node):
+        if node.name in nodes:
+            return
+        nodes[node.name] = node
+        for dependency in node.dependencies:
+            dfs(dependency)
+
+    dfs(root)
+    return nodes

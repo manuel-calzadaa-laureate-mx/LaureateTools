@@ -1,12 +1,14 @@
 from files.InstallDependencyFile import get_install_dependencies_data
-from graphs.BFS import print_hierarchy_bfs
-from graphs.Node import get_or_create_node, Node
+from graphs.BFS import collect_all_nodes_using_bfs
+from graphs.Node import get_or_create_node, Node, topological_sort
 
 
 def create_install_dependency_ordered_manager():
     install_dependency_ordered_data = get_install_dependencies_data()
     nodes_data = build_dag_nodes_from_csv(install_dependency_ordered_data)
-    print_hierarchy_bfs(nodes_data)
+    all_nodes = collect_all_nodes_using_bfs(nodes_data)
+    sorted_nodes = topological_sort(nodes=all_nodes)
+    print(sorted_nodes)
 
 
 def build_dag_nodes_from_csv(csv_data: list[dict]):
