@@ -7,6 +7,7 @@ from db.DatabaseProperties import DatabaseEnvironment
 from db.OracleDatabaseTools import OracleDBConnectionPool
 from files.B9CompletedProceduresFile import update_missing_procedures_to_add_manager, create_source_code_manager, \
     get_completed_procedures_name_list
+from files.B9IncompleteProceduresFile import get_incomplete_procedures
 from files.DependencyFile import extract_unique_existing_objects, extract_object_with_missing_status, \
     filter_missing_status_dependencies, find_delta_of_missing_dependencies, \
     is_object_dependency_procedure_or_function, is_object_need_process
@@ -293,7 +294,10 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
     current_owners = get_all_current_owners(db_pool=db_pool)
     dependencies_data = get_dependencies_data()
 
-    installable_packages_list = get_completed_procedures_name_list()
+    incomplete_procedures = get_incomplete_procedures()
+    installable_packages_list = set()
+    for incomplete_procedure in incomplete_procedures:
+        installable_packages_list.add(incomplete_procedure.get("Package"))
 
     for filename in os.listdir(source_folder):
         logging.info("Reading this source code file: %s", filename)
@@ -313,6 +317,7 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                                        object_name=object_name):
             continue
 
+        ## OBJECT TARGET TYPE ANALYSIS
         object_status = (
             ObjectTargetType.INSTALL.value
             if any(item in installable_packages_list for item in (object_package, object_name))
@@ -344,6 +349,18 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                         for dep_name in dep_names:
                             resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dep_name)
 
+                            dependency_package = resolved_dependencies["package"]
+                            dependency_name = resolved_dependencies["name"]
+
+                            ## DEPENDENCY OBJECT TARGET TYPE ANALYSIS
+                            if object_status == ObjectTargetType.INSTALL.value:
+                                if dependency_package != 'NONE':
+                                    object_status = (
+                                        ObjectTargetType.INSTALL.value
+                                        if dependency_package in installable_packages_list
+                                        else ObjectTargetType.SKIP.value
+                                    )
+
                             dependencies.append({
                                 "STATUS": object_status,
                                 "OBJECT_OWNER": object_owner,
@@ -352,8 +369,8 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                                 "OBJECT_NAME": object_name,
                                 "DEPENDENCY_OWNER": resolved_dependencies["owner"],
                                 "DEPENDENCY_TYPE": dep_type,
-                                "DEPENDENCY_PACKAGE": resolved_dependencies["package"],
-                                "DEPENDENCY_NAME": resolved_dependencies["name"],
+                                "DEPENDENCY_PACKAGE": dependency_package,
+                                "DEPENDENCY_NAME": dependency_name,
                             })
                 else:
                     dependencies.append({

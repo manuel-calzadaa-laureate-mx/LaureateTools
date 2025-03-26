@@ -89,27 +89,27 @@ def _convert_dependencies_file_to_json_object(dependencies_data: list[dict]) -> 
             if is_custom_table(dep_name):
                 objects_dict[obj_name]["dependencies"]["tables"].append(
                     {"type": "TABLE", "package": None, "name": dep_name, "custom": True, "local": None,
-                     "deployment": None})
+                     "deployment": None, "object_status": None})
             else:
                 objects_dict[obj_name]["dependencies"]["tables"].append(
                     {"type": "TABLE", "package": None, "name": dep_name, "custom": False, "local": None,
-                     "deployment": None})
+                     "deployment": None, "object_status": None})
         elif dep_type == "LOCAL_FUNCTION":
             objects_dict[obj_name]["dependencies"]["functions"].append(
                 {"type": "FUNCTION", "package": None, "name": dep_name, "custom": None, "local": True,
-                 "deployment": None})
+                 "deployment": None, "object_status": None})
         elif dep_type == "FUNCTION":
             objects_dict[obj_name]["dependencies"]["functions"].append(
                 {"type": "FUNCTION", "package": dep_package, "name": dep_name, "custom": None, "local": False,
-                 "deployment": None})
+                 "deployment": None, "object_status": obj_status})
         elif dep_type == "SEQUENCE":
             objects_dict[obj_name]["dependencies"]["sequences"].append(
                 {"type": "SEQUENCE", "package": None, "name": dep_name, "custom": None, "local": None,
-                 "deployment": "external"})
+                 "deployment": "external", "object_status": None})
         elif dep_type == "PROCEDURE":
             objects_dict[obj_name]["dependencies"]["procedures"].append(
                 {"type": "PROCEDURE", "package": dep_package, "name": dep_name, "custom": None, "local": None,
-                 "deployment": None})
+                 "deployment": None, "object_status": obj_status})
     # Convert the dictionary to a list and add it to json_data
 
     json_data["root"][0]["objects"] = list(objects_dict.values())

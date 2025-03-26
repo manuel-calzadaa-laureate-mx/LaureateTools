@@ -44,6 +44,7 @@ class Node:
 
     def __repr__(self):
         return (f"Node(name={self.name}, "
+                f"data={self.data},"
                 f"parent={self.parent.name if self.parent else 'ROOT'}, "
                 f"dependencies={[c.name for c in self.dependencies]},"
                 f"weight={self.weight})")
