@@ -80,7 +80,7 @@ This consist in several use phases:
 - [] Create Oracle DB in a container
 - [] Execute the scripts in the xls file order
 
-## 1.1.0 INSTALL FEATURE
+## 1.1.X INSTALL FEATURE
 
 - [x] Migrate Functions from DataObject file to MigratedDataObject file
 - [x] Migrate Procedures from DataObject file to MigratedDataObject file

@@ -843,6 +843,7 @@ def migrate_functions_manager(database_environment: DatabaseEnvironment):
 
     for one_object_data in object_data:
         if one_object_data.get("object_status") == ObjectTargetType.INSTALL.value:
+            one_object_data = filter_dependencies(one_object_data)
             add_or_update_object_data_file(environment=database_environment, new_json_data=one_object_data)
 
 
@@ -852,4 +853,37 @@ def migrate_procedures_manager(database_environment: DatabaseEnvironment):
 
     for one_object_data in object_data:
         if one_object_data.get("object_status") == ObjectTargetType.INSTALL.value:
+            one_object_data = filter_dependencies(one_object_data)
             add_or_update_object_data_file(environment=database_environment, new_json_data=one_object_data)
+
+
+def filter_dependencies(data):
+    """
+    Filters out non-custom tables from the dependencies.
+
+    Args:
+        data (dict): The input JSON data containing dependencies.
+
+    Returns:
+        dict: The modified data with non-custom tables removed.
+    """
+    if 'dependencies' in data:
+        if 'tables' in data['dependencies']:
+            # Filter out tables where 'custom' is False
+            data['dependencies']['tables'] = [
+                table for table in data['dependencies']['tables']
+                if table.get('custom', True)  # Default to True if 'custom' key doesn't exist
+            ]
+        if 'functions' in data['dependencies']:
+            # Filter out functions where 'Object Status' is not INSTALL
+            data['dependencies']['functions'] = [
+                function for function in data['dependencies']['functions']
+                if function.get('object_status', ObjectTargetType.SKIP.value) == ObjectTargetType.INSTALL.value
+            ]
+        if 'procedures' in data['dependencies']:
+            # Filter out procedure where 'Object Status' is not INSTALL
+            data['dependencies']['procedures'] = [
+                procedure for procedure in data['dependencies']['procedures']
+                if procedure.get('object_status', ObjectTargetType.SKIP.value) == ObjectTargetType.INSTALL.value
+            ]
+    return data
