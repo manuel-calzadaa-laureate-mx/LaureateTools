@@ -10,7 +10,6 @@ def create_install_dependency_data(migrated_object_data: list[dict]):
         object_name = row.get("name")
         object_type = row.get("type")
         object_package = row.get("package")
-        object_owner = row.get("owner")
         all_dependencies = row.get("dependencies")
 
         # Handle empty or invalid dependencies
@@ -19,11 +18,9 @@ def create_install_dependency_data(migrated_object_data: list[dict]):
                 "OBJECT_PACKAGE": object_package if object_package != 'NONE' else None,
                 "OBJECT_TYPE": object_type,
                 "OBJECT_NAME": object_name,
-                "OBJECT_OWNER": object_owner,
                 "DEPENDENCY_PACKAGE": None,
                 "DEPENDENCY_TYPE": None,
                 "DEPENDENCY_NAME": None,
-                "DEPENDENCY_OWNER": None,
             }
             migrated_dependencies_list.append(migrated_dependency)
             continue
@@ -34,17 +31,14 @@ def create_install_dependency_data(migrated_object_data: list[dict]):
                     dependency_package = dependency_value.get("package")
                     dependency_type = dependency_value.get("type")
                     dependency_name = dependency_value.get("name")
-                    dependency_owner = dependency_value.get("owner")
 
                     migrated_dependency = {
                         "OBJECT_PACKAGE": object_package if object_package != 'NONE' else None,
                         "OBJECT_TYPE": object_type,
                         "OBJECT_NAME": object_name,
-                        "OBJECT_OWNER": object_owner,
                         "DEPENDENCY_PACKAGE": dependency_package if dependency_package else None,
                         "DEPENDENCY_TYPE": dependency_type,
                         "DEPENDENCY_NAME": dependency_name,
-                        "DEPENDENCY_OWNER": dependency_owner if dependency_owner else None,
                     }
                     migrated_dependencies_list.append(migrated_dependency)
 

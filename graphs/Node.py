@@ -1,8 +1,8 @@
-from collections import deque, defaultdict
+from typing import Optional, List, Dict
 
 
 class Node:
-    def __init__(self, name: str, data: dict, weight: int, parent=None):
+    def __init__(self, name: str, data: Optional[dict] = None, weight: int = 0, parent: 'Node' = None):
         """
         Initialize a node in the DAG.
 
@@ -12,12 +12,12 @@ class Node:
         :param parent: Parent node (Node or None if root).
         """
         self.name = name
-        self.data = data if data is not None else {}
+        self.data = data or {}
         self.weight = weight
         self.parent = parent
-        self.children = []
+        self.children: List['Node'] = []
 
-    def add_child(self, child: 'Node', parent: 'Node' = None):
+    def add_child(self, child: 'Node', parent: Optional['Node'] = None) -> None:
         """
         Add a child node with these rules:
         - If parent is provided, set it as the child's parent
@@ -28,7 +28,7 @@ class Node:
             self.children.append(child)
 
         # Set parent (if provided, else use self)
-        child.parent = parent if parent else self
+        child.parent = parent or self
 
         # Compute depth of child (distance from ROOT)
         depth = 0
@@ -38,12 +38,13 @@ class Node:
             current = current.parent
 
         # Weight increment: inversely proportional to depth
-        child.weight += 1 / (depth + 1)  # +1 to avoid division by zero
+        child.weight += 1 / (depth + 1)
 
     def __repr__(self):
         return (f"Node(name={self.name}, "
                 f"parent={self.parent.name if self.parent else 'ROOT'}, "
-                f"children={[c.name for c in self.children]})")
+                f"children={[c.name for c in self.children]},"
+                f"weight={self.weight})")
 
     @property
     def is_direct_child_of_root(self) -> bool:
@@ -52,64 +53,9 @@ class Node:
         """
         return self.parent is not None and self.parent.name == "ROOT"
 
-    def get_nodes_levels_bottom_up(self) -> list[list['Node']]:
-        """
-        Returns nodes grouped by levels, starting from leaves (level 0) to the level before root.
-        Each level is a list of nodes at that depth.
 
-        Example:
-            ROOT (level 2)
-             /   \
-          A (1)  B (1)
-           |    /   \
-          C (0) D (0) E (0)
-
-        Output: [[C, D, E], [A, B]]
-        """
-        if not self.children:
-            return []
-
-        # Step 1: Compute depth of each node (distance from root)
-        depth = defaultdict(int)
-        queue = deque([self])
-        depth[self] = 0  # Root is depth 0
-
-        while queue:
-            node = queue.popleft()
-            for child in node.children:
-                depth[child] = depth[node] + 1
-                queue.append(child)
-
-        # Step 2: Group nodes by their depth (excluding root)
-        depth_groups = defaultdict(list)
-        for node in depth:
-            if node != self:  # Exclude root
-                depth_groups[depth[node]].append(node)
-
-        # Step 3: Sort depth groups in reverse (from leaves to root)
-        max_depth = max(depth_groups.keys()) if depth_groups else 0
-        levels = []
-        for d in range(max_depth, -1, -1):
-            if d in depth_groups:
-                levels.append(depth_groups[d])
-
-        return levels
-
-    def get_nodes_sorted_bottom_up(self) -> list['Node']:
-        """
-        Returns all nodes from leaves (level 0) to the level before root,
-        ordered by level (leaves first, then parents, etc.), and sorted by weight within each level.
-        """
-        levels = self.get_nodes_levels_bottom_up()
-        sorted_nodes = []
-        for level in levels:
-            # Sort nodes in the current level by weight
-            level_sorted = sorted(level, key=lambda x: x.weight)
-            sorted_nodes.extend(level_sorted)
-        return sorted_nodes
-
-
-def get_or_create_node(name: str, nodes: dict, data: dict = None, weight: int = 0) -> Node:
+def get_or_create_node(name: str, nodes: Dict[str, Node], data: Optional[dict] = None, weight: int = 0) -> Optional[
+    Node]:
     """
     Get a node if it exists, otherwise create it.
 
@@ -121,9 +67,10 @@ def get_or_create_node(name: str, nodes: dict, data: dict = None, weight: int = 
     """
     if not name:
         return None
+
     if name not in nodes:
         nodes[name] = Node(name, data, weight)
-    else:
-        if data is not None:
-            nodes[name].data = data
+    elif data is not None:
+        nodes[name].data = data
+
     return nodes[name]
