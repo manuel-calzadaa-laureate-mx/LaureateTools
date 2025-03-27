@@ -87,7 +87,7 @@ This consist in several use phases:
 - [x] Create install_dependencies.csv file with all ObjectTargetType.INSTALL types from MigratedDataObject File
 - [x] Implement direct acyclic graph algorithm
 - [x] Implement kahn topologic sorting algorith with weight tie-break
-- [] Create install_dependencies_ordered.csv file
+- [x] Create install_dependencies_ordered.csv file
 - [] Use install_dependencies_ordered.csv file to find the order of install and rollback using graphs
 - [] Add filename to install and rollback files
 

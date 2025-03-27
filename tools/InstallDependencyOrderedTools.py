@@ -1,7 +1,8 @@
 from collections import deque
-from typing import Dict
+from typing import Dict, List
 
 from files.InstallDependencyFile import get_install_dependencies_data
+from files.InstallDependencyOrdered import write_install_dependencies_ordered_file
 from graphs.BFS import collect_all_nodes_using_bfs
 from graphs.Node import get_or_create_node, Node, topological_sort
 
@@ -12,7 +13,31 @@ def create_install_dependency_ordered_manager():
     all_nodes = collect_all_nodes_using_bfs(nodes_data)
     calculate_levels(all_nodes)
     sorted_nodes = topological_sort(nodes=all_nodes)
-    print(sorted_nodes)
+    printable_nodes = process_sorted_nodes(sorted_nodes)
+    write_install_dependencies_ordered_file(printable_nodes)
+
+
+def process_sorted_nodes(sorted_nodes: List['Node']) -> dict:
+    sorted_nodes_data = []
+    for node in sorted_nodes:
+        if node.name.upper() == 'ROOT':
+            continue
+
+        node_data_type = node.data.get("type")
+        ## SKIP FUNCTIONS
+        if node_data_type.upper() == "FUNCTION":
+            continue
+
+        ## SKIP PROCEDURES
+        if node_data_type.upper() == "PROCEDURE":
+            continue
+            
+        data = {
+            "object_type": node.data.get("type"),
+            "object_name": node.name
+        }
+        sorted_nodes_data.append(data)
+    return sorted_nodes_data
 
 
 def calculate_levels(nodes: Dict[str, Node]):
