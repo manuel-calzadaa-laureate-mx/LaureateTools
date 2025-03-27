@@ -87,7 +87,7 @@ def topological_sort(nodes: Dict[str, Node]) -> List[Node]:
     # Initialize queue with nodes at level 0
     queue = deque(sorted(
         [n for n in nodes.values() if in_degree[n.name] == 0],
-        key=lambda x: x.level  # Sort by level first
+        key=lambda x: x.level
     ))
 
     result = []

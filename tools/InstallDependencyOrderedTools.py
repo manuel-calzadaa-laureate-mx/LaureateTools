@@ -24,6 +24,7 @@ def process_sorted_nodes(sorted_nodes: List['Node']) -> dict:
             continue
 
         node_data_type = node.data.get("type")
+
         ## SKIP FUNCTIONS
         if node_data_type.upper() == "FUNCTION":
             continue
@@ -31,7 +32,7 @@ def process_sorted_nodes(sorted_nodes: List['Node']) -> dict:
         ## SKIP PROCEDURES
         if node_data_type.upper() == "PROCEDURE":
             continue
-            
+
         data = {
             "object_type": node.data.get("type"),
             "object_name": node.name
