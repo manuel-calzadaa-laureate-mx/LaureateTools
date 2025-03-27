@@ -9,15 +9,17 @@ from tools.PatternMatchingTools import extract_select_tables, extract_insert_tab
 B7_SOURCE_CODE_FOLDER = "../workfiles/b7_sources"
 B9_SOURCE_CODE_FOLDER = "../workfiles/b9_sources"
 
-def get_source_code_folder(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7)-> str:
-    if database_environment== DatabaseEnvironment.BANNER7:
+
+def get_source_code_folder(database_environment: DatabaseEnvironment = DatabaseEnvironment.BANNER7) -> str:
+    if database_environment == DatabaseEnvironment.BANNER7:
         return B7_SOURCE_CODE_FOLDER
     elif database_environment == DatabaseEnvironment.BANNER9:
         return B9_SOURCE_CODE_FOLDER
     else:
         return ""
 
-def clean_comments_and_whitespace(source_code_text : str) -> str:
+
+def clean_comments_and_whitespace(source_code_text: str) -> str:
     source_code = "\n".join(source_code_text)
     source_code = _remove_single_lines_comments(source_code)
     source_code = _remove_multiline_comments(source_code)

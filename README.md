@@ -88,6 +88,6 @@ This consist in several use phases:
 - [x] Implement direct acyclic graph algorithm
 - [x] Implement kahn topologic sorting algorith with weight tie-break
 - [x] Create install_dependencies_ordered.csv file
-- [] Use install_dependencies_ordered.csv file to find the order of install and rollback using graphs
-- [] Add filename to install and rollback files
+- [x] Use install_dependencies_ordered.csv file to find the order of install
+- [x] Add filename to install script
 

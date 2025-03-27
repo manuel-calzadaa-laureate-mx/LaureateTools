@@ -4,6 +4,7 @@ import re
 from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
+from files.B7SqlScriptFile import get_scripts_folder_path
 from files.ObjectDataFile import ObjectDataTypes, \
     get_migrated_object_data_mapped_by_names_by_environment_and_type
 from files.SourceCodeFile import get_source_code_folder
@@ -18,6 +19,17 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+def find_script_file_name(object_type: str, object_name: str) -> Dict:
+    scripts_folder_path = get_scripts_folder_path()
+    target_pattern = f"{object_type}_{object_name}".lower()
+
+    for filename in os.listdir(scripts_folder_path):
+        if target_pattern in filename.lower() and filename.lower().endswith('.sql'):
+            return {"full_path": os.path.join(scripts_folder_path, filename), "filename": filename}
+
+    return None
 
 
 def get_show_errors():
