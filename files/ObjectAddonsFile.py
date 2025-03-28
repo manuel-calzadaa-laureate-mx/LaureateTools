@@ -214,8 +214,9 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
     return triggers
 
 
-def read_custom_data(b9_object_name: str, b9_object_owner: Optional[str], object_addon_type: ObjectAddonType,
-                     grant_type: GrantType):
+def read_custom_data(object_addon_type: ObjectAddonType, b9_object_name: str, b9_object_owner: Optional[str] = None,
+                     grant_type: Optional[GrantType] = None
+                     ):
     """
     Generalized function to read custom table data based on addon type.
     """

@@ -76,7 +76,7 @@
         ]
       },
       "sequence": {
-        "script": "GRANT ALTER, SELECT ON {owner}.{prefix}SE{base} TO {owner} WITH GRANT OPTION;",
+        "scripts": "GRANT ALTER, SELECT ON {owner}.{prefix}SE{base} TO {schema} WITH GRANT OPTION;",
         "schema": [
           "BANINST1",
           "SATURN",

@@ -206,6 +206,7 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
     comments = _refactor_table_comments(original_table.get("comments", {}), b9_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b9_table_name, b9_table_name)
     grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
+                              grant_type=GrantType.TABLE,
                               b9_object_owner="UVM")
     synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS,
                                b9_object_owner="UVM")
@@ -444,7 +445,7 @@ def _refactor_table_comments(b7_table_comments: list[dict], b7_table_name: str, 
     # Find missing custom comments
     missing_custom_comments = _find_missing_custom_comments(
         updated_comments=updated_comments, custom_comments=custom_table_comments
-        , b9_object_owner="UVM")
+    )
 
     # Combine updated and missing comments
     return {"comments": updated_comments + missing_custom_comments}
@@ -513,8 +514,7 @@ def _refactor_table_columns(b7_table_columns: list[dict], b7_table_name: str, b9
 
     # Fetch all custom columns
     all_custom_table_columns = read_custom_data(
-        b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.COLUMNS
-        , b9_object_owner="UVM")
+        b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.COLUMNS, b9_object_owner="UVM")
 
     # Find missing custom columns
     missing_custom_columns = _find_missing_custom_columns(
