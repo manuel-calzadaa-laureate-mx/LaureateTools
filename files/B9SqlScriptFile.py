@@ -97,6 +97,18 @@ def build_create_table_section(obj: Dict) -> str:
     return script
 
 
+def build_delete_table_section(obj: Dict) -> str:
+    """
+    Construye la sección DELETE TABLE del script.
+    """
+    script = (f"-- Drop table section{LINEFEED}"
+              f"DROP TABLE {obj['owner']}.{obj['name']} CASCADE CONSTRAINTS;{LINEFEED}"
+              f"({LINEFEED}")
+
+    script = script.rstrip(f",{LINEFEED}") + f"{LINEFEED})" + f"{END_OF_SENTENCE}"
+    return script
+
+
 def build_tablespace_section(attributes: Dict) -> str:
     """
     Construye la sección de atributos de tablespace.
@@ -253,6 +265,19 @@ def build_grant_section(grants: list) -> str:
     return grants_script
 
 
+def build_revoke_grant_section(grants: list) -> str:
+    """
+    Builds the section of the script for creating grants.
+    """
+    grants_script = f"-- Revoke grants{LINEFEED}"
+    for grant in grants:
+        grants_script += (
+            f"{grant}{LINEFEED}"
+        )
+    grants_script += get_show_errors()
+    return grants_script
+
+
 def build_synonym_section(synonym: str) -> str:
     """
     Builds the section of the script for creating synonym.
@@ -263,6 +288,73 @@ def build_synonym_section(synonym: str) -> str:
         f"{get_show_errors()}"
     )
     return synonym_script
+
+
+def build_drop_synonym_section(synonym: str) -> str:
+    ## TODO
+    return "not yet implemented"
+
+
+def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -> list[
+    dict]:
+    object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
+        database_environment=requested_environment,
+        object_data_type=ObjectDataTypes.TABLE.value)
+    scripts = []
+
+    for key, value in object_data.items():
+        if value["name"]:
+            drop_elements = []
+            table_name = value["name"]
+            object_type = value["type"]
+            object_owner = value['owner']
+            delete_table_section = build_delete_table_section(value)
+
+            drop_index_section = build_indexes_and_primary_key_drop_section(value.get("indexes", {}),
+                                                                            object_owner,
+                                                                            table_name)
+
+            custom_revoke_grant_section = build_revoke_grant_section(grants=value.get("grants", {}))
+            custom_drop_synonym_section = build_synonym_section(synonym=value.get("synonym"))
+
+            # Start with the fixed parts of the filename
+            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_TABLE.value}{table_name}", object_owner, "TBL"]
+
+            # Conditionally add "IDX", "SEQ", and "TR" based on sections
+            if drop_index_section.strip():  # Ensure there's meaningful content in the index section
+                filename_parts.append("IDX")
+            if custom_revoke_grant_section.strip():
+                filename_parts.append("GNT")
+            if custom_drop_synonym_section.strip():
+                filename_parts.append("SYN")
+
+            # Join all parts with a dot and add the file extension
+            filename = ".".join(filename_parts) + ".sql"
+
+            header_section = build_header_section(filename)
+            drop_object_section = build_drop_section(drop_elements)
+            footer_section = build_footer_section(filename)
+
+            script = (f"{header_section}"
+                      f"{LINEFEED}"
+                      f"{drop_object_section}"
+                      f"{LINEFEED}"
+                      f"{delete_table_section}"
+                      f"{LINEFEED}"
+                      f"{drop_index_section}"
+                      f"{LINEFEED}"
+                      f"{custom_revoke_grant_section}"
+                      f"{LINEFEED}"
+                      f"{delete_table_section}"
+                      f"{LINEFEED}"
+                      f"{footer_section}")
+
+            scripts.append({
+                "file_name": filename,
+                "script": script
+            })
+
+    return scripts
 
 
 def build_create_table_script_data(requested_environment: DatabaseEnvironment) -> list[
@@ -344,6 +436,43 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
             })
 
     return scripts
+
+
+def build_indexes_and_primary_key_drop_section(indexes: list, table_owner: str, table_name: str) -> str:
+    """
+    Generates the SQL script for drop primary keys and indexes based on the JSON definition.
+
+    :param indexes: List of index definitions from the JSON file.
+    :param table_owner: Owner of the table.
+    :param table_name: Name of the table.
+    :return: drop SQL script string.
+    """
+    script = ""
+    primary_key = None
+    index_scripts = []
+
+    for index in indexes:
+
+        # Skip system-generated indexes
+        if index["name"].startswith("SYS_"):
+            continue
+
+        # Build the CREATE INDEX statement
+        index_script = f"DROP INDEX {table_owner}.{index['name']}{END_OF_SENTENCE}"
+        index_scripts.append(index_script)
+
+    # Add the primary key constraint if defined
+    if primary_key:
+        pk_columns = ", ".join([col["column_name"] for col in primary_key["columns"]])
+        pk_name = primary_key["name"]
+        script += f"-- Primary Key{LINEFEED}{LINEFEED}"
+        script += f"ALTER TABLE {table_owner}.{table_name} ADD CONSTRAINT {pk_name} PRIMARY KEY ({pk_columns}){END_OF_SENTENCE}{LINEFEED}"
+
+    # Add the index scripts
+    if index_scripts:
+        script += "-- Drop indexes\n\n" + "\n".join(index_scripts)
+
+    return script
 
 
 def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table_name: str) -> str:
@@ -444,6 +573,13 @@ def create_table_scripts_manager(database_environment: DatabaseEnvironment):
     scripts_data = build_create_table_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
     logging.info("Ending: create table script generator")
+
+
+def delete_table_scripts_manager(database_environment: DatabaseEnvironment):
+    logging.info("Starting: delete table script generator")
+    scripts_data = build_delete_table_script_data(requested_environment=database_environment)
+    _write_script_files(scripts_data=scripts_data)
+    logging.info("Ending: delete table script generator")
 
 
 def get_scripts_folder_path() -> str:
