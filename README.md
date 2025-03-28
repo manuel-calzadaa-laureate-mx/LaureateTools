@@ -91,3 +91,7 @@ This consist in several use phases:
 - [x] Use install_dependencies_ordered.csv file to find the order of install
 - [x] Add filename to install script
 
+## 1.2.X ROLLBACK FEATURE
+
+- [] Add table delete script
+    - [] Split GRANT addon into GRANT and REVOKE
