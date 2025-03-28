@@ -160,7 +160,7 @@ def _get_custom_revokes(json_data: dict, object_owner: str, object_name: str, gr
         for schema in schemas
     ]
 
-    return {"grants": grants}
+    return {"revokes": grants}
 
 
 def _get_custom_synonym(json_data: dict, b9_table_name: str) -> str:

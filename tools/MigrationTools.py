@@ -208,6 +208,9 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
     grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
                               grant_type=GrantType.TABLE,
                               b9_object_owner="UVM")
+    revokes = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.REVOKES,
+                               grant_type=GrantType.TABLE,
+                               b9_object_owner="UVM")
     synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS,
                                b9_object_owner="UVM")
     custom_table = original_table.get("custom", True),
@@ -223,6 +226,7 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
         "comments": comments["comments"],
         "indexes": indexes["indexes"],
         "grants": grants["grants"],
+        "revokes": revokes["revokes"],
         "synonym": synonym,
     }
 
