@@ -731,6 +731,8 @@ def migrate_sequences_manager(database_environment: DatabaseEnvironment):
         sequence_name = current_sequence["name"]
         grants = read_custom_data(grant_type=GrantType.SEQUENCE, object_addon_type=ObjectAddonType.GRANTS,
                                   b9_object_name=sequence_name, b9_object_owner="UVM")
+        revokes = read_custom_data(grant_type=GrantType.SEQUENCE, object_addon_type=ObjectAddonType.REVOKES,
+                                   b9_object_name=sequence_name, b9_object_owner="UVM")
 
         synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=sequence_name,
                                     b9_object_owner="UVM")
@@ -750,6 +752,7 @@ def migrate_sequences_manager(database_environment: DatabaseEnvironment):
                 "cache_size": current_sequence["cache_size"],
                 "last_number": current_sequence["last_number"],
                 "grants": grants["grants"],
+                "revokes": revokes["revokes"],
                 "synonym": synonyms,
             }
 
@@ -787,11 +790,14 @@ def migrate_packages_manager(database_environment: DatabaseEnvironment):
         if object_status == ObjectTargetType.INSTALL.value:
             grants = read_custom_data(grant_type=GrantType.PACKAGE, object_addon_type=ObjectAddonType.GRANTS,
                                       b9_object_name=package_name, b9_object_owner="UVM")
+            revokes = read_custom_data(grant_type=GrantType.PACKAGE, object_addon_type=ObjectAddonType.REVOKES,
+                                       b9_object_name=package_name, b9_object_owner="UVM")
             synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=package_name,
                                         b9_object_owner="UVM")
 
             # Add grants and synonyms to the package data
             packages_from_object_data[package_name]["grants"] = grants["grants"]
+            packages_from_object_data[package_name]["revokes"] = revokes["revokes"]
             packages_from_object_data[package_name]["synonym"] = synonyms
 
             add_or_update_object_data_file(new_json_data=packages_from_object_data[package_name],
