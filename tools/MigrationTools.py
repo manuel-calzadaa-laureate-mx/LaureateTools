@@ -106,7 +106,8 @@ def convert_object_to_banner9(object_type: ObjectType, object_owner: str, object
 
 def migrate_trigger_to_b9(b9_table_name: str,
                           b9_owner: str = "UVM") -> list[dict]:
-    custom_triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS)
+    custom_triggers = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.TRIGGERS,
+                                       b9_object_owner="UVM")
     new_triggers = []
     for custom_trigger in custom_triggers:
         trigger_name = custom_trigger.get("name")
@@ -154,13 +155,15 @@ def migrate_trigger_to_b9(b9_table_name: str,
 
 def migrate_sequence_to_b9(b9_table_name: str,
                            b9_owner: str = "UVM") -> list[dict]:
-    custom_sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES)
+    custom_sequences = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SEQUENCES,
+                                        b9_object_owner="UVM")
     new_sequences = []
     for custom_sequence in custom_sequences:
         sequence_name = custom_sequence.get("name")
         grants = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.GRANTS,
-                                  grant_type=GrantType.SEQUENCE)
-        synonym = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS)
+                                  grant_type=GrantType.SEQUENCE, b9_object_owner="UVM")
+        synonym = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS,
+                                   b9_object_owner="UVM")
         new_sequence = {
             "status": ObjectTargetType.INSTALL.value,
             "origin": ObjectOriginType.ADDON.value,
@@ -202,8 +205,10 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
     columns = _refactor_table_columns(original_table.get("columns", []), b9_table_name, b9_table_name)
     comments = _refactor_table_comments(original_table.get("comments", {}), b9_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b9_table_name, b9_table_name)
-    grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
-    synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
+    grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
+                              b9_object_owner="UVM")
+    synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS,
+                               b9_object_owner="UVM")
     custom_table = original_table.get("custom", True),
     new_table = {
         "object_status": ObjectTargetType.INSTALL.value if custom_table else ObjectTargetType.SKIP,
@@ -263,8 +268,10 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     columns = _refactor_table_columns(original_table.get("columns", []), b7_table_name, b9_table_name)
     comments = _refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
-    grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS)
-    synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS)
+    grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
+                              b9_object_owner="UVM")
+    synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS,
+                               b9_object_owner="UVM")
     new_table = {
         "name": b9_table_name,
         "type": "TABLE",
@@ -432,12 +439,12 @@ def _refactor_table_comments(b7_table_comments: list[dict], b7_table_name: str, 
     # Fetch all custom table comments
     custom_table_comments = read_custom_data(
         b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.COMMENTS
-    )
+        , b9_object_owner="UVM")
 
     # Find missing custom comments
     missing_custom_comments = _find_missing_custom_comments(
         updated_comments=updated_comments, custom_comments=custom_table_comments
-    )
+        , b9_object_owner="UVM")
 
     # Combine updated and missing comments
     return {"comments": updated_comments + missing_custom_comments}
@@ -507,7 +514,7 @@ def _refactor_table_columns(b7_table_columns: list[dict], b7_table_name: str, b9
     # Fetch all custom columns
     all_custom_table_columns = read_custom_data(
         b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.COLUMNS
-    )
+        , b9_object_owner="UVM")
 
     # Find missing custom columns
     missing_custom_columns = _find_missing_custom_columns(

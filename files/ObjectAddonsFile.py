@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from typing import Optional
 
 from tools.CommonTools import refactor_tagged_text, extract_object_structure
 from tools.FileTools import read_json_file
@@ -12,6 +13,7 @@ class ObjectAddonType(Enum):
     INDEXES = "indexes"
     SEQUENCES = "sequences"
     GRANTS = "grants"
+    REVOKES = "revokes"
     SYNONYMS = "synonyms"
 
 
@@ -116,30 +118,46 @@ def _get_custom_indexes(json_data: dict):
     return {"indexes": transformed_indexes}
 
 
-# def _get_custom_all_table_grants(json_data: dict, object_name: str):
-#     table_grants = _get_custom_grants(json_data=json_data, object_name=object_name)
-#
-#     ## Get the sequence names:
-#     custom_sequences = _get_custom_sequences(json_data=json_data, b9_table_name=object_name)
-#     sequence_names = [sequence['name'] for sequence in custom_sequences['sequences']]
-#     sequence_grants = get_custom_grants_multiple_objects(json_data=json_data, object_names=sequence_names,
-#                                                          grant_type=GrantType.SEQUENCE)
-#     merged_grants = table_grants.get("grants", []) + sequence_grants.get("grants", [])
-#     return {"grants": merged_grants}
-
-
-def _get_custom_grants(json_data: dict, object_name: str, grant_type: GrantType):
+def _get_custom_grants(json_data: dict, object_owner: str, object_name: str, grant_type: GrantType):
     # Navigate to the grant type within the JSON structure
     fields = json_data["root"]["grants"][grant_type.value]
-    script_template = fields["script"]
-    owners = fields["owner"]
+    script_template = fields["scripts"]
+    schemas = fields["schema"]
 
     extracted_table_info = extract_object_structure(object_name=object_name)
     prefix = extracted_table_info.get("prefix")
     base = extracted_table_info.get("base")
+    owner = object_owner
+
     grants = [
-        script_template.replace("{prefix}", prefix).replace("{base}", base).replace("{owner}", owner)
-        for owner in owners
+        script_template.replace("{owner}", owner).replace("{prefix}", prefix).replace("{base}", base).replace(
+            "{schema}", schema)
+        for schema in schemas
+    ]
+
+    return {"grants": grants}
+
+
+def _get_custom_revokes(json_data: dict, object_owner: str, object_name: str, grant_type: GrantType):
+    # Navigate to the grant type within the JSON structure
+    fields = json_data["root"]["revokes"][grant_type.value]
+    open_revoke_script = fields["open_revoke_script"]
+    close_revoke_script = fields["close_revoke_script"]
+    script_template = fields["scripts"]
+    schemas = fields["schema"]
+
+    extracted_table_info = extract_object_structure(object_name=object_name)
+    prefix = extracted_table_info.get("prefix")
+    base = extracted_table_info.get("base")
+    owner = object_owner
+
+    grants = [
+        open_revoke_script + "\n" +
+        script_template.replace("{owner}", owner).replace("{prefix}", prefix).replace(
+            "{base}", base).replace(
+            "{schema}", schema) + "\n" +
+        close_revoke_script
+        for schema in schemas
     ]
 
     return {"grants": grants}
@@ -196,7 +214,8 @@ def _get_custom_triggers(json_data: dict, b9_table_name: str):
     return triggers
 
 
-def read_custom_data(b9_object_name: str, object_addon_type: ObjectAddonType, grant_type: GrantType = GrantType.TABLE):
+def read_custom_data(b9_object_name: str, b9_object_owner: Optional[str], object_addon_type: ObjectAddonType,
+                     grant_type: GrantType):
     """
     Generalized function to read custom table data based on addon type.
     """
@@ -215,7 +234,11 @@ def read_custom_data(b9_object_name: str, object_addon_type: ObjectAddonType, gr
     elif object_addon_type == ObjectAddonType.TRIGGERS:
         return _get_custom_triggers(json_data=json_custom_data, b9_table_name=b9_object_name)
     elif object_addon_type == ObjectAddonType.GRANTS:
-        return _get_custom_grants(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type)
+        return _get_custom_grants(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type,
+                                  object_owner=b9_object_owner)
+    elif object_addon_type == ObjectAddonType.REVOKES:
+        return _get_custom_revokes(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type,
+                                   object_owner=b9_object_owner)
     elif object_addon_type == ObjectAddonType.SYNONYMS:
         return _get_custom_synonym(json_data=json_custom_data, b9_table_name=b9_object_name)
     else:

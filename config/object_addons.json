@@ -1,10 +1,12 @@
 {
   "root": {
     "synonym": "CREATE PUBLIC SYNONYM {object} FOR UVM.{object};",
-    "grants": {
+    "revokes": {
       "table": {
-        "script": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON UVM.{prefix}TB{base} TO {owner};",
-        "owner": [
+        "open_revoke_script": "BEGIN",
+        "close_revoke_script": "END;",
+        "revoke_scripts": "BEGIN\\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{table} FROM {schema}';\\nEXCEPTION\\n   WHEN OTHERS THEN\\n      IF SQLCODE = -1927 THEN\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\\n      ELSE\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\\n      END IF;\\nEND;\\n",
+        "schema": [
           "BANINST1",
           "SATURN",
           "TAISMGR",
@@ -16,8 +18,10 @@
         ]
       },
       "package": {
-        "script": "GRANT EXECUTE, DEBUG ON UVM.{prefix}PK{base} TO {owner};",
-        "owner": [
+        "open_revoke_script": "BEGIN",
+        "close_revoke_script": "END;",
+        "revoke_scripts": "BEGIN\\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}PK{base} FROM {schema}';\\nEXCEPTION\\n   WHEN OTHERS THEN\\n      IF SQLCODE = -1927 THEN\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\\n      ELSE\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\\n      END IF;\\nEND;\\n",
+        "schema": [
           "BANINST1",
           "SATURN",
           "TAISMGR",
@@ -29,8 +33,51 @@
         ]
       },
       "sequence": {
-        "script": "GRANT ALTER, SELECT ON UVM.{prefix}SE{base} TO {owner} WITH GRANT OPTION;",
-        "owner": [
+        "open_revoke_script": "BEGIN",
+        "close_revoke_script": "END;",
+        "revoke_scripts": "BEGIN\\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}SE{base} FROM {schema}';\\nEXCEPTION\\n   WHEN OTHERS THEN\\n      IF SQLCODE = -1927 THEN\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\\n      ELSE\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\\n      END IF;\\nEND;\\n",
+        "schema": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
+      }
+    },
+    "grants": {
+      "table": {
+        "scripts": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON {owner}.{prefix}TB{base} TO {schema};",
+        "schema": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
+      },
+      "package": {
+        "scripts": "GRANT EXECUTE, DEBUG ON {owner}.{prefix}PK{base} TO {schema};",
+        "schema": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
+      },
+      "sequence": {
+        "script": "GRANT ALTER, SELECT ON {owner}.{prefix}SE{base} TO {owner} WITH GRANT OPTION;",
+        "schema": [
           "BANINST1",
           "SATURN",
           "TAISMGR",

@@ -730,9 +730,10 @@ def migrate_sequences_manager(database_environment: DatabaseEnvironment):
         current_sequence = sequence_object_data[one_sequence]
         sequence_name = current_sequence["name"]
         grants = read_custom_data(grant_type=GrantType.SEQUENCE, object_addon_type=ObjectAddonType.GRANTS,
-                                  b9_object_name=sequence_name)
+                                  b9_object_name=sequence_name, b9_object_owner="UVM")
 
-        synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=sequence_name)
+        synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=sequence_name,
+                                    b9_object_owner="UVM")
 
         if current_sequence:
             new_sequence = {
@@ -785,8 +786,9 @@ def migrate_packages_manager(database_environment: DatabaseEnvironment):
         object_status = package_dependencies.get("object_status", ObjectTargetType.SKIP.value)
         if object_status == ObjectTargetType.INSTALL.value:
             grants = read_custom_data(grant_type=GrantType.PACKAGE, object_addon_type=ObjectAddonType.GRANTS,
-                                      b9_object_name=package_name)
-            synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=package_name)
+                                      b9_object_name=package_name, b9_object_owner="UVM")
+            synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=package_name,
+                                        b9_object_owner="UVM")
 
             # Add grants and synonyms to the package data
             packages_from_object_data[package_name]["grants"] = grants["grants"]
