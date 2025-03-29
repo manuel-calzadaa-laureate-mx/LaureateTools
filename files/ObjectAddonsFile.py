@@ -141,9 +141,7 @@ def _get_custom_grants(json_data: dict, object_owner: str, object_name: str, gra
 def _get_custom_revokes(json_data: dict, object_owner: str, object_name: str, grant_type: GrantType):
     # Navigate to the grant type within the JSON structure
     fields = json_data["root"]["revokes"][grant_type.value]
-    open_revoke_script = fields["open_revoke_script"]
-    close_revoke_script = fields["close_revoke_script"]
-    script_template = fields["scripts"]
+    script_template = fields["scripts"]  # The inner block template
     schemas = fields["schema"]
 
     extracted_table_info = extract_object_structure(object_name=object_name)
@@ -151,16 +149,19 @@ def _get_custom_revokes(json_data: dict, object_owner: str, object_name: str, gr
     base = extracted_table_info.get("base")
     owner = object_owner
 
-    grants = [
-        open_revoke_script + "\n" +
-        script_template.replace("{owner}", owner).replace("{prefix}", prefix).replace(
-            "{base}", base).replace(
-            "{schema}", schema) + "\n" +
-        close_revoke_script
-        for schema in schemas
-    ]
+    # Generate all inner blocks for each schema
+    inner_blocks = []
+    for schema in schemas:
+        inner_block = script_template.replace("{owner}", owner) \
+            .replace("{prefix}", prefix) \
+            .replace("{base}", base) \
+            .replace("{schema}", schema)
+        inner_blocks.append(inner_block)
 
-    return {"revokes": grants}
+    # Combine all inner blocks with newlines and wrap in outer BEGIN/END
+    combined_script = "BEGIN\n" + "\n".join(inner_blocks) + "\nEND;"
+
+    return {"revokes": combined_script}
 
 
 def _get_custom_synonym(json_data: dict, b9_table_name: str) -> str:

@@ -5,7 +5,7 @@
       "table": {
         "open_revoke_script": "BEGIN",
         "close_revoke_script": "END;",
-        "scripts": "BEGIN\\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}TB{base} FROM {schema}';\\nEXCEPTION\\n   WHEN OTHERS THEN\\n      IF SQLCODE = -1927 THEN\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\\n      ELSE\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\\n      END IF;\\nEND;\\n",
+        "scripts": "BEGIN\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}TB{base} FROM {schema}';\nEXCEPTION\n   WHEN OTHERS THEN\n      IF SQLCODE = -1927 THEN\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\n      ELSE\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\n      END IF;\nEND;\n",
         "schema": [
           "BANINST1",
           "SATURN",
@@ -20,7 +20,7 @@
       "package": {
         "open_revoke_script": "BEGIN",
         "close_revoke_script": "END;",
-        "scripts": "BEGIN\\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}PK{base} FROM {schema}';\\nEXCEPTION\\n   WHEN OTHERS THEN\\n      IF SQLCODE = -1927 THEN\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\\n      ELSE\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\\n      END IF;\\nEND;\\n",
+        "scripts": "BEGIN\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}PK{base} FROM {schema}';\nEXCEPTION\n   WHEN OTHERS THEN\n      IF SQLCODE = -1927 THEN\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\n      ELSE\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\n      END IF;\nEND;\n",
         "schema": [
           "BANINST1",
           "SATURN",
@@ -35,7 +35,7 @@
       "sequence": {
         "open_revoke_script": "BEGIN",
         "close_revoke_script": "END;",
-        "scripts": "BEGIN\\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}SE{base} FROM {schema}';\\nEXCEPTION\\n   WHEN OTHERS THEN\\n      IF SQLCODE = -1927 THEN\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\\n      ELSE\\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\\n      END IF;\\nEND;\\n",
+        "scripts": "BEGIN\n   EXECUTE IMMEDIATE 'REVOKE SELECT ON {owner}.{prefix}SE{base} FROM {schema}';\nEXCEPTION\n   WHEN OTHERS THEN\n      IF SQLCODE = -1927 THEN\n         DBMS_OUTPUT.PUT_LINE('{schema}: Privilege not granted, skipping...');\n      ELSE\n         DBMS_OUTPUT.PUT_LINE('{schema}: Error - ' || SQLERRM);\n      END IF;\nEND;\n",
         "schema": [
           "BANINST1",
           "SATURN",
