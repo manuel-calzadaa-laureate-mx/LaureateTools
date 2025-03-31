@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import Dict, List
+from typing import Dict
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
 from files.B7SqlScriptFile import get_scripts_folder_path
@@ -102,10 +102,8 @@ def build_delete_table_section(obj: Dict) -> str:
     Construye la sección DELETE TABLE del script.
     """
     script = (f"-- Drop table section{LINEFEED}"
-              f"DROP TABLE {obj['owner']}.{obj['name']} CASCADE CONSTRAINTS;{LINEFEED}"
-              f"({LINEFEED}")
+              f"DROP TABLE {obj['owner']}.{obj['name']} CASCADE CONSTRAINTS;{LINEFEED}")
 
-    script = script.rstrip(f",{LINEFEED}") + f"{LINEFEED})" + f"{END_OF_SENTENCE}"
     return script
 
 
@@ -265,8 +263,14 @@ def build_grant_section(grants: list) -> str:
     return grants_script
 
 
-def build_revoke_section() -> str:
-    pass
+def build_revoke_section(revoke_grants: str) -> str:
+    """
+    Builds the section of the script for revoking grants.
+    """
+    revoke_grants_script = (f"-- Revoke grant permissions{LINEFEED}"
+                            f"{revoke_grants}{LINEFEED}"
+                            f"{get_show_errors_block()}")
+    return revoke_grants_script
 
 
 def build_synonym_section(synonym: str) -> str:
@@ -281,16 +285,13 @@ def build_synonym_section(synonym: str) -> str:
     return synonym_script
 
 
-def build_drop_synonym_section(synonym_names: List[str]) -> str:
+def build_drop_synonym_section(drop_synonyms: str) -> str:
     """
     Builds the section of the script for drop synonym.
     """
-    synonym_script = f"-- Drop synonyms{LINEFEED}"
-    synonym_script += (
-        f"{synonym}{LINEFEED}"
-        f"{get_show_errors()}"
-    )
-    return synonym_script
+    drop_synonym_script = (f"-- Drop synonyms{LINEFEED}"
+                           f"{drop_synonyms}{LINEFEED}")
+    return drop_synonym_script
 
 
 def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -> list[
@@ -312,8 +313,8 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
                                                                             object_owner,
                                                                             table_name)
 
-            custom_revoke_section = ''  # TODO
-            custom_drop_synonym_section = build_synonym_section(synonym=value.get("synonym"))
+            custom_revoke_section = build_revoke_section(revoke_grants=value.get("revokes"))
+            custom_drop_synonym_section = build_drop_synonym_section(drop_synonyms=value.get("drop_synonyms"))
 
             # Start with the fixed parts of the filename
             filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_TABLE.value}{table_name}", object_owner, "TBL"]
@@ -327,8 +328,6 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
             script = (f"{header_section}"
                       f"{LINEFEED}"
                       f"{custom_drop_synonym_section}"
-                      f"{LINEFEED}"
-                      f"{delete_table_section}"
                       f"{LINEFEED}"
                       f"{drop_index_section}"
                       f"{LINEFEED}"
@@ -427,41 +426,40 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
     return scripts
 
 
-def build_indexes_and_primary_key_drop_section(indexes: list, table_owner: str, table_name: str) -> str:
+def build_indexes_and_primary_key_drop_section(indexes: list, table_owner: str, table_name: str,
+                                               primary_key: dict = None) -> str:
     """
-    Generates the SQL script for drop primary keys and indexes based on the JSON definition.
+    Generates the SQL script for dropping primary keys and indexes based on the JSON definition.
 
     :param indexes: List of index definitions from the JSON file.
     :param table_owner: Owner of the table.
     :param table_name: Name of the table.
+    :param primary_key: Dictionary containing primary key definition (optional).
     :return: drop SQL script string.
     """
-    script = ""
-    primary_key = None
+    script_parts = []
+
+    # Add primary key drop if defined
+    if primary_key and not primary_key["name"].startswith("SYS_"):
+        pk_drop = f"ALTER TABLE {table_owner}.{table_name} DROP CONSTRAINT {primary_key['name']}{END_OF_SENTENCE}"
+        script_parts.append(f"-- Drop primary key\n\n{pk_drop}")
+
+    # Process indexes
     index_scripts = []
-
     for index in indexes:
-
         # Skip system-generated indexes
         if index["name"].startswith("SYS_"):
             continue
 
-        # Build the CREATE INDEX statement
-        index_script = f"DROP INDEX {table_owner}.{index['name']}{END_OF_SENTENCE}"
-        index_scripts.append(index_script)
+        # Build the DROP INDEX statement
+        index_scripts.append(f"DROP INDEX {table_owner}.{index['name']}{END_OF_SENTENCE}")
 
-    # Add the primary key constraint if defined
-    if primary_key:
-        pk_columns = ", ".join([col["column_name"] for col in primary_key["columns"]])
-        pk_name = primary_key["name"]
-        script += f"-- Primary Key{LINEFEED}{LINEFEED}"
-        script += f"ALTER TABLE {table_owner}.{table_name} ADD CONSTRAINT {pk_name} PRIMARY KEY ({pk_columns}){END_OF_SENTENCE}{LINEFEED}"
-
-    # Add the index scripts
+    # Add the index scripts if any
     if index_scripts:
-        script += "-- Drop indexes\n\n" + "\n".join(index_scripts)
+        script_parts.append("-- Drop indexes\n\n" + "\n".join(index_scripts))
 
-    return script
+    # Join all script parts with double line breaks
+    return "\n\n".join(script_parts) if script_parts else ""
 
 
 def build_indexes_and_primary_key_section(indexes: list, table_owner: str, table_name: str) -> str:
