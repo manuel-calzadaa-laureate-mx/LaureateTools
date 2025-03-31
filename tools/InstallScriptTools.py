@@ -7,7 +7,7 @@ def create_install_script_manager():
     install_dependencies_ordered = get_install_dependencies_ordered_data()
     install_script_elements = []
     index = 1
-    for install_dependency in install_dependencies_ordered:
+    for install_dependency in install_dependencies_ordered[::-1]:
         object_type = install_dependency.get("object_type")
         object_name = install_dependency.get("object_name")
         script_file_data = find_script_file_name(object_type=object_type, object_name=object_name)

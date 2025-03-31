@@ -93,5 +93,7 @@ This consist in several use phases:
 
 ## 1.2.X ROLLBACK FEATURE
 
-- [] Add table delete script
-    - [] Split GRANT addon into GRANT and REVOKE
+- [x] Split GRANT addon into GRANT and REVOKE
+- [x] Split SYNONYM addon into DROP and CREATE
+- [x] Add table delete script
+- [] Add sequence delete script
