@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import Dict
+from typing import Dict, List
 
 from db.DatabaseProperties import DatabaseEnvironment, DatabaseObject
 from files.B7SqlScriptFile import get_scripts_folder_path
@@ -76,7 +76,7 @@ def build_create_table_section(obj: Dict) -> str:
     """
     Construye la sección CREATE TABLE del script.
     """
-    script = (f"-- Creaciones{LINEFEED}"
+    script = (f"-- Create table statement{LINEFEED}"
               f"{LINEFEED}"
               f"CREATE TABLE {obj['owner']}.{obj['name']}{LINEFEED}"
               f"({LINEFEED}")
@@ -155,7 +155,7 @@ def build_comments_section(comments: Dict, table_owner: str, table_name: str) ->
     Construye la sección de comentarios del script.
     """
 
-    comment_script = f"-- Descripcion de los Campos {LINEFEED}{LINEFEED}"
+    comment_script = f"-- Add table comments{LINEFEED}"
     for comment in comments:
         if comment["comment"]:
             comment_script += f"   COMMENT ON COLUMN {table_owner}.{table_name}.{comment["name"]} IS '{comment["comment"]}'{END_OF_SENTENCE}"
@@ -199,7 +199,7 @@ def build_drop_section(drop_objects: list[dict]) -> str:
     object_types = ['TABLE', 'SEQUENCE', 'SYNONYM']
 
     # Initialize the drop section with the header
-    drop_section = f"-- Eliminaciones{LINEFEED}"
+    drop_section = f"-- Drop objects{LINEFEED}"
 
     # Loop through each object type and append the drop statement if the key exists
     for obj_type in object_types:
@@ -220,7 +220,7 @@ def build_sequence_section(sequences: list) -> str:
     """
     Builds the section of the script for creating sequences.
     """
-    sequences_script = (f"-- Secuencias asignadas a esta tabla{LINEFEED}"
+    sequences_script = (f"-- Create sequences{LINEFEED}"
                         f"{LINEFEED}")
     for sequence in sequences:
         sequences_script += (
@@ -256,7 +256,7 @@ def build_grant_section(grants: list) -> str:
     """
     Builds the section of the script for creating grants.
     """
-    grants_script = f"-- GRANTS ASIGNADOS A ESTE OBJETO{LINEFEED}"
+    grants_script = f"-- Grant permissions{LINEFEED}"
     for grant in grants:
         grants_script += (
             f"{grant}{LINEFEED}"
@@ -265,24 +265,15 @@ def build_grant_section(grants: list) -> str:
     return grants_script
 
 
-def build_revoke_grant_section(grants: list) -> str:
-    """
-    Builds the section of the script for creating grants.
-    """
-    grants_script = f"-- Revoke grants{LINEFEED}"
-    for grant in grants:
-        grants_script += (
-            f"{grant}{LINEFEED}"
-        )
-    grants_script += get_show_errors()
-    return grants_script
+def build_revoke_section() -> str:
+    pass
 
 
 def build_synonym_section(synonym: str) -> str:
     """
     Builds the section of the script for creating synonym.
     """
-    synonym_script = f"-- SYNONYM ASIGNADO A ESTE OBJETO{LINEFEED}"
+    synonym_script = f"-- Create synonyms{LINEFEED}"
     synonym_script += (
         f"{synonym}{LINEFEED}"
         f"{get_show_errors()}"
@@ -290,9 +281,16 @@ def build_synonym_section(synonym: str) -> str:
     return synonym_script
 
 
-def build_drop_synonym_section(synonym: str) -> str:
-    ## TODO
-    return "not yet implemented"
+def build_drop_synonym_section(synonym_names: List[str]) -> str:
+    """
+    Builds the section of the script for drop synonym.
+    """
+    synonym_script = f"-- Drop synonyms{LINEFEED}"
+    synonym_script += (
+        f"{synonym}{LINEFEED}"
+        f"{get_show_errors()}"
+    )
+    return synonym_script
 
 
 def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -> list[
@@ -314,36 +312,27 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
                                                                             object_owner,
                                                                             table_name)
 
-            custom_revoke_grant_section = build_revoke_grant_section(grants=value.get("grants", {}))
+            custom_revoke_section = ''  # TODO
             custom_drop_synonym_section = build_synonym_section(synonym=value.get("synonym"))
 
             # Start with the fixed parts of the filename
-            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_TABLE.value}{table_name}", object_owner, "TBL"]
-
-            # Conditionally add "IDX", "SEQ", and "TR" based on sections
-            if drop_index_section.strip():  # Ensure there's meaningful content in the index section
-                filename_parts.append("IDX")
-            if custom_revoke_grant_section.strip():
-                filename_parts.append("GNT")
-            if custom_drop_synonym_section.strip():
-                filename_parts.append("SYN")
+            filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_TABLE.value}{table_name}", object_owner, "TBL"]
 
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
 
             header_section = build_header_section(filename)
-            drop_object_section = build_drop_section(drop_elements)
             footer_section = build_footer_section(filename)
 
             script = (f"{header_section}"
                       f"{LINEFEED}"
-                      f"{drop_object_section}"
+                      f"{custom_drop_synonym_section}"
                       f"{LINEFEED}"
                       f"{delete_table_section}"
                       f"{LINEFEED}"
                       f"{drop_index_section}"
                       f"{LINEFEED}"
-                      f"{custom_revoke_grant_section}"
+                      f"{custom_revoke_section}"
                       f"{LINEFEED}"
                       f"{delete_table_section}"
                       f"{LINEFEED}"
@@ -390,7 +379,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
                                                                   table_name)
 
             custom_grant_section = build_grant_section(grants=value.get("grants", {}))
-            custom_synonym_section = build_synonym_section(synonym=value.get("synonym"))
+            custom_synonym_section = build_synonym_section(synonym=value.get("synonyms"))
             if custom_synonym_section:
                 drop_elements.append({"type": {DatabaseObject.SYNONYM.name},
                                       "owner": {object_owner},
@@ -636,7 +625,7 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
                 drop_object_section += f"-- DROP SEQUENCE {drop_element["name"]}{END_OF_SENTENCE}"
 
             grants = build_grant_section(grants=value["grants"])
-            synonym = build_synonym_section(synonym=value["synonym"])
+            synonym = build_synonym_section(synonym=value["synonyms"])
             footer_section = build_footer_section(filename)
 
             script = (f"{header_section}"
@@ -784,7 +773,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         grants = build_grant_section(grants=value["grants"])
 
         ## SYNONYMS SECTION
-        synonyms = build_synonym_section(synonym=value["synonym"])
+        synonyms = build_synonym_section(synonym=value["synonyms"])
 
         ## FOOTER SECTION
         footer_section = build_footer_section(filename)

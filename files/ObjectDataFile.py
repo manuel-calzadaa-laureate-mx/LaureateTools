@@ -736,7 +736,8 @@ def migrate_sequences_manager(database_environment: DatabaseEnvironment):
 
         synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=sequence_name,
                                     b9_object_owner="UVM")
-
+        drop_synonyms = read_custom_data(object_addon_type=ObjectAddonType.DROP_SYNONYMS, b9_object_name=sequence_name,
+                                         b9_object_owner="UVM")
         if current_sequence:
             new_sequence = {
                 "origin": current_sequence.get("origin", ObjectOriginType.DEPENDENCY.value),
@@ -753,7 +754,8 @@ def migrate_sequences_manager(database_environment: DatabaseEnvironment):
                 "last_number": current_sequence["last_number"],
                 "grants": grants["grants"],
                 "revokes": revokes["revokes"],
-                "synonym": synonyms,
+                "synonyms": synonyms,
+                "drop_synonyms": drop_synonyms,
             }
 
             add_or_update_object_data_file(environment=database_environment, new_json_data=new_sequence)
@@ -795,10 +797,15 @@ def migrate_packages_manager(database_environment: DatabaseEnvironment):
             synonyms = read_custom_data(object_addon_type=ObjectAddonType.SYNONYMS, b9_object_name=package_name,
                                         b9_object_owner="UVM")
 
+            drop_synonyms = read_custom_data(object_addon_type=ObjectAddonType.DROP_SYNONYMS,
+                                             b9_object_name=package_name,
+                                             b9_object_owner="UVM")
+
             # Add grants and synonyms to the package data
             packages_from_object_data[package_name]["grants"] = grants["grants"]
             packages_from_object_data[package_name]["revokes"] = revokes["revokes"]
-            packages_from_object_data[package_name]["synonym"] = synonyms
+            packages_from_object_data[package_name]["synonyms"] = synonyms
+            packages_from_object_data[package_name]["drop_synonyms"] = drop_synonyms
 
             add_or_update_object_data_file(new_json_data=packages_from_object_data[package_name],
                                            environment=database_environment)

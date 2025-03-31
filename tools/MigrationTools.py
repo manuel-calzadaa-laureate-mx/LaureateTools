@@ -162,8 +162,11 @@ def migrate_sequence_to_b9(b9_table_name: str,
         sequence_name = custom_sequence.get("name")
         grants = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.GRANTS,
                                   grant_type=GrantType.SEQUENCE, b9_object_owner="UVM")
-        synonym = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS,
-                                   b9_object_owner="UVM")
+        synonyms = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.SYNONYMS,
+                                    b9_object_owner="UVM")
+
+        drop_synonyms = read_custom_data(b9_object_name=sequence_name, object_addon_type=ObjectAddonType.DROP_SYNONYMS,
+                                         b9_object_owner="UVM")
         new_sequence = {
             "status": ObjectTargetType.INSTALL.value,
             "origin": ObjectOriginType.ADDON.value,
@@ -178,7 +181,8 @@ def migrate_sequence_to_b9(b9_table_name: str,
             "cache_size": custom_sequence.get("cache"),
             "last_number": 1,
             "grants": grants["grants"],
-            "synonym": synonym,
+            "synonyms": synonyms,
+            "drop_synonyms": drop_synonyms,
         }
         new_sequences.append(new_sequence)
 
@@ -211,8 +215,12 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
     revokes = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.REVOKES,
                                grant_type=GrantType.TABLE,
                                b9_object_owner="UVM")
-    synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS,
-                               b9_object_owner="UVM")
+    synonyms = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS,
+                                b9_object_owner="UVM")
+
+    drop_synonyms = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.DROP_SYNONYMS,
+                                     b9_object_owner="UVM")
+
     custom_table = original_table.get("custom", True),
     new_table = {
         "object_status": ObjectTargetType.INSTALL.value if custom_table else ObjectTargetType.SKIP,
@@ -227,7 +235,8 @@ def migrate_b9_table_to_b9(json_data: dict, b9_table_name: str,
         "indexes": indexes["indexes"],
         "grants": grants["grants"],
         "revokes": revokes["revokes"],
-        "synonym": synonym,
+        "synonyms": synonyms,
+        "drop_synonyms": drop_synonyms,
     }
 
     return new_table

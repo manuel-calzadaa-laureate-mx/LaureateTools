@@ -108,7 +108,7 @@ def build_dag_nodes_from_csv(csv_data: list[dict]):
             if dependency_package:  ## NON-ROOT DEPENDENCY PARENT
                 if object_package == dependency_package:  ## OBJECT AND DEPENDENCY HAVE THE SAME PARENT
                     if not current_node.parent:
-                        current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
+                        current_node.parent = get_or_create_node(name=object_package, nodes=nodes)
                         current_node.parent.add_dependency(current_node)
                     new_dependency = get_or_create_node(name=dependency_name, data=
                     {"type": dependency_type, "package": dependency_package},
@@ -135,7 +135,7 @@ def build_dag_nodes_from_csv(csv_data: list[dict]):
                 if dependency_name:  ## DEPENDENCY IS LEGAL
                     ## add dependency with root parent
                     if not current_node.parent:
-                        current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
+                        current_node.parent = get_or_create_node(name=object_package, nodes=nodes)
                         current_node.parent.add_dependency(current_node)
                     new_dependency = get_or_create_node(dependency_name,
                                                         data={"type": dependency_type, "package": dependency_package},
@@ -145,7 +145,7 @@ def build_dag_nodes_from_csv(csv_data: list[dict]):
 
                 if not dependency_name:  ## OBJECT IS DEPENDENCY-LESS
                     if not current_node.parent:
-                        current_node.parent = get_or_create_node(name=object_package, weight=0, nodes=nodes)
+                        current_node.parent = get_or_create_node(name=object_package, nodes=nodes)
                         current_node.parent.add_dependency(current_node)
                     ## this node is dependency-less
                     continue

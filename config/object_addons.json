@@ -1,6 +1,9 @@
 {
   "root": {
-    "synonym": "CREATE PUBLIC SYNONYM {object} FOR UVM.{object};",
+    "synonym": {
+      "create": "CREATE PUBLIC SYNONYM {object} FOR UVM.{object};",
+      "drop": "DROP PUBLIC SYNONYM {object} FOR UVM.{object};"
+    },
     "revokes": {
       "table": {
         "open_revoke_script": "BEGIN",

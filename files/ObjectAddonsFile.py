@@ -15,6 +15,7 @@ class ObjectAddonType(Enum):
     GRANTS = "grants"
     REVOKES = "revokes"
     SYNONYMS = "synonyms"
+    DROP_SYNONYMS = "drop_synonyms"
 
 
 class GrantType(Enum):
@@ -165,7 +166,11 @@ def _get_custom_revokes(json_data: dict, object_owner: str, object_name: str, gr
 
 
 def _get_custom_synonym(json_data: dict, b9_table_name: str) -> str:
-    return json_data["root"]["synonym"].replace("{object}", b9_table_name)
+    return json_data["root"]["synonym"]["create"].replace("{object}", b9_table_name)
+
+
+def _get_custom_drop_synonym(json_data: dict, b9_table_name: str) -> str:
+    return json_data["root"]["synonym"]["drop"].replace("{object}", b9_table_name)
 
 
 def get_custom_grants_multiple_objects(
@@ -243,5 +248,7 @@ def read_custom_data(object_addon_type: ObjectAddonType, b9_object_name: str, b9
                                    object_owner=b9_object_owner)
     elif object_addon_type == ObjectAddonType.SYNONYMS:
         return _get_custom_synonym(json_data=json_custom_data, b9_table_name=b9_object_name)
+    elif object_addon_type == ObjectAddonType.DROP_SYNONYMS:
+        return _get_custom_drop_synonym(json_data=json_custom_data, b9_table_name=b9_object_name)
     else:
         raise ValueError(f"Unsupported addon type: {object_addon_type}")
