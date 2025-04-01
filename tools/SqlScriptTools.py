@@ -16,6 +16,7 @@ class SqlScriptFilenamePrefix(Enum):
     DELETE_TABLE = "DELETE_TABLE_"
     DELETE_SEQUENCE = "DELETE_SEQUENCE_"
     DELETE_PACKAGE = "DELETE_PACKAGE_"
+    DELETE_TRIGGER = "DELETE_TRIGGER_"
 
 
 def format_sql_by_steps(sql_text: str) -> str:

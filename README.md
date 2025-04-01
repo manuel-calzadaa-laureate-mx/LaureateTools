@@ -98,4 +98,4 @@ This consist in several use phases:
 - [x] Add table delete script
 - [x] Add sequence delete script
 - [x] Add package delete script
-- [] Add trigger delete script
+- [x] Add trigger delete script

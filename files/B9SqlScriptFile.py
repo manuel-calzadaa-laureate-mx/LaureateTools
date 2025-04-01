@@ -233,6 +233,28 @@ def build_sequence_section(sequences: list) -> str:
     return sequences_script
 
 
+def build_drop_trigger_section(trigger: dict) -> str:
+    """
+    Builds the section of the script for creating triggers.
+    """
+    trigger_name = {trigger['name']}
+    trigger_script = (
+        f"BEGIN{LINEFEED}"
+        f"   EXECUTE IMMEDIATE 'DROP TRIGGER UVM.{trigger_name}';{LINEFEED}"
+        f"   DBMS_OUTPUT.PUT_LINE('Trigger UVM.{trigger_name} dropped successfully.');{LINEFEED}"
+        f"EXCEPTION{LINEFEED}"
+        f"   WHEN OTHERS THEN{LINEFEED}"
+        f"      IF SQLCODE = -4080 THEN  -- Trigger does not exist{LINEFEED}"
+        f"         DBMS_OUTPUT.PUT_LINE('Trigger UVM.{trigger_name} does not exist, skipping...');{LINEFEED}"
+        f"      ELSE{LINEFEED}"
+        f"         DBMS_OUTPUT.PUT_LINE('Error dropping trigger UVM.{trigger_name}: ' || SQLERRM);{LINEFEED}"
+        f"      END IF;{LINEFEED}"
+        f"END{END_OF_SENTENCE}")
+
+    trigger_script += get_show_errors_block()
+    return trigger_script
+
+
 def build_trigger_section(trigger: dict) -> str:
     """
     Builds the section of the script for creating triggers.
@@ -922,6 +944,43 @@ def delete_packages_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: delete packages script generator")
 
 
+def build_delete_trigger_script_data(requested_environment):
+    object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
+        database_environment=requested_environment,
+        object_data_type=ObjectDataTypes.TRIGGER.value)
+    scripts = []
+
+    for key, value in object_data.items():
+        if value["name"]:
+            drop_elements = []
+            trigger_owner = value.get('owner')
+            trigger_name = value.get("name")
+
+            custom_trigger_section = build_drop_trigger_section(trigger=value.get("trigger", {}))
+
+            # Start with the fixed parts of the filename
+            filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_TRIGGER.value}{trigger_name}", trigger_owner, "TR"]
+
+            # Join all parts with a dot and add the file extension
+            filename = ".".join(filename_parts) + ".sql"
+
+            header_section = build_header_section(filename)
+            footer_section = build_footer_section(filename)
+
+            script = (f"{header_section}"
+                      f"{LINEFEED}"
+                      f"{custom_trigger_section}"
+                      f"{LINEFEED}"
+                      f"{footer_section}")
+
+            scripts.append({
+                "file_name": filename,
+                "script": script
+            })
+
+    return scripts
+
+
 def build_create_trigger_script_data(requested_environment):
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
@@ -963,10 +1022,17 @@ def build_create_trigger_script_data(requested_environment):
 
 
 def create_trigger_scripts_manager(database_environment: DatabaseEnvironment):
-    logging.info("Starting: create table script generator")
+    logging.info("Starting: create trigger script generator")
     scripts_data = build_create_trigger_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
-    logging.info("Ending: create table script generator")
+    logging.info("Ending: create trigger script generator")
+
+
+def delete_trigger_scripts_manager(database_environment=DatabaseEnvironment):
+    logging.info("Starting: delete trigger script generator")
+    scripts_data = build_delete_trigger_script_data(requested_environment=database_environment)
+    _write_script_files(scripts_data=scripts_data)
+    logging.info("Ending: create trigger script generator")
 
 
 def _write_script_files(scripts_data):
