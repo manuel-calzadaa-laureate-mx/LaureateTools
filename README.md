@@ -96,4 +96,6 @@ This consist in several use phases:
 - [x] Split GRANT addon into GRANT and REVOKE
 - [x] Split SYNONYM addon into DROP and CREATE
 - [x] Add table delete script
-- [] Add sequence delete script
+- [x] Add sequence delete script
+- [x] Add package delete script
+- [] Add trigger delete script
