@@ -575,6 +575,54 @@ def get_scripts_folder_path() -> str:
     return source_folder
 
 
+def build_delete_sequences_script_data(requested_environment: DatabaseEnvironment) -> \
+        list[dict]:
+    object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
+        database_environment=requested_environment,
+        object_data_type=ObjectDataTypes.SEQUENCE.value)
+    scripts = []
+
+    for key, value in object_data.items():
+        if value["name"]:
+            drop_elements = []
+            object_name = value["name"]
+            object_type = value["type"]
+            object_owner = value['owner']
+
+            sequences_script = (
+                f"-- Drop Sequence{LINEFEED}"
+                f"DROP SEQUENCE UVM.{value['name']}{END_OF_SENTENCE}"
+            )
+
+            filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_SEQUENCE.value}{object_name}", object_owner, "SEQ"]
+
+            # Join all parts with a dot and add the file extension
+            filename = ".".join(filename_parts) + ".sql"
+
+            header_section = build_header_section(filename)
+
+            revoke = build_revoke_section(revoke_grants=value["revokes"])
+            drop_synonym = build_drop_synonym_section(drop_synonyms=value["synonyms"])
+            footer_section = build_footer_section(filename)
+
+            script = (f"{header_section}"
+                      f"{LINEFEED}"
+                      f"{drop_synonym}"
+                      f"{LINEFEED}"
+                      f"{revoke}"
+                      f"{LINEFEED}"
+                      f"{sequences_script}"
+                      f"{LINEFEED}"
+                      f"{footer_section}")
+
+            scripts.append({
+                "file_name": filename,
+                "script": script
+            })
+
+    return scripts
+
+
 def build_create_sequences_script_data(requested_environment: DatabaseEnvironment) -> \
         list[dict]:
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
@@ -651,6 +699,13 @@ def create_sequence_scripts_manager(database_environment: DatabaseEnvironment):
     scripts_data = build_create_sequences_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
     logging.info("Ending: create sequence script generator")
+
+
+def delete_sequence_scripts_manager(database_environment: DatabaseEnvironment):
+    logging.info("Starting: delete sequence script generator")
+    scripts_data = build_delete_sequences_script_data(requested_environment=database_environment)
+    _write_script_files(scripts_data=scripts_data)
+    logging.info("Ending: delete sequence script generator")
 
 
 def replace_package_header(text, package_name, owner):

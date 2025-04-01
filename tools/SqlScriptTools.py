@@ -14,6 +14,7 @@ class SqlScriptFilenamePrefix(Enum):
     PROCEDURE = "CREATE_PROCEDURE_"
     TRIGGER = "CREATE_TRIGGER_"
     DELETE_TABLE = "DELETE_TABLE_"
+    DELETE_SEQUENCE = "DELETE_SEQUENCE_"
 
 
 def format_sql_by_steps(sql_text: str) -> str:
