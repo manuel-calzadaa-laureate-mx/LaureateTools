@@ -722,6 +722,61 @@ def replace_package_header(text, package_name, owner):
         return text
 
 
+def build_delete_package_script_data(requested_environment: DatabaseEnvironment):
+    object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
+        database_environment=requested_environment,
+        object_data_type=ObjectDataTypes.PACKAGE.value)
+
+    scripts = []
+    source_folder_path = get_source_code_folder(database_environment=requested_environment)
+
+    # Get the directory of the current script (B9SqlScriptFile.py)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Navigate to the workfiles/b9_scripts folder
+    workfiles_dir = os.path.join(script_dir, source_folder_path)
+
+    # Normalize the path to resolve '..' and other relative components
+    workfiles_dir = os.path.normpath(workfiles_dir)
+
+    ## loop object_data get file path for PACKAGE SPECS
+    for key, value in object_data.items():
+        package_owner = value.get("owner")
+        package_name = value.get("name")
+        root = "NONE"
+
+        ## create PACKAGE filename
+        ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{PK}.{GNT}.{SYN}.sql
+
+        filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_PACKAGE.value}{package_name}", package_owner, "PK"]
+
+        # Join all parts with a dot and add the file extension
+        filename = ".".join(filename_parts) + ".sql"
+
+        ## HEADER SECTION
+        header_section = build_header_section(filename)
+
+        ## DROP SECTION
+        drop_object_section = f"-- Drop package{LINEFEED}{LINEFEED}"
+        drop_object_section += f"DROP PACKAGE {package_name}{END_OF_SENTENCE}"
+
+        ## FOOTER SECTION
+        footer_section = build_footer_section(filename)
+
+        script = (f"{header_section}"
+                  f"{LINEFEED}"
+                  f"{drop_object_section}"
+                  f"{LINEFEED}"
+                  f"{footer_section}")
+
+        scripts.append({
+            "file_name": filename,
+            "script": script
+        })
+
+    return scripts
+
+
 def build_create_package_script_data(requested_environment: DatabaseEnvironment):
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
@@ -803,7 +858,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         ## create PACKAGE filename
         ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{PK}.{GNT}.{SYN}.sql
 
-        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{package_name}", package_owner, "PK", "GNT", "SYN"]
+        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{package_name}", package_owner, "PK"]
 
         # Join all parts with a dot and add the file extension
         filename = ".".join(filename_parts) + ".sql"
@@ -843,10 +898,6 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
                   f"{LINEFEED}"
                   f"{get_package_body_closing_statement(package_name)}"
                   f"{LINEFEED}"
-                  # f"{grants}"
-                  # f"{LINEFEED}"
-                  # f"{synonyms}"
-                  # f"{LINEFEED}"
                   f"{footer_section}")
 
         scripts.append({
@@ -862,6 +913,13 @@ def create_packages_scripts_manager(database_environment: DatabaseEnvironment):
     scripts_data = build_create_package_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data)
     logging.info("Starting: create packages script generator")
+
+
+def delete_packages_scripts_manager(database_environment: DatabaseEnvironment):
+    logging.info("Starting: delete packages script generator")
+    scripts_data = build_delete_package_script_data(requested_environment=database_environment)
+    _write_script_files(scripts_data=scripts_data)
+    logging.info("Starting: delete packages script generator")
 
 
 def build_create_trigger_script_data(requested_environment):
