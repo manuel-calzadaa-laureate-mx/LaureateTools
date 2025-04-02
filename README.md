@@ -99,3 +99,10 @@ This consist in several use phases:
 - [x] Add sequence delete script
 - [x] Add package delete script
 - [x] Add trigger delete script
+
+## 1.3.X TEST INSTALLATION PROCESS
+
+- [] Rollout ephemeral oracle database using Docker
+- [] Execute scripts for minimum target environment
+- [] Execute install scripts in order
+- [] Execute rollback scripts in order
