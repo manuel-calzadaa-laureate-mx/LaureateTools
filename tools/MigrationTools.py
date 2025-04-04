@@ -286,7 +286,7 @@ def migrate_b7_table_to_b9(json_data: dict, b7_table_name: str, b9_table_name: s
     comments = _refactor_table_comments(original_table.get("comments", {}), b7_table_name, b9_table_name)
     indexes = _refactor_table_indexes(original_table.get("indexes", []), b7_table_name, b9_table_name)
     grants = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.GRANTS,
-                              b9_object_owner="UVM")
+                              b9_object_owner="UVM", grant_type=GrantType.TABLE)
     synonym = read_custom_data(b9_object_name=b9_table_name, object_addon_type=ObjectAddonType.SYNONYMS,
                                b9_object_owner="UVM")
     new_table = {

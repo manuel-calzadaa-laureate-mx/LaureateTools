@@ -226,7 +226,6 @@ def read_custom_data(object_addon_type: ObjectAddonType, b9_object_name: str, b9
     """
     Generalized function to read custom table data based on addon type.
     """
-
     json_custom_data = get_object_addons_data()
 
     # Route to the appropriate function based on the addon type
