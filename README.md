@@ -102,7 +102,7 @@ This consist in several use phases:
 
 ## 1.3.X TEST INSTALLATION PROCESS
 
-- [] Rollout ephemeral oracle database using Docker
+- [x] Rollout ephemeral oracle database using Docker
 - [] Execute scripts for minimum target environment
 - [] Execute install scripts in order
 - [] Execute rollback scripts in order

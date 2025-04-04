@@ -1,6 +1,7 @@
-import os
 import logging
+import os
 import subprocess
+
 from testcontainers.oracle import OracleDbContainer
 
 from files.B7SqlScriptFile import get_scripts_folder_path
@@ -26,15 +27,15 @@ def _get_setup_scripts_folder_path() -> str:
 
 def _copy_file_to_container(container: OracleDbContainer, local_path: str, container_path: str):
     """
-    Copies a file from the host to the container using `docker cp`.
+    Copies a file from the host to the container using `containerization cp`.
     """
     try:
         # Get the container ID
         container_id = container.get_wrapped_container().id
 
-        # Use `docker cp` to copy the file
+        # Use `containerization cp` to copy the file
         subprocess.run(
-            ["docker", "cp", local_path, f"{container_id}:{container_path}"],
+            ["containerization", "cp", local_path, f"{container_id}:{container_path}"],
             check=True,
         )
         logging.info(f"File {local_path} copied to container at {container_path}.")
