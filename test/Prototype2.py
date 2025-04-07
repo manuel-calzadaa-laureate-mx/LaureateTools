@@ -2,7 +2,7 @@ import logging
 import time
 from typing import List, Dict
 
-import containerization
+import docker_tools
 
 # Configure logging
 logging.basicConfig(
@@ -36,7 +36,7 @@ class OracleDatabaseManager:
             db_port: Host port to map to container's 1522
             image_name: Oracle Docker image to use
         """
-        self.client = containerization.from_env()
+        self.client = docker_tools.from_env()
         self.container_name = container_name
         self.db_password = db_password
         self.db_port = db_port
@@ -79,7 +79,7 @@ class OracleDatabaseManager:
         try:
             self.client.containers.get(self.container_name)
             return True
-        except containerization.errors.NotFound:
+        except docker_tools.errors.NotFound:
             return False
 
     def wait_for_database(self, timeout: int = 120) -> bool:

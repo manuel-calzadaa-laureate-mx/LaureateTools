@@ -1,9 +1,9 @@
 import logging
 
-import containerization.config
-from containerization.database import OracleDatabaseManager
-from containerization.docker_manager import DockerManager
-from containerization.logger import configure_logging
+import docker_tools.oracle.oracle_config
+from common.logger import configure_logging
+from docker_tools.docker_manager import DockerManager
+from docker_tools.oracle.oracle_container_manager import OracleDatabaseManager
 from test.SetupEnvironment import DatabaseEnvironmentSetup
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ def main():
         configure_logging()
 
         # Initialize configuration
-        db_config = containerization.config.OracleDatabaseConfig()
+        db_config = docker_tools.config.OracleDatabaseConfig()
 
         # Initialize managers
         docker_manager = DockerManager(db_config)

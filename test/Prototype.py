@@ -4,7 +4,7 @@ from typing import Optional
 
 from tqdm import tqdm
 
-import containerization
+import docker_tools
 
 
 class OracleContainerManager:
@@ -28,7 +28,7 @@ class OracleContainerManager:
             container_port: Container's Oracle port (usually 1521)
             log_dir: Directory to store logs
         """
-        self.client = containerization.from_env()
+        self.client = docker_tools.from_env()
         self.image_name = image_name
         self.container_name = container_name
         self.db_password = db_password
@@ -92,7 +92,7 @@ class OracleContainerManager:
 
             print("Image pulled successfully.")
 
-        except containerization.errors.APIError as e:
+        except docker_tools.errors.APIError as e:
             print(f"Failed to pull image: {e}")
             raise
 
@@ -119,7 +119,7 @@ class OracleContainerManager:
         try:
             self.client.containers.get(self.container_name)
             return True
-        except containerization.errors.NotFound:
+        except docker_tools.errors.NotFound:
             return False
 
     def wait_for_db_ready(self, timeout: int = 3600) -> bool:
@@ -270,7 +270,7 @@ class OracleContainerManager:
         if not self.container:
             try:
                 self.container = self.client.containers.get(self.container_name)
-            except containerization.errors.NotFound:
+            except docker_tools.errors.NotFound:
                 print("Container does not exist.")
                 return
 
@@ -279,7 +279,7 @@ class OracleContainerManager:
             self.container.stop()
             self.container.remove()
             print("Container removed successfully.")
-        except containerization.errors.APIError as e:
+        except docker_tools.errors.APIError as e:
             print(f"Error removing container: {e}")
         finally:
             self.container = None

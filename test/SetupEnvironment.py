@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional, List, Dict
 
-from containerization.database import OracleDatabaseManager
+from docker_tools.oracle.oracle_container_manager import OracleDatabaseManager
 
 logger = logging.getLogger(__name__)
 
