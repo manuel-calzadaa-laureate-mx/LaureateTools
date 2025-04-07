@@ -30,7 +30,7 @@ workfiles/
 __pycache__/
 db/**/__pycache__/
 
-!/files/TablesFile.py
+!/files/tables_file.py
 /banner/install/install.csv
 /banner/install/rollback.csv
 /test/*.log

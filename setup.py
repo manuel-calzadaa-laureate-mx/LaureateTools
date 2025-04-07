@@ -1,7 +1,7 @@
 import json
 import os
 
-from tools.FileTools import write_csv_file
+from tools.file_tools import write_csv_file
 
 
 def create_folders_and_subfolders(base_folder: str, subfolders: [str] = None) -> None:
