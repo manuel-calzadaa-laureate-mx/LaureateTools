@@ -28,7 +28,7 @@ class DatabaseEnvironmentSetup:
             with open(path, 'r', encoding='utf-8') as f:
                 sql = f.read()
 
-            return self.db.execute_sql(username, password, sql)
+            return self.db.execute_sql("system", self.config.db_password, sql)
 
         except FileNotFoundError as e:
             self.logger.error(f"SQL file error: {e}")

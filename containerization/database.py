@@ -5,8 +5,6 @@ import docker
 
 from containerization.config import OracleDatabaseConfig
 
-logger = logging.getLogger(__name__)
-
 
 class OracleDatabaseManager:
     """Manages Oracle database operations within a Docker container."""
@@ -22,7 +20,7 @@ class OracleDatabaseManager:
         if not self.docker.container:
             raise RuntimeError("Container not initialized")
 
-        logger.info("Waiting for database to become ready...")
+        self.logger.info("Waiting for database to become ready...")
         start_time = time.time()
 
         while time.time() - start_time < self.config.ready_timeout:
@@ -36,14 +34,14 @@ class OracleDatabaseManager:
                         suppress_output=True
                     )
                     if result and "1" in result:
-                        logger.info("Database is ready")
+                        self.logger.info("Database is ready")
                         return True
                 except Exception as e:
-                    logger.debug(f"Database not ready yet: {str(e)}")
+                    self.logger.debug(f"Database not ready yet: {str(e)}")
 
             time.sleep(self.config.health_check_interval)
 
-        logger.error("Database did not become ready within timeout")
+        self.logger.error("Database did not become ready within timeout")
         return False
 
     def execute_sql(self, username: str, password: str, sql: str,
@@ -79,28 +77,28 @@ class OracleDatabaseManager:
             result = output[0].decode('utf-8') if output[0] else ""
 
             if not suppress_output:
-                logger.debug(f"SQL*Plus output:\n{result}")
+                self.logger.debug(f"SQL*Plus output:\n{result}")
 
             return result
         except docker.errors.APIError as e:
-            logger.error(f"Failed to execute SQL command: {e}")
+            self.logger.error(f"Failed to execute SQL command: {e}")
             raise
 
     def create_user(self, username: str, password: str) -> None:
         """Create a basic database user."""
-        logger.info(f"Creating user {username}")
+        self.logger.info(f"Creating user {username}")
         sql = f'CREATE USER {username} IDENTIFIED BY "{password}";'
         self.execute_sql("system", self.config.db_password, sql)
 
     def grant_privileges(self, username: str, privileges: list[str]) -> None:
         """Grant privileges to a user."""
-        logger.info(f"Granting privileges to {username}: {privileges}")
+        self.logger.info(f"Granting privileges to {username}: {privileges}")
         for privilege in privileges:
             sql = f"GRANT {privilege} TO {username};"
             self.execute_sql("system", self.config.db_password, sql)
 
     def set_tablespace_quota(self, username: str, tablespace: str = "USERS", quota: str = "UNLIMITED") -> None:
         """Set tablespace quota for a user."""
-        logger.info(f"Setting tablespace quota for {username}")
+        self.logger.info(f"Setting tablespace quota for {username}")
         sql = f"ALTER USER {username} QUOTA {quota} ON {tablespace};"
         self.execute_sql("system", self.config.db_password, sql)
