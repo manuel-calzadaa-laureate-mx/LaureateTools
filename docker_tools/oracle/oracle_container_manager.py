@@ -1,39 +1,71 @@
 import logging
 import os
 import time
+from dataclasses import dataclass
 
 import docker
 
-from docker_tools.docker_manager import DockerManager
-from docker_tools.oracle.oracle_config import OracleDatabaseConfig
+from docker_tools.docker_manager import DockerManager, ContainerConfig
+
+
+@dataclass
+class OracleDatabaseConfig(ContainerConfig):
+    """Oracle-specific configuration extending base container config."""
+    container_name: str = "oracle-xe"
+    image_name: str = "gvenzl/oracle-xe:21-slim"
+    oracle_os_user: str = "oracle"
+    db_admin_user: str = "SYSTEM"
+    db_password: str = "oracle"
+    db_port: int = 1522
+    db_host: str = "localhost"
+    db_service: str = "XE"
+    app_user: str = "testuser"
+    app_user_password: str = "testpass"
+
+    def __post_init__(self):
+        """Set Oracle-specific defaults after initialization."""
+        if self.ports is None:
+            self.ports = {"1521/tcp": self.db_port}
+        if self.environment is None:
+            self.environment = {
+                "ORACLE_PASSWORD": self.db_password,
+                "APP_USER": self.app_user,
+                "APP_USER_PASSWORD": self.app_user_password
+            }
 
 
 class OracleDatabaseManager:
     """Manages Oracle database operations within a Docker container."""
 
-    def __init__(self, docker_manager: DockerManager, config: OracleDatabaseConfig):
-        """
-        Initialize with DockerManager and Oracle configuration.
-
-        Args:
-            docker_manager: Configured DockerManager instance
-            config: Oracle database configuration
-        """
-        self.docker = docker_manager
+    def __init__(self, config: OracleDatabaseConfig):
         self.config = config
-        self._connection_string = f"//localhost:{self.config.db_port}/XEPDB1"
+        self.docker = DockerManager(config=config)
         self.logger = logging.getLogger(__name__)
-        self.scripts_folder = self._get_setup_scripts_folder_path()
+        self._initialize()
 
-    # File operations from the tools version
-    def _get_setup_scripts_folder_path(self) -> str:
-        """Returns the absolute path of the specified folder."""
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(script_dir, "setup")
+    def _initialize(self):
+        self.docker.pull_image()
+        self.docker.start_container()
+        self.wait_for_database()
 
-    # Database readiness check from the original version
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.docker.stop_container()
+
+    @property
+    def _connection_string(self) -> str:
+        """The Oracle database connection string in format //host:port/service.
+
+        Defaults to localhost and XEPDB1 service, but can be customized via config.
+        """
+        host = getattr(self.config, 'db_host', 'localhost')
+        service = getattr(self.config, 'db_service', 'XEPDB1')
+        return f"//{host}:{self.config.db_port}/{service}"
+
     def wait_for_database(self) -> bool:
-        """Wait for database to become ready."""
+        """Wait for database to become fully operational."""
         if not self.docker.container:
             raise RuntimeError("Container not initialized")
 
@@ -41,112 +73,155 @@ class OracleDatabaseManager:
         start_time = time.time()
 
         while time.time() - start_time < self.config.ready_timeout:
-            if self.docker.is_container_ready():
-                try:
-                    # Verify database is actually ready by executing a simple query
-                    result = self.execute_sql(
-                        username="system",
-                        password=self.config.db_password,
-                        sql="SELECT 1 FROM DUAL;",
-                        suppress_output=True
-                    )
-                    if result and "1" in result:
-                        self.logger.info("Database is ready")
-                        return True
-                except Exception as e:
-                    self.logger.debug(f"Database not ready yet: {str(e)}")
+            try:
+                # First check listener status
+                exit_code, output = self.docker.execute_command(
+                    "lsnrctl status",
+                    user="oracle"
+                )
+                if "STATUS of the LISTENER" not in output:
+                    raise RuntimeError("Listener not running")
 
-            time.sleep(self.config.health_check_interval)
+                # Then check database connectivity
+                result = self.execute_sql_statement_in_container(
+                    username=self.config.db_admin_user,
+                    password=self.config.db_password,
+                    sql="SELECT 1 FROM DUAL;",
+                    suppress_output=True
+                )
+
+                if "1" in result:
+                    self.logger.info("Database is ready")
+                    return True
+
+            except Exception as e:
+                self.logger.debug(f"Database not ready yet: {str(e)}")
+                time.sleep(self.config.health_check_interval)
 
         self.logger.error("Database did not become ready within timeout")
         return False
 
-    # Combined SQL execution methods
-    def execute_sql(self, username: str, password: str, sql: str,
-                    suppress_output: bool = False) -> str:
-        """
-        Execute SQL command inside the container using SQL*Plus.
-
-        Args:
-            username: Database username
-            password: Database password
-            sql: SQL command to execute
-            suppress_output: Whether to hide command output
-
-        Returns:
-            Command output as string
-        """
+    def execute_sql_statement_in_container(
+            self,
+            username: str,
+            password: str,
+            sql: str,
+            suppress_output: bool = False,
+            timeout: int = 30,
+            as_sysdba: bool = False
+    ) -> str:
+        """Execute SQL command using proper Oracle environment and connection."""
         if not self.docker.container:
             raise RuntimeError("Container not initialized")
+        if not sql.strip():
+            raise ValueError("SQL command cannot be empty")
 
-        connect_string = f"{username}/{password}@{self._connection_string}"
-        full_command = f"echo '{sql}' | sqlplus -S {connect_string}"
+        # Use the correct connection string format
+        connect_string = f"{username}/{password}@XE"
+        if as_sysdba:
+            connect_string += " AS SYSDBA"
+
+        # Escape single quotes for bash
+        safe_sql = sql.replace("'", "'\"'\"'")
+
+        # Full command with proper Oracle environment
+        full_command = (
+            f"echo '{safe_sql}' | sqlplus -S {connect_string}"
+        )
 
         try:
             exit_code, output = self.docker.container.exec_run(
                 ["bash", "-c", full_command],
+                user=self.config.oracle_os_user,
                 demux=True
             )
 
-            if exit_code != 0:
-                error_msg = output[1].decode('utf-8') if output[1] else "Unknown error"
-                raise RuntimeError(f"SQL*Plus command failed (exit code {exit_code}): {error_msg}")
+            stdout = output[0].decode('utf-8').strip() if output[0] else ""
+            stderr = output[1].decode('utf-8').strip() if output[1] else ""
 
-            result = output[0].decode('utf-8') if output[0] else ""
+            if exit_code != 0:
+                error_msg = stderr or stdout or "Unknown error"
+                raise RuntimeError(
+                    f"SQL execution failed (exit code {exit_code}): {error_msg}"
+                )
 
             if not suppress_output:
-                self.logger.debug(f"SQL*Plus output:\n{result}")
+                self.logger.debug(f"SQL executed successfully. Output: {stdout[:500]}...")
 
-            return result
+            return stdout
+
         except docker.errors.APIError as e:
             self.logger.error(f"Failed to execute SQL command: {e}")
-            raise
+            raise RuntimeError(f"Database API error: {str(e)}") from e
 
-    def _execute_sqlplus_in_container(self, script_path: str,
-                                      dba_username: str = None,
-                                      dba_password: str = None,
-                                      as_sysdba: bool = False):
+    def execute_sql_script_in_container(self, local_script_path: str,
+                                        db_username: str = None,
+                                        db_password: str = None,
+                                        as_sysdba: bool = False):
         """
-        Executes a SQL script using SQL*Plus inside the Oracle container.
+        Executes a SQL script using SQL*Plus inside the Oracle container with proper environment setup.
+
+        Args:
+            local_script_path: Path to SQL script on host machine
+            db_username: Database username (defaults to app_user from config)
+            db_password: Database password (defaults to app_user_password from config)
+            as_sysdba: Whether to connect with SYSDBA privileges
         """
-        script_name = os.path.basename(script_path)
+        script_name = os.path.basename(local_script_path)
+        remote_script_path = f"/tmp/{script_name}"
 
         try:
-            # Copy the script to the container
-            container_script_path = f"/tmp/{script_name}"
-            self._copy_file_to_container(script_path, container_script_path)
+            # 1. Copy the script to the container
+            self.logger.info(f"Copying script {script_name} to container...")
+            self.docker.copy_file_to_container(local_script_path, remote_script_path)
 
-            # Adjust the credentials
-            sqlplus_user = dba_username if dba_username else self.config.app_user
-            sqlplus_password = dba_password if dba_password else self.config.app_user_password
-
-            # Verify the file was copied successfully
-            ls_command = f"ls -l {container_script_path}"
-            exit_code, output = self.docker.container.exec_run(ls_command)
+            # 2. Verify file copy
+            exit_code, output = self.docker.execute_command(
+                f"ls -l {remote_script_path}",
+                user=self.config.oracle_os_user
+            )
             if exit_code != 0:
                 raise RuntimeError(f"Failed to verify file copy. Exit code: {exit_code}. Output: {output}")
             self.logger.debug(f"File copied successfully:\n{output}")
 
-            # Add AS SYSDBA if required
-            as_sysdba = " AS SYSDBA" if as_sysdba else ""
+            # 3. Prepare connection credentials
+            sqlplus_user = db_username if db_username else self.config.app_user
+            sqlplus_password = db_password if db_password else self.config.app_user_password
+            sysdba_suffix = " AS SYSDBA" if as_sysdba else ""
 
-            # Execute the script using SQL*Plus
+            # 4. Build the execution command with proper Oracle environment
             command = (
-                f"sqlplus {sqlplus_user}/{sqlplus_password}@//localhost:{self.config.db_port}/"
-                f"XE{as_sysdba} @{container_script_path}"
+                f"sqlplus -S {sqlplus_user}/{sqlplus_password}@XE{sysdba_suffix} @{remote_script_path}"
             )
-            exit_code, output = self.docker.container.exec_run(command, tty=True)
+
+            # 5. Execute the script
+            self.logger.info(f"Executing script {script_name}...")
+            exit_code, output = self.docker.container.exec_run(
+                ["bash", "-c", command],
+                user=self.config.oracle_os_user,
+                demux=True
+            )
+
+            # 6. Process output
+            stdout = output[0].decode('utf-8').strip() if output[0] else ""
+            stderr = output[1].decode('utf-8').strip() if output[1] else ""
 
             if exit_code != 0:
-                raise RuntimeError(f"SQL*Plus execution failed with exit code {exit_code}. Output:\n{output}")
+                error_msg = stderr or stdout or "Unknown error"
+                raise RuntimeError(
+                    f"Script execution failed (exit code {exit_code}): {error_msg}"
+                )
 
-            self.logger.info(f"Script {script_name} executed successfully.")
-            self.logger.debug(f"SQL*Plus output:\n{output}")
+            self.logger.info(f"Script {script_name} executed successfully")
+            self.logger.debug(f"Output:\n{stdout[:1000]}{'...' if len(stdout) > 1000 else ''}")
+
+            return stdout
+
         except Exception as e:
             self.logger.error(f"Error executing script {script_name}: {e}")
             raise
 
-    def _execute_sql_scripts_in_container(self, scripts_folder: str):
+    def execute_sql_scripts_in_container(self, scripts_folder: str):
         """Executes all SQL scripts in the specified folder."""
         if not os.path.exists(scripts_folder):
             self.logger.error(f"Scripts folder not found: {scripts_folder}")
@@ -171,38 +246,90 @@ class OracleDatabaseManager:
                 as_sysdba=as_sysdba
             )
 
-    # Setup methods from the tools version
-    def setup_database(self):
-        """Execute standard setup scripts for the database."""
-        try:
-            self.logger.info(f"Executing setup scripts from: {self.scripts_folder}")
 
-            # Execute DBA grant
-            self.execute_sql_script(
-                script_file="CREATE_GRANT_DBA.sql",
-                dba_username="SYS",
-                dba_password=self.config.db_password,
-                as_sysdba=True
+if __name__ == "__main__":
+    print("Starting Oracle Docker test...")
+
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+
+    try:
+        # Create Oracle configuration
+        oracle_config = OracleDatabaseConfig(
+            container_name="oracle-xe-test",
+            db_password="oracle",
+            app_user="testuser",
+            app_user_password="testpass"
+        )
+
+        # Initialize the Oracle database manager
+        with OracleDatabaseManager(config=oracle_config) as db_manager:
+            print("Oracle container started successfully")
+
+            # 1. EXECUTE A COMMAND IN THE CONTAINER
+            print("\nChecking Oracle listener status...")
+            exit_code, output = db_manager.docker.execute_command(
+                "lsnrctl status",
+                user="oracle"
             )
+            print(f"Listener status (exit code {exit_code}):")
+            print(output)
 
-            self.execute_sql_script(
-                script_file="CREATE_TABLESPACE.sql",
-                dba_username="SYS",
-                dba_password=self.config.db_password,
-                as_sysdba=True
+            # 2. EXECUTE AN SQL STATEMENT USING SQLPLUS
+            print("\nExecuting direct SQL query...")
+            query = """
+            SELECT 
+                instance_name, 
+                status, 
+                version,
+                TO_CHAR(startup_time, 'YYYY-MM-DD HH24:MI:SS') as startup_time
+            FROM v$instance;
+            """
+            result = db_manager.execute_sql_statement_in_container(
+                username="system",
+                password=oracle_config.db_password,
+                sql=query
             )
+            print("\nDatabase status:")
+            print(result)
 
-            # Execute Create ALL Schemas grant
-            self.execute_sql_script(
-                script_file="CREATE_ALL_SCHEMAS.sql"
+            # 3. EXECUTING AN SQL SCRIPT USING SQLPLUS
+            test_script = """
+            -- test.sql
+            SET SERVEROUTPUT ON;
+            BEGIN
+                DBMS_OUTPUT.PUT_LINE('Hello from Oracle script!');
+            END;
+            /
+            SELECT 'Script test successful' as message FROM DUAL;
+            SELECT 1 as test_value FROM DUAL;
+            """
+
+            script_path = "test.sql"
+            with open(script_path, "w") as f:
+                f.write(test_script)
+            print(f"\nCreated test SQL file at: {os.path.abspath(script_path)}")
+
+            # 4. Execute the SQL script
+            print("\nExecuting SQL script from file...")
+            script_result = db_manager.execute_sql_script_in_container(
+                local_script_path=script_path,
+                db_username="system",
+                db_password=oracle_config.db_password
             )
+            print("\nScript execution result:")
+            print(script_result)
 
-            # Execute Create package GFKSJPA
-            self.execute_sql_script(
-                script_file="CREATE_PACKAGE_GFKSJPA.sql"
-            )
+            print("\nAll operations completed successfully!")
 
-            self.logger.info("All setup scripts executed successfully.")
-        except Exception as e:
-            self.logger.error(f"An error occurred during setup: {e}")
-            raise
+    except Exception as e:
+        print(f"\nError occurred: {str(e)}")
+        raise
+    finally:
+        if db_manager.docker.container:
+            db_manager.docker.stop_container()
+            print("\nStopping container")
+        # Clean up the test file
+        if os.path.exists("test.sql"):
+            os.remove("test.sql")
+            print("\nCleaned up test SQL file")

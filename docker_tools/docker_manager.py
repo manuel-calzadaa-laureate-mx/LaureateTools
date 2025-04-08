@@ -1,6 +1,7 @@
 import logging
 import subprocess
 from dataclasses import dataclass
+from time import sleep
 from typing import Optional, Dict, List
 
 import docker
@@ -10,10 +11,11 @@ from docker.models.containers import Container
 @dataclass
 class ContainerConfig:
     """Base configuration for any Docker container."""
-    container_name: str = "hello-world"
-    image_name: str = "hello-world"
-    ready_timeout: int = 120  # seconds
-    health_check_interval: int = 5  # seconds
+    container_name: str = "test"
+    image_name: str = "busybox"
+    command: Optional[str or List[str]] = None
+    ready_timeout: int = 300  # seconds
+    health_check_interval: int = 2  # seconds
     ports: Optional[Dict[str, int]] = None
     environment: Optional[Dict[str, str]] = None
     volumes: Optional[Dict[str, Dict]] = None
@@ -34,7 +36,6 @@ class DockerManager:
         """
         if config is None and container_name is None:
             raise ValueError("Either config or container_name must be provided")
-
         self.config = config
         self.client = docker.from_env()
         self.container: Optional[Container] = None
@@ -92,6 +93,7 @@ class DockerManager:
             self.container = self.client.containers.run(
                 self.config.image_name,
                 name=self.config.container_name,
+                command=self.config.command,  # Add this line
                 environment=self.config.environment,
                 ports=self.config.ports,
                 volumes=self.config.volumes,
@@ -202,7 +204,7 @@ class DockerManager:
     def copy_file_to_container(self, local_path: str, container_path: str):
         """Copies a file from the host to the container using docker cp."""
         try:
-            container_id = self.docker.container.id
+            container_id = self.container.id
             subprocess.run(
                 ["docker", "cp", local_path, f"{container_id}:{container_path}"],
                 check=True,
@@ -211,3 +213,57 @@ class DockerManager:
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error copying file to container: {e}")
             raise
+
+
+if __name__ == "__main__":
+    config = ContainerConfig(
+        command=["sh", "-c", "while true; do sleep 1; done"],  # This keeps the container alive
+        environment={}  # Empty since we don't need it
+    )
+
+    try:
+        manager = DockerManager(config=config)
+
+        print("Pulling image...")
+        manager.pull_image()
+
+        # 4. Start the container with a keep-alive command
+        print("Starting container...")
+        # We need to modify the start_container method to accept a command
+        # For now, we'll use this workaround:
+        if not manager._container_exists():
+            manager.container = manager.client.containers.run(
+                manager.config.image_name,
+                name=manager.config.container_name,
+                command="sh -c 'while true; do sleep 1; done'",
+                detach=True,
+                auto_remove=True
+            )
+        else:
+            manager.start_container()
+
+        print("Waiting for container to be ready...")
+        attempts = 0
+        while not manager.is_container_ready():
+            attempts += 1
+            if attempts > (config.ready_timeout / config.health_check_interval):
+                raise TimeoutError("Container didn't become ready in time")
+            sleep(config.health_check_interval)
+            print(".", end="", flush=True)
+        print("\nContainer is ready!")
+
+        # 6. Execute a simple command
+        print("Executing command in container...")
+        exit_code, output = manager.execute_command("echo 'Hello from inside the container!'")
+        print(f"Command output (exit code {exit_code}):\n{output}")
+
+        exit_code, output = manager.execute_command("uname -a")
+        print(f"System info (exit code {exit_code}):\n{output}")
+
+    except Exception as e:
+        print(f"Error occurred: {e}")
+    finally:
+        if hasattr(manager, 'container'):
+            print("Stopping container...")
+            manager.stop_container()
+        print("Exercise complete.")

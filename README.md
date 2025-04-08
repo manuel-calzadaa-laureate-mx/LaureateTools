@@ -103,6 +103,8 @@ This consist in several use phases:
 ## 1.3.X TEST INSTALLATION PROCESS
 
 - [x] Rollout ephemeral oracle database using Docker
+- [x] Add sqlplus execution tools
+- [x] Add script execution tools using sqlplus
 - [] Execute scripts for minimum target environment
 - [] Execute install scripts in order
 - [] Execute rollback scripts in order
