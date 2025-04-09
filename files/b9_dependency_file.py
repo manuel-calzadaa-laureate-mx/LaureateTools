@@ -12,6 +12,7 @@ from files.dependency_file import extract_unique_existing_objects, extract_objec
     filter_missing_status_dependencies, find_delta_of_missing_dependencies, \
     is_object_dependency_procedure_or_function, is_object_need_process
 from files.source_code_file import extract_all_dependencies_from_one_source_code_data, get_source_code_folder
+from tools.business_rules_tools import is_custom_table
 from tools.common_tools import get_all_current_owners, split_table_name_into_package_and_table_name, ObjectTargetType
 from tools.file_tools import write_csv_file, read_csv_file, read_json_file
 
@@ -345,12 +346,22 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
 
                 if dependencies_map_has_values:
                     # Store dependencies in a list of dictionaries
-                    for dep_type, dep_names in dependencies_map.items():
-                        for dep_name in dep_names:
-                            resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dep_name)
+                    for dependency_type, dependency_names in dependencies_map.items():
+                        for dependency_name in dependency_names:
+                            resolved_dependencies = resolve_dependency(owners=current_owners, obj_name=dependency_name)
 
                             dependency_package = resolved_dependencies["package"]
                             dependency_name = resolved_dependencies["name"]
+
+                            is_installable = any(
+                                item in installable_packages_list for item in (object_package, object_name))
+                            is_skippable_table = dependency_type == 'TABLE' and not is_custom_table(dependency_name)
+
+                            object_status = (
+                                ObjectTargetType.INSTALL.value
+                                if is_installable and not is_skippable_table
+                                else ObjectTargetType.SKIP.value
+                            )
 
                             ## DEPENDENCY OBJECT TARGET TYPE ANALYSIS
                             if object_status == ObjectTargetType.INSTALL.value:
@@ -368,7 +379,7 @@ def _extract_missing_dependencies_from_source_files(db_pool: OracleDBConnectionP
                                 "OBJECT_PACKAGE": object_package,
                                 "OBJECT_NAME": object_name,
                                 "DEPENDENCY_OWNER": resolved_dependencies["owner"],
-                                "DEPENDENCY_TYPE": dep_type,
+                                "DEPENDENCY_TYPE": dependency_type,
                                 "DEPENDENCY_PACKAGE": dependency_package,
                                 "DEPENDENCY_NAME": dependency_name,
                             })
