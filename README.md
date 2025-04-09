@@ -105,6 +105,7 @@ This consist in several use phases:
 - [x] Rollout ephemeral oracle database using Docker
 - [x] Add sqlplus execution tools
 - [x] Add script execution tools using sqlplus
+- [X] Add environment setup scripts execution
 - [] Execute scripts for minimum target environment
 - [] Execute install scripts in order
 - [] Execute rollback scripts in order

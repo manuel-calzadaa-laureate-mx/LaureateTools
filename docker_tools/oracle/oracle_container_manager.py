@@ -154,10 +154,11 @@ class OracleDatabaseManager:
             self.logger.error(f"Failed to execute SQL command: {e}")
             raise RuntimeError(f"Database API error: {str(e)}") from e
 
-    def execute_sql_script_in_container(self, local_script_path: str,
+    def execute_sql_script_in_container(self,
+                                        local_script_path: str,
                                         db_username: str = None,
                                         db_password: str = None,
-                                        as_sysdba: bool = False):
+                                        as_sysdba: bool = False) -> str:
         """
         Executes a SQL script using SQL*Plus inside the Oracle container with proper environment setup.
 
@@ -221,16 +222,23 @@ class OracleDatabaseManager:
             self.logger.error(f"Error executing script {script_name}: {e}")
             raise
 
-    def execute_sql_scripts_in_container(self, scripts_folder: str):
+    def execute_sql_scripts_in_container(self, scripts_folder: str,
+                                         dba_username: str = None,
+                                         dba_password: str = None,
+                                         as_sysdba: bool = False) -> [str]:
         """Executes all SQL scripts in the specified folder."""
         if not os.path.exists(scripts_folder):
             self.logger.error(f"Scripts folder not found: {scripts_folder}")
             raise FileNotFoundError(f"Scripts folder not found: {scripts_folder}")
-
+        execution_results = []
         for script_file in os.listdir(scripts_folder):
             if script_file.endswith(".sql"):
                 script_path = os.path.join(scripts_folder, script_file)
-                self._execute_sqlplus_in_container(script_path)
+                result = self.execute_sql_script_in_container(local_script_path=script_path,
+                                                              db_password=dba_password,
+                                                              db_username=dba_username,
+                                                              as_sysdba=as_sysdba)
+                execution_results.append(result)
 
     def execute_sql_script(self, script_file: str,
                            dba_username: str = None,
@@ -239,7 +247,7 @@ class OracleDatabaseManager:
         """Executes a single SQL script from the setup folder."""
         if script_file.endswith(".sql"):
             script_path = os.path.join(self.scripts_folder, script_file)
-            self._execute_sqlplus_in_container(
+            self.execute_sql_script_in_container(
                 script_path=script_path,
                 dba_username=dba_username,
                 dba_password=dba_password,
