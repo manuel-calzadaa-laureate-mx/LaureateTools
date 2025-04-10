@@ -1,16 +1,28 @@
 import logging
 import os
 import re
-from typing import Dict
+from enum import Enum
+from typing import Dict, Optional
 
 from db.database_properties import DatabaseEnvironment, DatabaseObject
 from files.b7_sql_script_file import get_scripts_folder_path
 from files.object_data_file import ObjectDataTypes, \
-    get_migrated_object_data_mapped_by_names_by_environment_and_type
+    get_migrated_object_data_mapped_by_names_by_environment_and_type, \
+    get_object_data_mapped_by_names_by_environment_and_type
 from files.source_code_file import get_source_code_folder
+from tools.common_tools import ObjectTargetType
 from tools.sql_script_tools import SqlScriptFilenamePrefix
 
+
+class ScriptType(Enum):
+    MIGRATED = "migrated"
+    INSTALL = "install"
+    ROLLBACK = "rollback"
+    SETUP = "setup"
+
+
 SCRIPT_FOLDER_PATH = "../workfiles/b9_scripts"
+
 LINEFEED = "\n"
 END_OF_SENTENCE = f";{LINEFEED}"
 PROMPT = "Prompt >>>"
@@ -21,9 +33,9 @@ logging.basicConfig(
 )
 
 
-def find_script_file_name(object_type: str, object_name: str) -> Dict:
+def find_install_script_file_name(object_action: str, object_type: str, object_name: str) -> Dict:
     scripts_folder_path = get_scripts_folder_path()
-    target_pattern = f"{object_type}_{object_name}".lower()
+    target_pattern = f"{object_action}_{object_type}_{object_name}".lower()
 
     for filename in os.listdir(scripts_folder_path):
         if target_pattern in filename.lower() and filename.lower().endswith('.sql'):
@@ -367,10 +379,43 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
     return scripts
 
 
+def build_create_setup_table_script_data(requested_environment: DatabaseEnvironment) -> list[dict]:
+    object_data = get_object_data_mapped_by_names_by_environment_and_type(
+        database_environment=requested_environment,
+        object_data_type=ObjectDataTypes.TABLE.value)
+    scripts = []
+
+    for key, value in object_data.items():
+        if value["name"]:
+            custom = value["custom"]
+            object_status = value["object_status"]
+            if custom:
+                continue
+            table_name = value["name"]
+            object_type = value["type"]
+            object_owner = value['owner']
+            create_table_section = build_create_table_section(value)
+
+            # Start with the fixed parts of the filename
+            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_SETUP_TABLE.value}{table_name}", object_owner, "TBL"]
+
+            # Join all parts with a dot and add the file extension
+            filename = ".".join(filename_parts) + ".sql"
+
+            script = (f"{create_table_section}"
+                      f"{LINEFEED}")
+
+            scripts.append({
+                "file_name": filename,
+                "script": script
+            })
+
+    return scripts
+
+
 def build_create_table_script_data(requested_environment: DatabaseEnvironment) -> list[
     dict]:
     """
-        Create 3 files: one for the Trigger, one for the Sequence, and one for the Table
     :param requested_environment:
     :return:
     """
@@ -577,17 +622,24 @@ def build_create_trigger_script(trigger_info: dict) -> str:
     return trigger_script.strip()
 
 
+def create_setup_table_scripts_manager(database_environment: DatabaseEnvironment):
+    logging.info("Starting: create test table script generator")
+    scripts_data = build_create_setup_table_script_data(requested_environment=database_environment)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.SETUP.value)
+    logging.info("Ending: create test table script generator")
+
+
 def create_table_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: create table script generator")
     scripts_data = build_create_table_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.INSTALL.value)
     logging.info("Ending: create table script generator")
 
 
 def delete_table_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: delete table script generator")
     scripts_data = build_delete_table_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.ROLLBACK.value)
     logging.info("Ending: delete table script generator")
 
 
@@ -681,7 +733,8 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
             sequences_script += get_show_errors()
             sequences_script += LINEFEED
 
-            filename_parts = [f"{SqlScriptFilenamePrefix.SEQUENCE.value}{object_name}", object_owner, "SEQ", "GNT",
+            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_SEQUENCE.value}{object_name}", object_owner, "SEQ",
+                              "GNT",
                               "SYN"]
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
@@ -719,14 +772,14 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
 def create_sequence_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: create sequence script generator")
     scripts_data = build_create_sequences_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.INSTALL.value)
     logging.info("Ending: create sequence script generator")
 
 
 def delete_sequence_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: delete sequence script generator")
     scripts_data = build_delete_sequences_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.ROLLBACK.value)
     logging.info("Ending: delete sequence script generator")
 
 
@@ -790,6 +843,112 @@ def build_delete_package_script_data(requested_environment: DatabaseEnvironment)
                   f"{drop_object_section}"
                   f"{LINEFEED}"
                   f"{footer_section}")
+
+        scripts.append({
+            "file_name": filename,
+            "script": script
+        })
+
+    return scripts
+
+
+def build_create_setup_package_script_data(requested_environment: DatabaseEnvironment):
+    object_data = get_object_data_mapped_by_names_by_environment_and_type(
+        database_environment=requested_environment,
+        object_data_type=ObjectDataTypes.PACKAGE.value)
+
+    scripts = []
+    source_folder_path = get_source_code_folder(database_environment=requested_environment)
+
+    # Get the directory of the current script (b9_sql_script_file.py)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Navigate to the workfiles/b9_scripts folder
+    workfiles_dir = os.path.join(script_dir, source_folder_path)
+
+    # Normalize the path to resolve '..' and other relative components
+    workfiles_dir = os.path.normpath(workfiles_dir)
+
+    ## loop object_data get file path for PACKAGE SPECS
+    for key, value in object_data.items():
+        object_status = value.get("object_status")
+        if object_status != ObjectTargetType.SKIP.value:
+            continue
+
+        package_owner = value.get("owner")
+        package_name = value.get("name")
+        root = "NONE"
+
+        ## search {owner}.{package_name}.NONE.sql
+        package_specification_file_name = f"{package_owner}.{package_name}.{root}.sql"
+        package_specificacion_file_path = os.path.join(workfiles_dir, package_specification_file_name)
+
+        # Read package specification file
+        package_specification_list = [f"---------------------------- "
+                                      f"CREATE PACKAGE {package_name} SPECIFICATION"
+                                      f"---------------------------- "]
+
+        with open(package_specificacion_file_path, 'r', encoding='utf-8') as file:
+            package_specification_list.append(LINEFEED)
+            package_specification_list.append(
+                replace_package_header(text=file.read(), package_name=package_name, owner=package_owner))
+            package_specification_list.append(LINEFEED)
+            package_specification_list.append(get_show_errors_block())
+            package_specification_list.append(LINEFEED)
+
+        # Initialize package body
+        package_body_list = [f"---------------------------- "
+                             f"CREATE PACKAGE {package_name} BODY"
+                             f"---------------------------- ", LINEFEED,
+                             f"CREATE OR REPLACE PACKAGE {package_name} BODY IS", LINEFEED]
+
+        dependencies = value.get("dependencies")
+        for function in dependencies.get("functions"):
+            function_name = function.get("name")
+            function_file_name = f"{package_owner}.{package_name}.{function_name}.sql"
+            function_file_path = os.path.join(workfiles_dir, function_file_name)
+
+            with open(function_file_path, 'r', encoding='utf-8') as file:
+                package_body_list.append(f"-- FUNCTION {function_name}")
+                package_body_list.append(LINEFEED)
+                package_body_list.append(file.read())
+                package_body_list.append(LINEFEED)
+
+        for procedure in dependencies.get("procedures"):
+            procedure_name = procedure.get("name")
+            procedure_file_name = f"{package_owner}.{package_name}.{procedure_name}.sql"
+            procedure_file_path = os.path.join(workfiles_dir, procedure_file_name)
+
+            try:
+                with open(procedure_file_path, 'r', encoding='utf-8') as file:
+                    package_body_list.append(f"-- PROCEDURE {procedure_name}")
+                    package_body_list.append(LINEFEED)
+                    package_body_list.append(file.read())
+                    package_body_list.append(LINEFEED)
+            except UnicodeError as e:
+                logging.info(f"Procedure {procedure_name} has an undefined character {e}")
+
+        package_body_list.append(f"END {package_name};")
+        package_body_list.append(LINEFEED)
+        package_body_list.append(get_show_errors_block())
+
+        filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_SETUP_PACKAGE.value}{package_name}", package_owner, "PK"]
+
+        # Join all parts with a dot and add the file extension
+        filename = ".".join(filename_parts) + ".sql"
+
+        ## PACKAGE SPECIFICATION SECTION
+        package_specifications = ''.join(
+            one_package_specification for one_package_specification in package_specification_list)
+
+        ## PACKAGE BODY SECTION
+        package_body = ''.join(one_package_body for one_package_body in package_body_list)
+
+        script = (f"{package_specifications}"
+                  f"{LINEFEED}"
+                  f"{package_body}"
+                  f"{LINEFEED}"
+                  f"{get_package_body_closing_statement(package_name)}")
 
         scripts.append({
             "file_name": filename,
@@ -880,7 +1039,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         ## create PACKAGE filename
         ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{PK}.{GNT}.{SYN}.sql
 
-        filename_parts = [f"{SqlScriptFilenamePrefix.PACKAGE.value}{package_name}", package_owner, "PK"]
+        filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_PACKAGE.value}{package_name}", package_owner, "PK"]
 
         # Join all parts with a dot and add the file extension
         filename = ".".join(filename_parts) + ".sql"
@@ -930,17 +1089,24 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
     return scripts
 
 
+def create_setup_package_scripts_manager(database_environment: DatabaseEnvironment):
+    logging.info("Starting: create base packages script generator")
+    scripts_data = build_create_setup_package_script_data(requested_environment=database_environment)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.SETUP.value)
+    logging.info("Starting: create base packages script generator")
+
+
 def create_packages_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: create packages script generator")
     scripts_data = build_create_package_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.INSTALL.value)
     logging.info("Starting: create packages script generator")
 
 
 def delete_packages_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: delete packages script generator")
     scripts_data = build_delete_package_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.ROLLBACK.value)
     logging.info("Starting: delete packages script generator")
 
 
@@ -996,7 +1162,7 @@ def build_create_trigger_script_data(requested_environment):
             custom_trigger_section = build_trigger_section(trigger=value.get("trigger", {}))
 
             # Start with the fixed parts of the filename
-            filename_parts = [f"{SqlScriptFilenamePrefix.TRIGGER.value}{trigger_name}", trigger_owner, "TR"]
+            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_TRIGGER.value}{trigger_name}", trigger_owner, "TR"]
 
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
@@ -1024,24 +1190,24 @@ def build_create_trigger_script_data(requested_environment):
 def create_trigger_scripts_manager(database_environment: DatabaseEnvironment):
     logging.info("Starting: create trigger script generator")
     scripts_data = build_create_trigger_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.INSTALL.value)
     logging.info("Ending: create trigger script generator")
 
 
 def delete_trigger_scripts_manager(database_environment=DatabaseEnvironment):
     logging.info("Starting: delete trigger script generator")
     scripts_data = build_delete_trigger_script_data(requested_environment=database_environment)
-    _write_script_files(scripts_data=scripts_data)
+    _write_script_files(scripts_data=scripts_data, script_type=ScriptType.ROLLBACK.value)
     logging.info("Ending: create trigger script generator")
 
 
-def _write_script_files(scripts_data):
+def _write_script_files(scripts_data, script_type: Optional[str] = ""):
     scripts_folder_path = get_scripts_folder_path()
     for script_info in scripts_data:
         file_name = script_info["file_name"]
         script_content = script_info["script"]
         # Construct the file name
-        file_path = os.path.join(scripts_folder_path, file_name)
+        file_path = os.path.join(scripts_folder_path, script_type, file_name)
 
         # Write the script to the file
         with open(file_path, 'w', encoding='utf-8') as file:

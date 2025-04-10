@@ -312,7 +312,7 @@ def extract_unique_dependencies_types_from_data_file(
                     dependency_objects = dependencies.get(database_object_type.value, [])
                     for dependency in dependency_objects:
                         # Apply custom filter if the object type is TABLE
-                        if database_object_type.name.upper() == DatabaseObject.TABLE.name and is_custom:
+                        if database_object_type.name.upper() == DatabaseObject.TABLE.name:
                             if dependency.get('custom') == is_custom:
                                 dependency_names.add(dependency.get('name').upper())
                         else:
@@ -604,7 +604,6 @@ def extract_table_metadata_from_database(db_pool: OracleDBConnectionPool,
                                                                                  table_names=table_names)
     indexes = fetch_full_indexes_for_tables_grouped_by_schema_and_table_name(db_pool=db_pool, table_names=table_names)
     triggers = fetch_triggers_for_tables(db_pool=db_pool, table_names=table_names)
-    # sequences = fetch_sequences_names_for_tables(db_pool=db_pool, table_names=table_names)
 
     # Construct JSON structure
     table_metadata = []
