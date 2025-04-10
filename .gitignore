@@ -34,3 +34,4 @@ db/**/__pycache__/
 /banner/install/install.csv
 /banner/install/rollback.csv
 /test/*.log
+

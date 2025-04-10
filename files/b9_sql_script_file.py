@@ -6,6 +6,7 @@ from typing import Dict, Optional
 
 from db.database_properties import DatabaseEnvironment, DatabaseObject
 from files.b7_sql_script_file import get_scripts_folder_path
+from files.object_addons_file import read_custom_data, GrantType, ObjectAddonType
 from files.object_data_file import ObjectDataTypes, \
     get_migrated_object_data_mapped_by_names_by_environment_and_type, \
     get_object_data_mapped_by_names_by_environment_and_type
@@ -379,6 +380,16 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
     return scripts
 
 
+def build_setup_create_owner_section(object_owner: str):
+    return (
+        f"-- Create the UVM schema{LINEFEED}"
+        f"CREATE USER {object_owner} IDENTIFIED BY \"{object_owner}_password\";{LINEFEED}"
+        f"-- Grant necessary privileges to {object_owner}{LINEFEED}"
+        f"GRANT CONNECT, RESOURCE TO {object_owner};{LINEFEED}"
+        f"GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE SEQUENCE, CREATE PROCEDURE TO {object_owner};{LINEFEED}"
+        f"ALTER USER {object_owner} QUOTA UNLIMITED ON USERS;{LINEFEED}")
+
+
 def build_create_setup_table_script_data(requested_environment: DatabaseEnvironment) -> list[dict]:
     object_data = get_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
@@ -394,7 +405,16 @@ def build_create_setup_table_script_data(requested_environment: DatabaseEnvironm
             table_name = value["name"]
             object_type = value["type"]
             object_owner = value['owner']
+
+            create_setup_owner = build_setup_create_owner_section(object_owner)
             create_table_section = build_create_table_section(value)
+            create_setup_grants = read_custom_data(b9_object_name=table_name, object_addon_type=ObjectAddonType.GRANTS,
+                                                   grant_type=GrantType.TABLE,
+                                                   b9_object_owner=object_owner)
+            
+            create_setup_synonyms = read_custom_data(b9_object_name=table_name,
+                                                     object_addon_type=ObjectAddonType.SYNONYMS,
+                                                     b9_object_owner=object_owner)
 
             # Start with the fixed parts of the filename
             filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_SETUP_TABLE.value}{table_name}", object_owner, "TBL"]
@@ -402,8 +422,15 @@ def build_create_setup_table_script_data(requested_environment: DatabaseEnvironm
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
 
-            script = (f"{create_table_section}"
-                      f"{LINEFEED}")
+            script = (f"{create_setup_owner}"
+                      f"{LINEFEED}"
+                      f"{create_table_section}"
+                      f"{LINEFEED}"
+                      f"{create_setup_grants}"
+                      f"{LINEFEED}"
+                      f"{create_setup_synonyms}"
+                      f"{LINEFEED}"
+                      )
 
             scripts.append({
                 "file_name": filename,
