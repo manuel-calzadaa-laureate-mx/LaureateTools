@@ -74,7 +74,3 @@ def create_rollback_script_manager():
             index += 1
             install_script_elements.append(install_script_element)
     write_rollback_script_file(install_script_elements)
-
-
-def create_setup_script_manager():
-    return None

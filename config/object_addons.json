@@ -92,6 +92,47 @@
         ]
       }
     },
+    "setup_grants": {
+      "table": {
+        "scripts": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON {owner}.{name} TO {schema};",
+        "schema": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
+      },
+      "package": {
+        "scripts": "GRANT EXECUTE, DEBUG ON {owner}.{name} TO {schema};",
+        "schema": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
+      },
+      "sequence": {
+        "scripts": "GRANT ALTER, SELECT ON {owner}.{name} TO {schema} WITH GRANT OPTION;",
+        "schema": [
+          "BANINST1",
+          "SATURN",
+          "TAISMGR",
+          "BANSECR",
+          "TIBCO01",
+          "TIBCO02",
+          "TIBCO03",
+          "TIBCO04"
+        ]
+      }
+    },
     "columns": [
       {
         "name": "{table}_ACTIVITY_DATE",

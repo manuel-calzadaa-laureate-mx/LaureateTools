@@ -390,12 +390,35 @@ def build_setup_create_owner_section(object_owner: str):
         f"ALTER USER {object_owner} QUOTA UNLIMITED ON USERS;{LINEFEED}")
 
 
+def create_formatted_setup_filename_prefix(index: int, priority: int) -> str:
+    """
+    Creates a formatted string in the format XYYY where:
+    - X is the priority (1-9)
+    - YYY is the index (0-100) left-padded with zeros to 3 digits.
+
+    Args:
+        index: An integer between 0 and 100.
+        priority: An integer between 1 and 9.
+
+    Returns:
+        A string in the format XYYY (e.g., "2004" for priority=2, index=4).
+    """
+    if not 0 <= index <= 100:
+        raise ValueError("Index must be between 0 and 100.")
+    if not 1 <= priority <= 9:
+        raise ValueError("Priority must be between 1 and 9.")
+
+    # Format index as 3 digits with leading zeros
+    formatted_index = f"{index:03d}"
+    return f"{priority}{formatted_index}"
+
+
 def build_create_setup_table_script_data(requested_environment: DatabaseEnvironment) -> list[dict]:
     object_data = get_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
         object_data_type=ObjectDataTypes.TABLE.value)
     scripts = []
-
+    index = 0
     for key, value in object_data.items():
         if value["name"]:
             custom = value["custom"]
@@ -408,16 +431,21 @@ def build_create_setup_table_script_data(requested_environment: DatabaseEnvironm
 
             create_setup_owner = build_setup_create_owner_section(object_owner)
             create_table_section = build_create_table_section(value)
-            create_setup_grants = read_custom_data(b9_object_name=table_name, object_addon_type=ObjectAddonType.GRANTS,
+            create_setup_grants = read_custom_data(b9_object_name=table_name,
+                                                   object_addon_type=ObjectAddonType.SETUP_GRANTS,
                                                    grant_type=GrantType.TABLE,
                                                    b9_object_owner=object_owner)
-            
+            grant_section = build_grant_section(create_setup_grants["grants"])
+
             create_setup_synonyms = read_custom_data(b9_object_name=table_name,
                                                      object_addon_type=ObjectAddonType.SYNONYMS,
                                                      b9_object_owner=object_owner)
 
             # Start with the fixed parts of the filename
-            filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_SETUP_TABLE.value}{table_name}", object_owner, "TBL"]
+            filename_prefix = create_formatted_setup_filename_prefix(priority=1, index=index)
+            index += 1
+            filename_parts = [f"{filename_prefix}_{SqlScriptFilenamePrefix.CREATE_SETUP_TABLE.value}{table_name}",
+                              object_owner, "TBL"]
 
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
@@ -426,11 +454,10 @@ def build_create_setup_table_script_data(requested_environment: DatabaseEnvironm
                       f"{LINEFEED}"
                       f"{create_table_section}"
                       f"{LINEFEED}"
-                      f"{create_setup_grants}"
+                      f"{grant_section}"
                       f"{LINEFEED}"
                       f"{create_setup_synonyms}"
-                      f"{LINEFEED}"
-                      )
+                      f"{LINEFEED}")
 
             scripts.append({
                 "file_name": filename,
@@ -897,6 +924,7 @@ def build_create_setup_package_script_data(requested_environment: DatabaseEnviro
     workfiles_dir = os.path.normpath(workfiles_dir)
 
     ## loop object_data get file path for PACKAGE SPECS
+    index = 0
     for key, value in object_data.items():
         object_status = value.get("object_status")
         if object_status != ObjectTargetType.SKIP.value:
@@ -959,7 +987,11 @@ def build_create_setup_package_script_data(requested_environment: DatabaseEnviro
         package_body_list.append(LINEFEED)
         package_body_list.append(get_show_errors_block())
 
-        filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_SETUP_PACKAGE.value}{package_name}", package_owner, "PK"]
+        # Start with the fixed parts of the filename
+        filename_prefix = create_formatted_setup_filename_prefix(priority=9, index=index)
+        index += 1
+        filename_parts = [f"{filename_prefix}_{SqlScriptFilenamePrefix.CREATE_SETUP_PACKAGE.value}{package_name}",
+                          package_owner, "PK"]
 
         # Join all parts with a dot and add the file extension
         filename = ".".join(filename_parts) + ".sql"

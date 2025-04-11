@@ -13,6 +13,7 @@ class ObjectAddonType(Enum):
     INDEXES = "indexes"
     SEQUENCES = "sequences"
     GRANTS = "grants"
+    SETUP_GRANTS = "setup_grants"
     REVOKES = "revokes"
     SYNONYMS = "synonyms"
     DROP_SYNONYMS = "drop_synonyms"
@@ -117,6 +118,21 @@ def _get_custom_indexes(json_data: dict):
         transformed_indexes.append(transformed_index)
 
     return {"indexes": transformed_indexes}
+
+
+def _get_custom_setup_grants(json_data: dict, object_owner: str, object_name: str, grant_type: GrantType):
+    # Navigate to the grant type within the JSON structure
+    fields = json_data["root"]["setup_grants"][grant_type.value]
+    script_template = fields["scripts"]
+    schemas = fields["schema"]
+
+    grants = [
+        script_template.replace("{owner}", object_owner).replace("{name}", object_name).replace(
+            "{schema}", schema)
+        for schema in schemas
+    ]
+
+    return {"grants": grants}
 
 
 def _get_custom_grants(json_data: dict, object_owner: str, object_name: str, grant_type: GrantType):
@@ -242,6 +258,9 @@ def read_custom_data(object_addon_type: ObjectAddonType, b9_object_name: str, b9
     elif object_addon_type == ObjectAddonType.GRANTS:
         return _get_custom_grants(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type,
                                   object_owner=b9_object_owner)
+    elif object_addon_type == ObjectAddonType.SETUP_GRANTS:
+        return _get_custom_setup_grants(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type,
+                                        object_owner=b9_object_owner)
     elif object_addon_type == ObjectAddonType.REVOKES:
         return _get_custom_revokes(json_data=json_custom_data, object_name=b9_object_name, grant_type=grant_type,
                                    object_owner=b9_object_owner)
