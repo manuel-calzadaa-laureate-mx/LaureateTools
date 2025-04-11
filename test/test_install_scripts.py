@@ -88,9 +88,8 @@ if __name__ == "__main__":
             logger.info("Oracle container started successfully")
 
             process_pre_setup_scripts()
-            one = input("give me time")
-
             process_setup_scripts()
+            input("give me time")
             process_install_scripts()
             process_rollback_scripts()
 

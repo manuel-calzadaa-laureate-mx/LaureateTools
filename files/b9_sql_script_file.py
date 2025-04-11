@@ -946,42 +946,6 @@ def build_create_setup_package_script_data(requested_environment: DatabaseEnviro
             package_specification_list.append(get_show_errors_block())
             package_specification_list.append(LINEFEED)
 
-        # Initialize package body
-        package_body_list = [f"---------------------------- "
-                             f"CREATE PACKAGE {package_name} BODY"
-                             f"---------------------------- ", LINEFEED,
-                             f"CREATE OR REPLACE PACKAGE {package_name} BODY IS", LINEFEED]
-
-        dependencies = value.get("dependencies")
-        for function in dependencies.get("functions"):
-            function_name = function.get("name")
-            function_file_name = f"{package_owner}.{package_name}.{function_name}.sql"
-            function_file_path = os.path.join(workfiles_dir, function_file_name)
-
-            with open(function_file_path, 'r', encoding='utf-8') as file:
-                package_body_list.append(f"-- FUNCTION {function_name}")
-                package_body_list.append(LINEFEED)
-                package_body_list.append(file.read())
-                package_body_list.append(LINEFEED)
-
-        for procedure in dependencies.get("procedures"):
-            procedure_name = procedure.get("name")
-            procedure_file_name = f"{package_owner}.{package_name}.{procedure_name}.sql"
-            procedure_file_path = os.path.join(workfiles_dir, procedure_file_name)
-
-            try:
-                with open(procedure_file_path, 'r', encoding='utf-8') as file:
-                    package_body_list.append(f"-- PROCEDURE {procedure_name}")
-                    package_body_list.append(LINEFEED)
-                    package_body_list.append(file.read())
-                    package_body_list.append(LINEFEED)
-            except UnicodeError as e:
-                logging.info(f"Procedure {procedure_name} has an undefined character {e}")
-
-        package_body_list.append(f"END {package_name};")
-        package_body_list.append(LINEFEED)
-        package_body_list.append(get_show_errors_block())
-
         # Start with the fixed parts of the filename
         filename_prefix = create_formatted_setup_filename_prefix(priority=9, index=index)
         index += 1
@@ -995,14 +959,8 @@ def build_create_setup_package_script_data(requested_environment: DatabaseEnviro
         package_specifications = ''.join(
             one_package_specification for one_package_specification in package_specification_list)
 
-        ## PACKAGE BODY SECTION
-        package_body = ''.join(one_package_body for one_package_body in package_body_list)
-
         script = (f"{package_specifications}"
-                  f"{LINEFEED}"
-                  f"{package_body}"
-                  f"{LINEFEED}"
-                  f"{get_package_body_closing_statement(package_name)}")
+                  f"{LINEFEED}")
 
         scripts.append({
             "file_name": filename,
