@@ -128,9 +128,11 @@ def _get_custom_setup_grants(json_data: dict, object_owner: str, object_name: st
     schemas = fields["schema"]
 
     grants = [
-        script_template.replace("{owner}", object_owner).replace("{name}", object_name).replace(
-            "{schema}", schema)
+        script_template.replace("{owner}", object_owner)
+        .replace("{name}", object_name)
+        .replace("{schema}", schema)
         for schema in schemas
+        if object_owner.lower() != schema.lower()
     ]
 
     return {"grants": grants}

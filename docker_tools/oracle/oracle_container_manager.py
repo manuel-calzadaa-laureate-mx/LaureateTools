@@ -65,40 +65,65 @@ class OracleDatabaseManager:
         return f"//{host}:{self.config.db_port}/{service}"
 
     def wait_for_database(self) -> bool:
-        """Wait for database to become fully operational."""
+        """Wait for database to become fully operational with comprehensive checks."""
         if not self.docker.container:
             raise RuntimeError("Container not initialized")
 
-        self.logger.info("Waiting for database to become ready...")
+        self.logger.info("Waiting for database to become fully ready...")
         start_time = time.time()
+        last_listener_check = 0
+        listener_ready = False
 
         while time.time() - start_time < self.config.ready_timeout:
             try:
-                # First check listener status
-                exit_code, output = self.docker.execute_command(
-                    "lsnrctl status",
-                    user="oracle"
-                )
-                if "STATUS of the LISTENER" not in output:
-                    raise RuntimeError("Listener not running")
+                # Only check listener periodically (not every loop)
+                if not listener_ready or time.time() - last_listener_check > 10:
+                    exit_code, output = self.docker.execute_command(
+                        "lsnrctl status",
+                        user="oracle"
+                    )
+                    if "STATUS of the LISTENER" not in output:
+                        raise RuntimeError("Listener not running")
+                    listener_ready = True
+                    last_listener_check = time.time()
 
-                # Then check database connectivity
-                result = self.execute_sql_statement_in_container(
-                    username=self.config.db_admin_user,
-                    password=self.config.db_password,
-                    sql="SELECT 1 FROM DUAL;",
-                    suppress_output=True
-                )
+                # Enhanced database readiness checks
+                checks = [
+                    # Basic connectivity
+                    "SELECT 1 FROM DUAL",
+                    # Database status
+                    "SELECT status FROM v$database",
+                    # Open mode
+                    "SELECT open_mode FROM v$database",
+                    # Background processes
+                    "SELECT COUNT(*) FROM v$bgprocess WHERE paddr != '00'"
+                ]
 
-                if "1" in result:
-                    self.logger.info("Database is ready")
+                results = []
+                for check in checks:
+                    results.append(
+                        self.execute_sql_statement_in_container(
+                            username=self.config.db_admin_user,
+                            password=self.config.db_password,
+                            sql=check,
+                            suppress_output=True
+                        )
+                    )
+
+                # Validate all checks
+                if ("1" in results[0] and  # Basic query works
+                        "OPEN" in results[1] and  # Database is OPEN
+                        "READ WRITE" in results[2] and  # In read-write mode
+                        int(results[3]) > 10):  # Enough background processes
+
+                    self.logger.info("Database is fully operational")
                     return True
 
             except Exception as e:
                 self.logger.debug(f"Database not ready yet: {str(e)}")
                 time.sleep(self.config.health_check_interval)
 
-        self.logger.error("Database did not become ready within timeout")
+        self.logger.error("Database did not become fully ready within timeout")
         return False
 
     def execute_sql_statement_in_container(

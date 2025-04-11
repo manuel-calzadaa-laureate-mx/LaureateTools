@@ -97,7 +97,7 @@
     },
     "setup_grants": {
       "table": {
-        "scripts": "GRANT ALTER, INSERT, REFERENCES, SELECT, UPDATE, DELETE ON {owner}.{name} TO {schema};",
+        "scripts": "GRANT ALL ON {owner}.{name} TO {schema};",
         "schema": [
           "BANINST1",
           "SATURN",
@@ -111,7 +111,7 @@
         ]
       },
       "package": {
-        "scripts": "GRANT EXECUTE, DEBUG ON {owner}.{name} TO {schema};",
+        "scripts": "GRANT ALL ON {owner}.{name} TO {schema};",
         "schema": [
           "BANINST1",
           "SATURN",
@@ -125,7 +125,7 @@
         ]
       },
       "sequence": {
-        "scripts": "GRANT ALTER, SELECT ON {owner}.{name} TO {schema} WITH GRANT OPTION;",
+        "scripts": "GRANT ALL ON {owner}.{name} TO {schema} WITH GRANT OPTION;",
         "schema": [
           "BANINST1",
           "SATURN",

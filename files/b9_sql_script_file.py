@@ -94,6 +94,8 @@ def build_create_table_section(obj: Dict) -> str:
               f"{LINEFEED}"
               f"CREATE TABLE {obj['owner']}.{obj['name']}{LINEFEED}"
               f"({LINEFEED}")
+
+    # Build column definitions
     for column in obj["columns"]:
         col_def = f"  {column['name']} {column['type']}"
         if column['type'] == "NUMBER":
@@ -107,7 +109,12 @@ def build_create_table_section(obj: Dict) -> str:
         col_def += f",{LINEFEED}"
         script += col_def
 
-    script = script.rstrip(f",{LINEFEED}") + f"{LINEFEED})" + f"{END_OF_SENTENCE}"
+    # Remove trailing comma and close parentheses
+    script = script.rstrip(f",{LINEFEED}") + f"{LINEFEED})"
+
+    # Add TABLESPACE clause
+    script += f"{LINEFEED}TABLESPACE USERS{END_OF_SENTENCE}"
+
     return script
 
 
@@ -381,16 +388,6 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
     return scripts
 
 
-def build_setup_create_owner_section(object_owner: str):
-    return (
-        f"-- Create the UVM schema{LINEFEED}"
-        f"CREATE USER {object_owner} IDENTIFIED BY \"{object_owner}_password\";{LINEFEED}"
-        f"-- Grant necessary privileges to {object_owner}{LINEFEED}"
-        f"GRANT CONNECT, RESOURCE TO {object_owner};{LINEFEED}"
-        f"GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE SEQUENCE, CREATE PROCEDURE TO {object_owner};{LINEFEED}"
-        f"ALTER USER {object_owner} QUOTA UNLIMITED ON USERS;{LINEFEED}")
-
-
 def create_formatted_setup_filename_prefix(index: int, priority: int) -> str:
     """
     Creates a formatted string in the format XYYY where:
@@ -430,7 +427,6 @@ def build_create_setup_table_script_data(requested_environment: DatabaseEnvironm
             object_type = value["type"]
             object_owner = value['owner']
 
-            create_setup_owner = build_setup_create_owner_section(object_owner)
             create_table_section = build_create_table_section(value)
             create_setup_grants = read_custom_data(b9_object_name=table_name,
                                                    object_addon_type=ObjectAddonType.SETUP_GRANTS,
@@ -451,9 +447,7 @@ def build_create_setup_table_script_data(requested_environment: DatabaseEnvironm
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
 
-            script = (f"{create_setup_owner}"
-                      f"{LINEFEED}"
-                      f"{create_table_section}"
+            script = (f"{create_table_section}"
                       f"{LINEFEED}"
                       f"{grant_section}"
                       f"{LINEFEED}"

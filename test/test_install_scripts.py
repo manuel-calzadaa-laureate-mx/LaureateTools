@@ -66,12 +66,13 @@ def process_rollback_scripts():
 
 
 if __name__ == "__main__":
-
-    print("Starting Oracle Docker test...")
-
     # Configure logging
     configure_logging(log_file="test_install.log")
-    logging.basicConfig(level=logging.INFO)
+
+    logger.info("Starting Oracle Docker test...")
+
+    # Initialize db_manager to None so it exists in the finally block
+    db_manager = None
 
     try:
         # Create Oracle configuration
@@ -84,23 +85,26 @@ if __name__ == "__main__":
 
         # Initialize the Oracle database manager
         with OracleDatabaseManager(config=oracle_config) as db_manager:
-            print("Oracle container started successfully")
+            logger.info("Oracle container started successfully")
 
             process_pre_setup_scripts()
+            one = input("give me time")
+
             process_setup_scripts()
             process_install_scripts()
             process_rollback_scripts()
 
-            print("\nAll operations completed successfully!")
+            logger.info("\nAll operations completed successfully!")
 
     except Exception as e:
-        print(f"\nError occurred: {str(e)}")
+        logger.info(f"\nError occurred: {str(e)}")
         raise
     finally:
-        if db_manager.docker.container:
+        # Check if db_manager was successfully created
+        if db_manager is not None and hasattr(db_manager, 'docker') and db_manager.docker.container:
             db_manager.docker.stop_container()
-            print("\nStopping container")
+            logger.info("\nStopping container")
         # Clean up the test file
         if os.path.exists("test.sql"):
             os.remove("test.sql")
-            print("\nCleaned up test SQL file")
+            logger.info("\nCleaned up test SQL file")
