@@ -258,7 +258,7 @@ def build_drop_trigger_section(trigger: dict) -> str:
     """
     Builds the section of the script for creating triggers.
     """
-    trigger_name = {trigger['name']}
+    trigger_name = trigger['name']
     trigger_script = (
         f"BEGIN{LINEFEED}"
         f"   EXECUTE IMMEDIATE 'DROP TRIGGER UVM.{trigger_name}';{LINEFEED}"
