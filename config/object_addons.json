@@ -107,7 +107,8 @@
           "TIBCO02",
           "TIBCO03",
           "TIBCO04",
-          "UVM"
+          "UVM",
+          "GENERAL"
         ]
       },
       "package": {
@@ -121,7 +122,8 @@
           "TIBCO02",
           "TIBCO03",
           "TIBCO04",
-          "UVM"
+          "UVM",
+          "GENERAL"
         ]
       },
       "sequence": {
@@ -135,7 +137,8 @@
           "TIBCO02",
           "TIBCO03",
           "TIBCO04",
-          "UVM"
+          "UVM",
+          "GENERAL"
         ]
       }
     },
