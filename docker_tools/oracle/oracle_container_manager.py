@@ -11,14 +11,14 @@ from docker_tools.docker_manager import DockerManager, ContainerConfig
 @dataclass
 class OracleDatabaseConfig(ContainerConfig):
     """Oracle-specific configuration extending base container config."""
-    container_name: str = "oracle-xe"
-    image_name: str = "gvenzl/oracle-xe:21-slim"
+    container_name: str = "oracle"
+    image_name: str = "gvenzl/oracle-free:23"
     oracle_os_user: str = "oracle"
     db_admin_user: str = "SYSTEM"
     db_password: str = "oracle"
     db_port: int = 1522
     db_host: str = "localhost"
-    db_service: str = "XE"
+    db_service: str = "FREE"
     app_user: str = "testuser"
     app_user_password: str = "testpass"
 
@@ -117,9 +117,11 @@ class OracleDatabaseManager:
             raise ValueError("SQL command cannot be empty")
 
         # Use the correct connection string format
-        connect_string = f"{username}/{password}@XE"
+        connect_string = f"{username}/{password}@{self.config.db_service}"
+
         if as_sysdba:
             connect_string += " AS SYSDBA"
+        self.logger.debug(f"Using connection string: {connect_string}")
 
         # Escape single quotes for bash
         safe_sql = sql.replace("'", "'\"'\"'")
@@ -192,7 +194,7 @@ class OracleDatabaseManager:
 
             # 4. Build the execution command with proper Oracle environment
             command = (
-                f"sqlplus -S {sqlplus_user}/{sqlplus_password}@XE{sysdba_suffix} @{remote_script_path}"
+                f"sqlplus -S {sqlplus_user}/{sqlplus_password}@{self.config.db_service}{sysdba_suffix} @{remote_script_path}"
             )
 
             # 5. Execute the script
@@ -223,8 +225,8 @@ class OracleDatabaseManager:
             raise
 
     def execute_sql_scripts_in_container(self, scripts_folder: str,
-                                         dba_username: str = None,
-                                         dba_password: str = None,
+                                         db_username: str = None,
+                                         db_password: str = None,
                                          as_sysdba: bool = False) -> [str]:
         """Executes all SQL scripts in the specified folder."""
         if not os.path.exists(scripts_folder):
@@ -235,24 +237,24 @@ class OracleDatabaseManager:
             if script_file.endswith(".sql"):
                 script_path = os.path.join(scripts_folder, script_file)
                 result = self.execute_sql_script_in_container(local_script_path=script_path,
-                                                              db_password=dba_password,
-                                                              db_username=dba_username,
+                                                              db_password=db_password,
+                                                              db_username=db_username,
                                                               as_sysdba=as_sysdba)
                 execution_results.append(result)
 
-    def execute_sql_script(self, script_file: str,
-                           dba_username: str = None,
-                           dba_password: str = None,
-                           as_sysdba: bool = False):
-        """Executes a single SQL script from the setup folder."""
-        if script_file.endswith(".sql"):
-            script_path = os.path.join(self.scripts_folder, script_file)
-            self.execute_sql_script_in_container(
-                script_path=script_path,
-                dba_username=dba_username,
-                dba_password=dba_password,
-                as_sysdba=as_sysdba
-            )
+    # def execute_sql_script(self, script_file: str,
+    #                        db_username: str = None,
+    #                        db_password: str = None,
+    #                        as_sysdba: bool = False):
+    #     """Executes a single SQL script from the setup folder."""
+    #
+    #     if script_file.endswith(".sql"):
+    #         self.execute_sql_script_in_container(
+    #             local_script_path=script_file,
+    #             db_username=db_username,
+    #             db_password=db_password,
+    #             as_sysdba=as_sysdba
+    #         )
 
 
 if __name__ == "__main__":

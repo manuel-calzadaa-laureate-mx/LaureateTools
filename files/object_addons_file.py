@@ -16,6 +16,7 @@ class ObjectAddonType(Enum):
     SETUP_GRANTS = "setup_grants"
     REVOKES = "revokes"
     SYNONYMS = "synonyms"
+    SETUP_SYNONYMS = "setup_synonyms"
     DROP_SYNONYMS = "drop_synonyms"
 
 
@@ -185,6 +186,16 @@ def _get_custom_synonym(json_data: dict, b9_table_name: str) -> str:
     return json_data["root"]["synonym"]["create"].replace("{object}", b9_table_name)
 
 
+def _get_custom_setup_synonym(json_data: dict, b9_owner_name: str, b9_table_name: str) -> str:
+    return json_data["root"]["setup_synonym"]["create"].replace("{object}", b9_table_name).replace("{owner}",
+                                                                                                   b9_owner_name)
+
+
+def _get_custom_drop_setup_synonym(json_data: dict, b9_owner_name: str, b9_table_name: str) -> str:
+    return json_data["root"]["setup_synonym"]["drop"].replace("{object}", b9_table_name).replace("{owner}",
+                                                                                                 b9_owner_name)
+
+
 def _get_custom_drop_synonym(json_data: dict, b9_table_name: str) -> str:
     return json_data["root"]["synonym"]["drop"].replace("{object}", b9_table_name)
 
@@ -266,6 +277,9 @@ def read_custom_data(object_addon_type: ObjectAddonType, b9_object_name: str, b9
                                    object_owner=b9_object_owner)
     elif object_addon_type == ObjectAddonType.SYNONYMS:
         return _get_custom_synonym(json_data=json_custom_data, b9_table_name=b9_object_name)
+    elif object_addon_type == ObjectAddonType.SETUP_SYNONYMS:
+        return _get_custom_setup_synonym(json_data=json_custom_data, b9_table_name=b9_object_name,
+                                         b9_owner_name=b9_object_owner)
     elif object_addon_type == ObjectAddonType.DROP_SYNONYMS:
         return _get_custom_drop_synonym(json_data=json_custom_data, b9_table_name=b9_object_name)
     else:

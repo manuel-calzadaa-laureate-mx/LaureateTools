@@ -34,13 +34,14 @@ logging.basicConfig(
 )
 
 
-def find_install_script_file_name(object_action: str, object_type: str, object_name: str) -> Dict:
+def find_install_script_file_name(script_type: str, object_action: str, object_type: str, object_name: str) -> Dict:
     scripts_folder_path = get_scripts_folder_path()
+    full_script_folder_path = os.path.join(scripts_folder_path, script_type)
     target_pattern = f"{object_action}_{object_type}_{object_name}".lower()
 
-    for filename in os.listdir(scripts_folder_path):
+    for filename in os.listdir(full_script_folder_path):
         if target_pattern in filename.lower() and filename.lower().endswith('.sql'):
-            return {"full_path": os.path.join(scripts_folder_path, filename), "filename": filename}
+            return {"full_path": os.path.join(full_script_folder_path, filename), "filename": filename}
 
     return None
 
@@ -438,7 +439,7 @@ def build_create_setup_table_script_data(requested_environment: DatabaseEnvironm
             grant_section = build_grant_section(create_setup_grants["grants"])
 
             create_setup_synonyms = read_custom_data(b9_object_name=table_name,
-                                                     object_addon_type=ObjectAddonType.SYNONYMS,
+                                                     object_addon_type=ObjectAddonType.SETUP_SYNONYMS,
                                                      b9_object_owner=object_owner)
 
             # Start with the fixed parts of the filename
@@ -1062,7 +1063,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
                              f"---------------------------- "]
 
         package_body_list.append(LINEFEED)
-        package_body_list.append(f"CREATE OR REPLACE PACKAGE {package_name} BODY IS")
+        package_body_list.append(f"CREATE OR REPLACE PACKAGE BODY {package_name} AS")
         package_body_list.append(LINEFEED)
 
         dependencies = value.get("dependencies")
@@ -1152,7 +1153,7 @@ def create_setup_package_scripts_manager(database_environment: DatabaseEnvironme
     logging.info("Starting: create base packages script generator")
     scripts_data = build_create_setup_package_script_data(requested_environment=database_environment)
     _write_script_files(scripts_data=scripts_data, script_type=ScriptType.SETUP.value)
-    logging.info("Starting: create base packages script generator")
+    logging.info("Ending: create base packages script generator")
 
 
 def create_packages_scripts_manager(database_environment: DatabaseEnvironment):

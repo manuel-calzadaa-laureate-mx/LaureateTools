@@ -1,6 +1,7 @@
 import logging
 import os
 
+from common.logger import configure_logging
 from docker_tools.oracle.oracle_container_manager import OracleDatabaseConfig, OracleDatabaseManager
 from files import b9_sql_script_file, install_script, rollback_script
 from files.b9_sql_script_file import ScriptType
@@ -17,8 +18,8 @@ def get_scripts_path() -> str:
 def process_pre_setup_scripts():
     db_manager.execute_sql_scripts_in_container(
         scripts_folder="setup",
-        dba_username=oracle_config.oracle_os_user,
-        dba_password=oracle_config.db_password
+        db_username=db_manager.config.db_admin_user,
+        db_password=db_manager.config.db_password
     )
 
 
@@ -29,8 +30,8 @@ def process_setup_scripts():
     setup_path = os.path.join(normalized_path, ScriptType.SETUP.value)
     db_manager.execute_sql_scripts_in_container(
         scripts_folder=setup_path,
-        dba_username=oracle_config.oracle_os_user,
-        dba_password=oracle_config.db_password
+        db_username=db_manager.config.db_admin_user,
+        db_password=db_manager.config.db_password
     )
 
 
@@ -44,8 +45,8 @@ def process_install_scripts():
 
         db_manager.execute_sql_script_in_container(
             local_script_path=filename_path,
-            dba_username=oracle_config.oracle_os_user,
-            dba_password=oracle_config.db_password
+            db_username=db_manager.config.db_admin_user,
+            db_password=db_manager.config.db_password
         )
 
 
@@ -59,8 +60,8 @@ def process_rollback_scripts():
 
         db_manager.execute_sql_script_in_container(
             local_script_path=filename_path,
-            dba_username=oracle_config.oracle_os_user,
-            dba_password=oracle_config.db_password
+            db_username=db_manager.config.db_admin_user,
+            db_password=db_manager.config.db_password
         )
 
 
@@ -69,6 +70,7 @@ if __name__ == "__main__":
     print("Starting Oracle Docker test...")
 
     # Configure logging
+    configure_logging(log_file="test_install.log")
     logging.basicConfig(level=logging.INFO)
 
     try:

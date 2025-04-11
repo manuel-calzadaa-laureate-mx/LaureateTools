@@ -3,3 +3,5 @@ services:
     image: gvenzl/oracle-free:23
     ports:
       - "1522:1521"  # Host:Container port
+    environment:
+      "ORACLE_PASSWORD": "oracle"

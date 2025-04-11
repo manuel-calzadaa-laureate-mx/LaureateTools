@@ -4,6 +4,9 @@
       "create": "CREATE PUBLIC SYNONYM {object} FOR UVM.{object};",
       "drop": "DROP PUBLIC SYNONYM {object} FOR UVM.{object};"
     },
+    "setup_synonym": {
+      "create": "CREATE PUBLIC SYNONYM {object} FOR {owner}.{object};"
+    },
     "revokes": {
       "table": {
         "open_revoke_script": "BEGIN",
@@ -103,7 +106,8 @@
           "TIBCO01",
           "TIBCO02",
           "TIBCO03",
-          "TIBCO04"
+          "TIBCO04",
+          "UVM"
         ]
       },
       "package": {
@@ -116,7 +120,8 @@
           "TIBCO01",
           "TIBCO02",
           "TIBCO03",
-          "TIBCO04"
+          "TIBCO04",
+          "UVM"
         ]
       },
       "sequence": {
@@ -129,7 +134,8 @@
           "TIBCO01",
           "TIBCO02",
           "TIBCO03",
-          "TIBCO04"
+          "TIBCO04",
+          "UVM"
         ]
       }
     },
