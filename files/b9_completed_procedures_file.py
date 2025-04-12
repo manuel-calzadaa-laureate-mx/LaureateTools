@@ -135,10 +135,14 @@ def _extract_package_body_specific_object_from_source_code_data(source_code_line
             procedure_code.append(line)
             continue
 
-        # Stop capturing when we reach the `END` of the procedure or function
+        # Stop capturing when we reach the `END PROCEDURE_NAME` of the procedure or function
+        # Or a new procedure or function
         if in_procedure:
             procedure_code.append(line)
-            if normalized_line == "end;" or normalized_line.startswith(f"end {procedure_name}"):
+            if normalized_line.startswith(f"end {procedure_name}"):
+                break
+            if (f"procedure " in normalized_line or
+                    f"function " in normalized_line):
                 break
 
     return procedure_code

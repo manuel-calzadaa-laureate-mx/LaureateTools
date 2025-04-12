@@ -89,8 +89,9 @@ if __name__ == "__main__":
 
             process_pre_setup_scripts()
             process_setup_scripts()
-            input("give me time")
             process_install_scripts()
+            input("give me time")
+
             process_rollback_scripts()
 
             logger.info("\nAll operations completed successfully!")
