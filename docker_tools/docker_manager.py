@@ -14,7 +14,7 @@ class ContainerConfig:
     container_name: str = "test"
     image_name: str = "busybox"
     command: Optional[str or List[str]] = None
-    ready_timeout: int = 300  # seconds
+    ready_timeout: int = 500  # seconds
     health_check_interval: int = 2  # seconds
     ports: Optional[Dict[str, int]] = None
     environment: Optional[Dict[str, str]] = None
