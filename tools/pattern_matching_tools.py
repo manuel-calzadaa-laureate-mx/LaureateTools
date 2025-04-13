@@ -235,31 +235,29 @@ def match_general_pattern(source_code: str):
     return potential_matches
 
 
-def extract_independent_packages(source_code: str) -> List[str]:
+def extract_independent_packages(source_code: str) -> List[dict]:
     """
-    Extracts only variable declarations with package types (no procedure calls)
-
-    Args:
-        source_code: PL/SQL code to analyze
-
-    Returns:
-        List of (package_name, object_name) tuples
+    Extracts ONLY variable declarations with package.object_type (no %TYPE).
     """
+    matched_elements = []
     pattern = r"""
-        ^\s*                      # Start of line with optional whitespace
-        ([a-zA-Z_]\w*)            # Variable name (group 1)
-        \s+                       # Required whitespace
-        ([a-zA-Z_]\w*)            # Package name (group 2)
-        \.                        # Literal dot
-        ([a-zA-Z_]\w*)            # Object name (group 3)
-        \s*;                      # Optional whitespace and semicolon
-        (?:--.*)?$                # Optional trailing comment
+        \b              # Word boundary to ensure we're matching whole words
+        ([\w$]+)        # First word (variable name, but we'll ignore this)
+        \s+             # One or more whitespace characters
+        ([\w$]+)        # First group (package name) - letters, numbers, underscores, or $
+        \.              # A literal dot
+        ([\w$]+)        # Second group (object name) - letters, numbers, underscores, or $
+        ;               # Ending semicolon
     """
-
-    matches = re.finditer(pattern, source_code, re.VERBOSE | re.MULTILINE | re.IGNORECASE)
-    results = [(m.group(2), m.group(3)) for m in matches if m.group(2) and m.group(3)]
-
-    return results
+    matches = re.findall(pattern, source_code, re.VERBOSE | re.MULTILINE)
+    for match in matches:
+        matched_elements.append(
+            {
+                "package": match[1],
+                "object_name": match[2]
+            }
+        )
+    return matched_elements
 
 
 if __name__ == "__main__":
