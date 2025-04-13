@@ -1,6 +1,6 @@
 from enum import Enum
 
-from db.datasource.all_sources_databasource import get_all_owners
+from db.datasource.all_sources_datasource import get_all_owners
 from db.oracle_database_tools import OracleDBConnectionPool
 
 
