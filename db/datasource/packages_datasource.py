@@ -1,3 +1,6 @@
+import logging
+from typing import List
+
 from db.database_properties import DatabaseEnvironment
 from db.oracle_database_tools import OracleDBConnectionPool
 
@@ -163,6 +166,33 @@ def get_package_record(package_owner: str, package_name: str,
         rows = cursor.fetchall()
         cursor.close()
         return rows
+
+
+def find_if_packages_exist(db_pool: OracleDBConnectionPool, package_candidates: List[str]) -> list:
+    """Check which of the candidate names are existing packages in the database"""
+    if not package_candidates:
+        return []
+
+    try:
+        with db_pool.get_connection() as connection:
+            with connection.cursor() as cursor:
+                # Always include a comma, even for single items
+                if len(package_candidates) == 1:
+                    quoted_names = f"'{package_candidates[0].upper()}'"
+                else:
+                    quoted_names = ", ".join(f"'{name.upper()}'" for name in package_candidates)
+                query = f"""
+                    SELECT object_name
+                    FROM all_objects
+                    WHERE object_name IN ({quoted_names})
+                    AND object_type = 'PACKAGE'
+                    ORDER BY object_name
+                """  # Removed the semicolon at the end as it's not needed in cursor.execute
+                cursor.execute(query)
+                return cursor.fetchall()
+    except Exception as e:
+        logging.error(f"Error checking package existence: {e}")
+        return []
 
 
 if __name__ == "__main__":
