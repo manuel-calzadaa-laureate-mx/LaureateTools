@@ -19,6 +19,9 @@ class OracleDBConnectionPool:
             cls._instances[database_name] = instance
         return cls._instances[database_name]
 
+    def __exit__(self):
+        self.close_pool()
+        
     def _initialize_connection_pool(self, database_name: DatabaseEnvironment):
         """Initialize the connection pool."""
         script_dir = os.path.dirname(os.path.abspath(__file__))

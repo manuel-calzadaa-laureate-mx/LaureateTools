@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import List, Dict
 
 from db.database_properties import DatabaseEnvironment
 from db.datasource.functions_datasource import get_packaged_object_owner, get_independent_object_owners
@@ -108,6 +109,73 @@ def _find_missing_data_to_add(objects: list[dict],
     return hidden_dependencies
 
 
+def _extract_all_package_body_objects_from_source_code_data(source_code_lines: str, owner: str, package: str):
+    objects = []
+    current_object = None
+    object_code = []
+
+    for line in source_code_lines:
+        stripped_line = line.strip()
+        upper_line = stripped_line.upper()
+
+        # Check for procedure or function start
+        if (upper_line.startswith('PROCEDURE ') or upper_line.startswith('FUNCTION ')) and (
+                len(stripped_line) > len('PROCEDURE ') and stripped_line[len('PROCEDURE'):].lstrip()[0].isalnum()):
+
+            if current_object:  # Save previous object if exists
+                objects.append({
+                    'object_package': package,
+                    'object_owner': owner,
+                    'object_type': current_object['type'].upper(),
+                    'object_name': current_object['name'],
+                    'code': ''.join(object_code).strip()
+                })
+
+            # Start new object
+            parts = stripped_line.split()
+            object_type = parts[0].upper()
+            object_name = parts[1].split('(')[0]  # Get name before parameters
+
+            current_object = {
+                'object_package': package,
+                'object_owner': owner,
+                'type': object_type,
+                'name': object_name
+            }
+            object_code = [line]
+
+        elif current_object:  # If we're inside an object
+            object_code.append(line)
+
+            # Improved and properly parenthesized END detection
+            if (upper_line.replace(' ', '') == 'END;' or
+                    (upper_line.startswith('END ') and
+                     (stripped_line.endswith(';') and
+                      (upper_line.endswith(';') or
+                       f'END {current_object["name"].upper()};' in upper_line)))):
+                objects.append({
+                    'object_package': package,
+                    'object_owner': owner,
+                    'object_type': current_object['type'],
+                    'object_name': current_object['name'],
+                    'code': ''.join(object_code).strip()
+                })
+                current_object = None
+                object_code = []
+
+    # Add any remaining object
+    if current_object:
+        objects.append({
+            'object_package': package,
+            'object_owner': owner,
+            'object_type': current_object['type'],
+            'object_name': current_object['name'],
+            'code': ''.join(object_code).strip()
+        })
+
+    return objects
+
+
 def _extract_package_body_specific_object_from_source_code_data(source_code_lines: str, procedure_name: str):
     """
     Extract the source code for a specific procedure or function from the given package source.
@@ -149,7 +217,7 @@ def _extract_package_body_specific_object_from_source_code_data(source_code_line
     return procedure_code
 
 
-def _group_data_into_packages(csv_data: list):
+def _group_list_of_objects_by_packages_from_csv_data(csv_data: list):
     grouped_rows = {}
     for row in csv_data:
         package = row['Package'].strip() if row['Package'] else None
@@ -185,12 +253,125 @@ def create_source_code_manager(db_pool: OracleDBConnectionPool,
     script_dir = os.path.dirname(os.path.abspath(__file__))
     completed_procedures_csv_file_path = os.path.join(script_dir, get_completed_procedures_file_path())
     csv_data = read_csv_file(completed_procedures_csv_file_path)
-    grouped_data = _group_data_into_packages(csv_data=csv_data)
-    extracted_data = _process_source_code_extraction(db_pool=db_pool, data=grouped_data)
+    grouped_data = _group_list_of_objects_by_packages_from_csv_data(csv_data=csv_data)
+    mapped_extracted_data = _group_source_code_maped_by_package_and_name(db_pool=db_pool, data=grouped_data)
+    grouped_data_by_filename = _create_data_process_by_filename(grouped_data, mapped_extracted_data)
     source_code_folder = os.path.join(script_dir, get_source_code_folder(database_environment))
-    _write_extracted_data_to_source_code_files(extracted_data, source_code_folder)
-
+    _write_extracted_data_to_source_code_files(grouped_data_by_filename, source_code_folder)
     logging.info("Ending: extract source code")
+
+
+def _create_data_process_by_filename(grouped_data: List[dict], mapped_extracted_data: Dict) -> Dict:
+    source_codes = []
+    for one_package_data in grouped_data:
+        logging.info(f"Processing {one_package_data} package")
+        one_package_objects = grouped_data[one_package_data]
+        for one_package_object in one_package_objects:
+            procedure = one_package_object.get("Procedure")
+            function = one_package_object.get("Function")
+            owner = one_package_object.get("Owner")
+            package = one_package_object.get("Package")
+
+            # Determine object name
+            if procedure:
+                object_name = procedure
+            elif function:
+                object_name = function
+            else:
+                logging.warning(f"Neither procedure nor function specified for {object_name}")
+                continue
+            logging.info(f"Processing {object_name}")
+            extracted_data = mapped_extracted_data.get((package, object_name))
+
+            specific_source_code = extracted_data.get("code") if extracted_data else None
+
+            file_extension = ".sql.missing" if not specific_source_code else ".sql"
+            file_name = f"{owner}.{package}.{function}{file_extension}" if function else f"{owner}.{package}.{procedure}{file_extension}"
+
+            # Append the expected JSON structure
+            source_codes.append({
+                "file_name": file_name,
+                "source_code": specific_source_code
+            })
+    return {"source_codes": source_codes}
+
+
+def _group_source_code_maped_by_package_and_name(db_pool: OracleDBConnectionPool, data: dict) -> dict:
+    object_map = {}  # New: Will store objects with (package, object_name) keys
+
+    for package, rows in data.items():
+        try:
+            ## SWEEP PACKAGES
+            if package:
+                owner = rows[0]['Owner'].strip()
+                logging.info(f"Processing package: Owner={owner}, Package={package}")
+
+                package_source_code = query_sources(
+                    owner=owner,
+                    package=package,
+                    db_pool=db_pool
+                )
+
+                # Get all objects from the package body
+                package_body_objects = _extract_all_package_body_objects_from_source_code_data(
+                    source_code_lines=package_source_code,
+                    owner=owner,
+                    package=package
+                )
+
+                # Add each package object to the map
+                for obj in package_body_objects:
+                    key = (obj['object_package'], obj['object_name'])  # Tuple key
+                    object_map[key] = obj  # Store object in map
+
+                continue
+
+            ## SWEEP INDEPENDENT FUNCTION AND PROCEDURES
+            if not package:
+                for row in rows:
+                    owner = row['Owner'].strip()
+                    procedure = row['Procedure'].strip() if row['Procedure'] else None
+                    function = row['Function'].strip() if row['Function'] else None
+                    object_name = row['Name'].strip()
+
+                    # Determine object type
+                    if procedure:
+                        object_type = "PROCEDURE"
+                    elif function:
+                        object_type = "FUNCTION"
+                    else:
+                        logging.warning(f"Neither procedure nor function specified for {object_name}")
+                        continue
+
+                    logging.info(
+                        f"Extracting individual source code: Owner={owner}, "
+                        f"Object={object_name}, Type={object_type}"
+                    )
+
+                    source_code_lines = query_sources(
+                        owner=owner,
+                        procedure=procedure,
+                        function=function,
+                        db_pool=db_pool
+                    )
+
+                    # Create object entry
+                    obj = {
+                        'object_owner': owner,
+                        'object_package': None,  # Standalone objects have no package
+                        'object_type': object_type,
+                        'object_name': object_name,
+                        'code': '\n'.join(source_code_lines).strip()
+                    }
+
+                    key = (None, obj['object_name'])  # Key for standalone objects
+                    object_map[key] = obj  # Store in map
+
+        except Exception as e:
+            logging.error(f"Error processing package/row {package}: {str(e)}")
+            continue
+
+    return object_map  # Returns a dict with (package, object_name) keys
 
 
 def _process_source_code_extraction(db_pool: OracleDBConnectionPool, data: dict) -> dict:
@@ -245,6 +426,70 @@ def _process_source_code(source_code_lines: str,
                          package: str = None,
                          procedure: str = None,
                          function: str = None) -> str:
+    """
+    Writes the source code to the specified file, based on whether it's a procedure or function in a package or standalone.
+
+    Args:
+        source_code_lines (str): The source code lines to write.
+        package (str): The package name, if applicable.
+        procedure (str): The procedure name, if applicable.
+        function (str): The function name, if applicable.
+        output_file_path (str): The output file path.
+    """
+    if package:
+        # If part of a package, extract specific code (function or procedure)
+        if procedure:
+            specific_source_code = _extract_package_body_specific_object_from_source_code_data(source_code_lines,
+                                                                                               procedure)
+        elif function:
+            specific_source_code = _extract_package_body_specific_object_from_source_code_data(source_code_lines,
+                                                                                               function)
+        else:
+            specific_source_code = source_code_lines  # If no specific procedure or function, use full code
+
+    else:
+        # Not part of a package, write the entire source code
+        specific_source_code = source_code_lines
+
+    return specific_source_code
+
+
+def _find_all_objects_in_package_body_source_code(source_code_lines: str,
+                                                  package: str = None,
+                                                  procedure: str = None,
+                                                  function: str = None) -> str:
+    """
+    Writes the source code to the specified file, based on whether it's a procedure or function in a package or standalone.
+
+    Args:
+        source_code_lines (str): The source code lines to write.
+        package (str): The package name, if applicable.
+        procedure (str): The procedure name, if applicable.
+        function (str): The function name, if applicable.
+        output_file_path (str): The output file path.
+    """
+    if package:
+        # If part of a package, extract specific code (function or procedure)
+        if procedure:
+            specific_source_code = _extract_package_body_specific_object_from_source_code_data(source_code_lines,
+                                                                                               procedure)
+        elif function:
+            specific_source_code = _extract_package_body_specific_object_from_source_code_data(source_code_lines,
+                                                                                               function)
+        else:
+            specific_source_code = source_code_lines  # If no specific procedure or function, use full code
+
+    else:
+        # Not part of a package, write the entire source code
+        specific_source_code = source_code_lines
+
+    return specific_source_code
+
+
+def _find_one_object_in_package_body_source_code(source_code_lines: str,
+                                                 package: str = None,
+                                                 procedure: str = None,
+                                                 function: str = None) -> str:
     """
     Writes the source code to the specified file, based on whether it's a procedure or function in a package or standalone.
 
