@@ -200,7 +200,7 @@ def _process_source_code_extraction(db_pool: OracleDBConnectionPool, data: dict)
         try:
             owner = rows[0]['Owner'].strip()
             local_package = package if package else "NONE"
-            logging.info(f"Processing package group: Owner={owner}, Package={local_package}")
+            logging.info(f"Processing package group: Package={local_package}")
 
             package_source_code = None
             if package:
@@ -213,7 +213,6 @@ def _process_source_code_extraction(db_pool: OracleDBConnectionPool, data: dict)
             for row in rows:
                 procedure = row['Procedure'].strip()
                 function = row['Function'].strip() if row['Function'] else None
-
                 source_code_lines = package_source_code
                 if not package:
                     logging.info(

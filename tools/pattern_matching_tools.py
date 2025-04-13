@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import List
 
 from db.oracle_database_tools import is_oracle_built_in_object
 
@@ -232,6 +233,33 @@ def match_general_pattern(source_code: str):
            """
     potential_matches = re.findall(pattern, source_code, re.IGNORECASE | re.VERBOSE)
     return potential_matches
+
+
+def extract_independent_packages(source_code: str) -> List[str]:
+    """
+    Extracts only variable declarations with package types (no procedure calls)
+
+    Args:
+        source_code: PL/SQL code to analyze
+
+    Returns:
+        List of (package_name, object_name) tuples
+    """
+    pattern = r"""
+        ^\s*                      # Start of line with optional whitespace
+        ([a-zA-Z_]\w*)            # Variable name (group 1)
+        \s+                       # Required whitespace
+        ([a-zA-Z_]\w*)            # Package name (group 2)
+        \.                        # Literal dot
+        ([a-zA-Z_]\w*)            # Object name (group 3)
+        \s*;                      # Optional whitespace and semicolon
+        (?:--.*)?$                # Optional trailing comment
+    """
+
+    matches = re.finditer(pattern, source_code, re.VERBOSE | re.MULTILINE | re.IGNORECASE)
+    results = [(m.group(2), m.group(3)) for m in matches if m.group(2) and m.group(3)]
+
+    return results
 
 
 if __name__ == "__main__":

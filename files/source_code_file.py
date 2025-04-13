@@ -4,7 +4,7 @@ from db.database_properties import DatabaseEnvironment
 from db.oracle_database_tools import is_oracle_built_in_object
 from tools.pattern_matching_tools import extract_select_tables, extract_insert_tables, extract_update_tables, \
     extract_delete_tables, extract_type_declarations, extract_functions, extract_local_functions, extract_procedures, \
-    extract_sequences
+    extract_sequences, extract_independent_packages
 
 B7_SOURCE_CODE_FOLDER = "../workfiles/b7_sources"
 B9_SOURCE_CODE_FOLDER = "../workfiles/b9_sources"
@@ -63,10 +63,14 @@ def extract_all_dependencies_from_one_source_code_data(source_code_lines: [str])
     # Find all sequences
     sequences = extract_sequences(source_code)
 
+    # Find independent packages
+    packages = extract_independent_packages(source_code)
+
     return {
         "TABLE": sorted(user_defined_tables),
         "FUNCTION": sorted(all_functions),
         "LOCAL_FUNCTION": sorted(local_functions),
         "SEQUENCE": sorted(sequences),
-        "PROCEDURE": sorted(procedures)
+        "PROCEDURE": sorted(procedures),
+        "INDEPENDENT_PACKAGES": sorted(packages)
     }
