@@ -5,6 +5,8 @@ from enum import Enum
 from typing import Dict, Optional
 
 from db.database_properties import DatabaseEnvironment, DatabaseObject
+from db.datasource.packages_datasource import get_package_specification, get_package_body
+from db.oracle_database_tools import OracleDBConnectionPool
 from files.b7_sql_script_file import get_scripts_folder_path
 from files.object_addons_file import read_custom_data, GrantType, ObjectAddonType
 from files.object_data_file import ObjectDataTypes, \
@@ -67,12 +69,9 @@ def get_package_opening_statement():
 
 
 def get_package_body_closing_statement(package_name: str):
-    return (f"select text "
-            f"from user_errors "
-            f"where upper(name) = '{package_name}'"
-            f"and upper(type) = 'PACKAGE BODY';"
-            f""
-            f"select TO_CHAR(SYSDATE,'DD/MON/YYYY HH24:MI') Fecha_Hora_Fin from dual;")
+    return (
+        f"select text from user_errors where upper(name) = '{package_name}' and upper(type) = 'PACKAGE BODY';{LINEFEED}"
+        f"select TO_CHAR(SYSDATE,'DD/MON/YYYY HH24:MI') Fecha_Hora_Fin from dual;{LINEFEED}")
 
 
 def build_footer_section(filename):
@@ -118,14 +117,33 @@ def build_create_table_section(obj: Dict) -> str:
     return script
 
 
-def build_delete_table_section(obj: Dict) -> str:
+def build_drop_table_with_error_handling(obj: Dict) -> str:
     """
-    Construye la sección DELETE TABLE del script.
-    """
-    script = (f"-- Drop table section{LINEFEED}"
-              f"DROP TABLE {obj['owner']}.{obj['name']} CASCADE CONSTRAINTS;{LINEFEED}")
+    Builds the DELETE TABLE section of the script with proper error handling.
 
-    return script
+    Args:
+        obj: Dictionary containing table information with keys 'owner' and 'name'
+
+    Returns:
+        str: The formatted DROP TABLE statement with error handling
+    """
+    drop_table = (
+        f"-- Drop table with error handling{LINEFEED}"
+        f"BEGIN{LINEFEED}"
+        f"    EXECUTE IMMEDIATE 'DROP TABLE {obj['owner']}.{obj['name']} CASCADE CONSTRAINTS'{LINEFEED}"
+        f"    DBMS_OUTPUT.PUT_LINE('Table {obj['owner']}.{obj['name']} dropped successfully'){LINEFEED}"
+        f"EXCEPTION{LINEFEED}"
+        f"    WHEN OTHERS THEN{LINEFEED}"
+        f"        IF SQLCODE = -942 THEN  -- ORA-00942: table or view does not exist{LINEFEED}"
+        f"            DBMS_OUTPUT.PUT_LINE('Table {obj['owner']}.{obj['name']} does not exist, skipping...'){LINEFEED}"
+        f"        ELSE{LINEFEED}"
+        f"            DBMS_OUTPUT.PUT_LINE('Error dropping table: ' || SQLERRM){LINEFEED}"
+        f"        END IF{LINEFEED}"
+        f"END{LINEFEED}"
+        f"/{END_OF_SENTENCE}"
+    )
+
+    return drop_table
 
 
 def build_tablespace_section(attributes: Dict) -> str:
@@ -306,6 +324,14 @@ def build_grant_section(grants: list) -> str:
     return grants_script
 
 
+def build_setup_grant_section(object_owner: str, object_name: str):
+    setup_grants = read_custom_data(grant_type=GrantType.PACKAGE,
+                                    object_addon_type=ObjectAddonType.SETUP_GRANTS,
+                                    b9_object_name=object_name,
+                                    b9_object_owner=object_owner)
+    return setup_grants
+
+
 def build_revoke_section(revoke_grants: str) -> str:
     """
     Builds the section of the script for revoking grants.
@@ -328,12 +354,31 @@ def build_synonym_section(synonym: str) -> str:
     return synonym_script
 
 
-def build_drop_synonym_section(drop_synonyms: str) -> str:
+def build_setup_synonym_section(object_owner: str, object_name: str):
+    setup_synonym = read_custom_data(grant_type=GrantType.PACKAGE,
+                                     object_addon_type=ObjectAddonType.SETUP_SYNONYMS,
+                                     b9_object_name=object_name,
+                                     b9_object_owner=object_owner)
+    return setup_synonym
+
+
+def build_drop_synonym_with_error_handling_section(drop_synonyms: str) -> str:
     """
     Builds the section of the script for drop synonym.
     """
-    drop_synonym_script = (f"-- Drop synonyms{LINEFEED}"
-                           f"{drop_synonyms}{LINEFEED}")
+    drop_synonym_script = (f"-- Drop synonyms with error handling{LINEFEED}"
+                           f"BEGIN{LINEFEED}"
+                           f"    EXECUTE IMMEDIATE '{drop_synonyms}';{LINEFEED}"
+                           f"EXCEPTION{LINEFEED}"
+                           f"    WHEN OTHERS THEN{LINEFEED}"
+                           f"        IF SQLCODE = -1434 THEN  -- ORA-01434: public synonym to be dropped does not exist{LINEFEED}"
+                           f"            DBMS_OUTPUT.PUT_LINE('Public synonym TZSEFBCAS does not exist, skipping...');{LINEFEED}"
+                           f"        ELSE{LINEFEED}"
+                           f"            DBMS_OUTPUT.PUT_LINE('Error dropping public synonym: ' || SQLERRM);{LINEFEED}"
+                           f"        END IF;{LINEFEED}"
+                           f"END;{LINEFEED}"
+                           f"/{LINEFEED}")
+
     return drop_synonym_script
 
 
@@ -350,14 +395,15 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
             table_name = value["name"]
             object_type = value["type"]
             object_owner = value['owner']
-            delete_table_section = build_delete_table_section(value)
+            delete_table_section = build_drop_table_with_error_handling(value)
 
             drop_index_section = build_indexes_and_primary_key_drop_section(value.get("indexes", {}),
                                                                             object_owner,
                                                                             table_name)
 
             custom_revoke_section = build_revoke_section(revoke_grants=value.get("revokes"))
-            custom_drop_synonym_section = build_drop_synonym_section(drop_synonyms=value.get("drop_synonyms"))
+            custom_drop_synonym_section = build_drop_synonym_with_error_handling_section(
+                drop_synonyms=value.get("drop_synonyms"))
 
             # Start with the fixed parts of the filename
             filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_TABLE.value}{table_name}", object_owner, "TBL"]
@@ -698,6 +744,23 @@ def get_scripts_folder_path() -> str:
     return source_folder
 
 
+def build_drop_sequence_with_error_handling(sequence_name: str):
+    return (
+        f"-- Drop Sequence with error handling{LINEFEED}"
+        f"BEGIN{LINEFEED}"
+        f"   EXECUTE IMMEDIATE 'DROP SEQUENCE UVM.{sequence_name}'{LINEFEED}"
+        f"EXCEPTION{LINEFEED}"
+        f"   WHEN OTHERS THEN{LINEFEED}"
+        f"      IF SQLCODE = -2289 THEN  -- ORA-02289: sequence does not exist{LINEFEED}"
+        f"         DBMS_OUTPUT.PUT_LINE('Sequence UVM.{sequence_name} does not exist, skipping...'){LINEFEED}"
+        f"      ELSE{LINEFEED}"
+        f"         DBMS_OUTPUT.PUT_LINE('Error dropping sequence UVM.{sequence_name}: ' || SQLERRM){LINEFEED}"
+        f"      END IF{LINEFEED}"
+        f"END{END_OF_SENTENCE}"
+        f"/{LINEFEED}"
+    )
+
+
 def build_delete_sequences_script_data(requested_environment: DatabaseEnvironment) -> \
         list[dict]:
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
@@ -712,10 +775,7 @@ def build_delete_sequences_script_data(requested_environment: DatabaseEnvironmen
             object_type = value["type"]
             object_owner = value['owner']
 
-            sequences_script = (
-                f"-- Drop Sequence{LINEFEED}"
-                f"DROP SEQUENCE UVM.{value['name']}{END_OF_SENTENCE}"
-            )
+            sequences_script = build_drop_sequence_with_error_handling(sequence_name=object_name)
 
             filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_SEQUENCE.value}{object_name}", object_owner, "SEQ"]
 
@@ -725,7 +785,7 @@ def build_delete_sequences_script_data(requested_environment: DatabaseEnvironmen
             header_section = build_header_section(filename)
 
             revoke = build_revoke_section(revoke_grants=value["revokes"])
-            drop_synonym = build_drop_synonym_section(drop_synonyms=value["synonyms"])
+            drop_synonym = build_drop_synonym_with_error_handling_section(drop_synonyms=value["drop_synonyms"])
             footer_section = build_footer_section(filename)
 
             script = (f"{header_section}"
@@ -929,6 +989,8 @@ def build_create_setup_package_script_data(requested_environment: DatabaseEnviro
         package_name = value.get("name")
         root = "NONE"
 
+        # synonym_section = build_setup_synonym_section(object_owner=package_owner, object_name=package_name)
+        # grants_section = build_setup_grant_section(object_owner=package_owner, object_name=package_name)
         ## search {owner}.{package_name}.NONE.sql
         package_specification_file_name = f"{package_owner}.{package_name}.{root}.sql"
         package_specificacion_file_path = os.path.join(workfiles_dir, package_specification_file_name)
@@ -960,7 +1022,12 @@ def build_create_setup_package_script_data(requested_environment: DatabaseEnviro
             one_package_specification for one_package_specification in package_specification_list)
 
         script = (f"{package_specifications}"
-                  f"{LINEFEED}")
+                  f"{LINEFEED}"
+                  # f"{synonym_section}"
+                  # f"{LINEFEED}"
+                  # f"{grants_section}"
+                  # f"{LINEFEED}"
+                  )
 
         scripts.append({
             "file_name": filename,
@@ -974,6 +1041,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
     object_data = get_migrated_object_data_mapped_by_names_by_environment_and_type(
         database_environment=requested_environment,
         object_data_type=ObjectDataTypes.PACKAGE.value)
+    db_pool_banner9 = OracleDBConnectionPool(database_name=DatabaseEnvironment.BANNER9)
 
     scripts = []
     source_folder_path = get_source_code_folder(database_environment=requested_environment)
@@ -988,68 +1056,35 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
     workfiles_dir = os.path.normpath(workfiles_dir)
 
     ## loop object_data get file path for PACKAGE SPECS
+
     for key, value in object_data.items():
         package_owner = value.get("owner")
         package_name = value.get("name")
         root = "NONE"
-        ## search {owner}.{package_name}.NONE.sql
-        package_specification_file_name = f"{package_owner}.{package_name}.{root}.sql"
-        package_specificacion_file_path = os.path.join(workfiles_dir, package_specification_file_name)
 
-        # Read package specification file
-        package_specification_list = [f"---------------------------- "
-                                      f"CREATE PACKAGE {package_name} SPECIFICATION"
-                                      f"---------------------------- "]
+        package_specification_list = [
+            line_tuple[0].replace(
+                f"PACKAGE {package_name}",
+                f"PACKAGE {package_owner}.{package_name}"
+            )
+            for line_tuple in get_package_specification(
+                db_pool=db_pool_banner9,
+                package_owner=package_owner,
+                package_name=package_name
+            )
+        ]
 
-        with open(package_specificacion_file_path, 'r', encoding='utf-8') as file:
-            package_specification_list.append(LINEFEED)
-            package_specification_list.append(
-                replace_package_header(text=file.read(), package_name=package_name, owner=package_owner))
-            package_specification_list.append(LINEFEED)
-            package_specification_list.append(get_show_errors_block())
-            package_specification_list.append(LINEFEED)
-
-        # Initialize package body
-        package_body_list = [f"---------------------------- "
-                             f"CREATE PACKAGE {package_name} BODY"
-                             f"---------------------------- "]
-
-        package_body_list.append(LINEFEED)
-        package_body_list.append(f"CREATE OR REPLACE PACKAGE BODY {package_name} AS")
-        package_body_list.append(LINEFEED)
-
-        dependencies = value.get("dependencies")
-        for function in dependencies.get("functions"):
-            function_name = function.get("name")
-            function_file_name = f"{package_owner}.{package_name}.{function_name}.sql"
-            function_file_path = os.path.join(workfiles_dir, function_file_name)
-
-            with open(function_file_path, 'r', encoding='utf-8') as file:
-                package_body_list.append(f"-- FUNCTION {function_name}")
-                package_body_list.append(LINEFEED)
-                package_body_list.append(file.read())
-                package_body_list.append(LINEFEED)
-
-        for procedure in dependencies.get("procedures"):
-            procedure_name = procedure.get("name")
-            procedure_file_name = f"{package_owner}.{package_name}.{procedure_name}.sql"
-            procedure_file_path = os.path.join(workfiles_dir, procedure_file_name)
-
-            try:
-                with open(procedure_file_path, 'r', encoding='utf-8') as file:
-                    package_body_list.append(f"-- PROCEDURE {procedure_name}")
-                    package_body_list.append(LINEFEED)
-                    package_body_list.append(file.read())
-                    package_body_list.append(LINEFEED)
-            except UnicodeError as e:
-                logging.info(f"Procedure {procedure_name} has an undefined character {e}")
-
-        package_body_list.append(f"END {package_name};")
-        package_body_list.append(LINEFEED)
-        package_body_list.append(get_show_errors_block())
-
-        ## create PACKAGE filename
-        ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{PK}.{GNT}.{SYN}.sql
+        package_body_list = [
+            line_tuple[0].replace(
+                f"PACKAGE BODY {package_name}",
+                f"PACKAGE BODY {package_owner}.{package_name}"
+            )
+            for line_tuple in get_package_body(
+                db_pool=db_pool_banner9,
+                package_owner=package_owner,
+                package_name=package_name
+            )
+        ]
 
         filename_parts = [f"{SqlScriptFilenamePrefix.CREATE_PACKAGE.value}{package_name}", package_owner, "PK"]
 
@@ -1057,11 +1092,17 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
         filename = ".".join(filename_parts) + ".sql"
 
         ## PACKAGE SPECIFICATION SECTION
-        package_specifications = ''.join(
+        package_specifications = "CREATE OR REPLACE "
+        package_specifications += ''.join(
             one_package_specification for one_package_specification in package_specification_list)
+        package_specifications += LINEFEED
+        package_specifications += get_show_errors_block()
 
         ## PACKAGE BODY SECTION
-        package_body = ''.join(one_package_body for one_package_body in package_body_list)
+        package_body = "CREATE OR REPLACE "
+        package_body += ''.join(one_package_body for one_package_body in package_body_list)
+        package_body += LINEFEED
+        package_body += get_show_errors_block()
 
         ## HEADER SECTION
         header_section = build_header_section(filename)
@@ -1097,6 +1138,7 @@ def build_create_package_script_data(requested_environment: DatabaseEnvironment)
             "file_name": filename,
             "script": script
         })
+    db_pool_banner9.close_pool()
 
     return scripts
 
