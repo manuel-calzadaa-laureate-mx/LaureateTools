@@ -4,6 +4,19 @@ PROMPT Starting schema creation process...
 DECLARE
   v_count NUMBER;
 BEGIN
+
+  -- NLSUSER User
+  BEGIN
+    SELECT COUNT(*) INTO v_count FROM dba_users WHERE username = 'NLSUSER';
+    IF v_count > 0 THEN
+      DBMS_OUTPUT.PUT_LINE('Dropping existing NLSUSER user...');
+      EXECUTE IMMEDIATE 'DROP USER NLSUSER CASCADE';
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error checking/dropping NLSUSER: ' || SQLERRM);
+  END;
+
   -- UVM User
   BEGIN
     SELECT COUNT(*) INTO v_count FROM dba_users WHERE username = 'UVM';

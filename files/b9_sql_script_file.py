@@ -588,8 +588,7 @@ def build_create_table_script_data(requested_environment: DatabaseEnvironment) -
     return scripts
 
 
-def build_indexes_and_primary_key_drop_section(indexes: list, table_owner: str, table_name: str,
-                                               primary_key: dict = None) -> str:
+def build_indexes_and_primary_key_drop_section(indexes: list, table_owner: str, table_name: str) -> str:
     """
     Generates the SQL script for dropping primary keys and indexes based on the JSON definition.
 
@@ -602,9 +601,9 @@ def build_indexes_and_primary_key_drop_section(indexes: list, table_owner: str, 
     script_parts = []
 
     # Add primary key drop if defined
-    if primary_key and not primary_key["name"].startswith("SYS_"):
-        pk_drop = f"ALTER TABLE {table_owner}.{table_name} DROP CONSTRAINT {primary_key['name']}{END_OF_SENTENCE}"
-        script_parts.append(f"-- Drop primary key\n\n{pk_drop}")
+    # if primary_key and not primary_key["name"].startswith("SYS_"):
+    #     pk_drop = f"ALTER TABLE {table_owner}.{table_name} DROP CONSTRAINT {primary_key['name']}{END_OF_SENTENCE}"
+    #     script_parts.append(f"-- Drop primary key\n\n{pk_drop}")
 
     # Process indexes
     index_scripts = []
@@ -613,8 +612,21 @@ def build_indexes_and_primary_key_drop_section(indexes: list, table_owner: str, 
         if index["name"].startswith("SYS_"):
             continue
 
-        # Build the DROP INDEX statement
-        index_scripts.append(f"DROP INDEX {table_owner}.{index['name']}{END_OF_SENTENCE}")
+        ## THE DROP TABLE AT THE END WILL REMOVE THE PK.
+        if index['constraint_type'] == 'P':
+            continue
+
+        execute_immediate = f"DROP INDEX {table_owner}.{index['name']}"
+
+        drop_index = (f"BEGIN{LINEFEED}"
+                      f"    EXECUTE IMMEDIATE '{execute_immediate}';{LINEFEED}"
+                      f"EXCEPTION{LINEFEED}"
+                      f"    WHEN OTHERS THEN{LINEFEED}"
+                      f"        DBMS_OUTPUT.PUT_LINE('Error dropping public object: ' || SQLERRM);{LINEFEED}"
+                      f"END;{LINEFEED}"
+                      f"/{LINEFEED}")
+
+        index_scripts.append(drop_index)
 
     # Add the index scripts if any
     if index_scripts:
