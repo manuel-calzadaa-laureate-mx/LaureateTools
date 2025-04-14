@@ -15,6 +15,16 @@ logging.basicConfig(
 )
 
 
+def get_incomplete_procedures_name_list() -> list:
+    """Read, process, and write extracted source code."""
+    logging.info("Starting: extract package specification source code")
+    all_incompleted_procedures = get_incomplete_procedures()
+    packages = set()
+    for row in all_incompleted_procedures:
+        packages.add(row.get("Package"))
+    return list(packages)
+
+
 def get_incomplete_procedures_file_path():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, INCOMPLETE_PROCEDURES_FILE_PATH)

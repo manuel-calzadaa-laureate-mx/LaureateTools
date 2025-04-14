@@ -36,10 +36,10 @@ logging.basicConfig(
 )
 
 
-def find_install_script_file_name(script_type: str, object_action: str, object_type: str, object_name: str) -> Dict:
+def find_install_script_file_name(script_type: str, object_name: str) -> Dict:
     scripts_folder_path = get_scripts_folder_path()
     full_script_folder_path = os.path.join(scripts_folder_path, script_type)
-    target_pattern = f"{object_action}_{object_type}_{object_name}".lower()
+    target_pattern = f"{object_name}".lower()
 
     for filename in os.listdir(full_script_folder_path):
         if target_pattern in filename.lower() and filename.lower().endswith('.sql'):
@@ -130,16 +130,16 @@ def build_drop_table_with_error_handling(obj: Dict) -> str:
     drop_table = (
         f"-- Drop table with error handling{LINEFEED}"
         f"BEGIN{LINEFEED}"
-        f"    EXECUTE IMMEDIATE 'DROP TABLE {obj['owner']}.{obj['name']} CASCADE CONSTRAINTS'{LINEFEED}"
-        f"    DBMS_OUTPUT.PUT_LINE('Table {obj['owner']}.{obj['name']} dropped successfully'){LINEFEED}"
+        f"    EXECUTE IMMEDIATE 'DROP TABLE {obj['owner']}.{obj['name']} CASCADE CONSTRAINTS';{LINEFEED}"
+        f"    DBMS_OUTPUT.PUT_LINE('Table {obj['owner']}.{obj['name']} dropped successfully');{LINEFEED}"
         f"EXCEPTION{LINEFEED}"
         f"    WHEN OTHERS THEN{LINEFEED}"
         f"        IF SQLCODE = -942 THEN  -- ORA-00942: table or view does not exist{LINEFEED}"
-        f"            DBMS_OUTPUT.PUT_LINE('Table {obj['owner']}.{obj['name']} does not exist, skipping...'){LINEFEED}"
+        f"            DBMS_OUTPUT.PUT_LINE('Table {obj['owner']}.{obj['name']} does not exist, skipping...');{LINEFEED}"
         f"        ELSE{LINEFEED}"
-        f"            DBMS_OUTPUT.PUT_LINE('Error dropping table: ' || SQLERRM){LINEFEED}"
-        f"        END IF{LINEFEED}"
-        f"END{LINEFEED}"
+        f"            DBMS_OUTPUT.PUT_LINE('Error dropping table: ' || SQLERRM);{LINEFEED}"
+        f"        END IF;{LINEFEED}"
+        f"END;{LINEFEED}"
         f"/{END_OF_SENTENCE}"
     )
 
@@ -748,14 +748,14 @@ def build_drop_sequence_with_error_handling(sequence_name: str):
     return (
         f"-- Drop Sequence with error handling{LINEFEED}"
         f"BEGIN{LINEFEED}"
-        f"   EXECUTE IMMEDIATE 'DROP SEQUENCE UVM.{sequence_name}'{LINEFEED}"
+        f"   EXECUTE IMMEDIATE 'DROP SEQUENCE UVM.{sequence_name}';{LINEFEED}"
         f"EXCEPTION{LINEFEED}"
         f"   WHEN OTHERS THEN{LINEFEED}"
         f"      IF SQLCODE = -2289 THEN  -- ORA-02289: sequence does not exist{LINEFEED}"
-        f"         DBMS_OUTPUT.PUT_LINE('Sequence UVM.{sequence_name} does not exist, skipping...'){LINEFEED}"
+        f"         DBMS_OUTPUT.PUT_LINE('Sequence UVM.{sequence_name} does not exist, skipping...');{LINEFEED}"
         f"      ELSE{LINEFEED}"
-        f"         DBMS_OUTPUT.PUT_LINE('Error dropping sequence UVM.{sequence_name}: ' || SQLERRM){LINEFEED}"
-        f"      END IF{LINEFEED}"
+        f"         DBMS_OUTPUT.PUT_LINE('Error dropping sequence UVM.{sequence_name}: ' || SQLERRM);{LINEFEED}"
+        f"      END IF;{LINEFEED}"
         f"END{END_OF_SENTENCE}"
         f"/{LINEFEED}"
     )
@@ -824,13 +824,16 @@ def build_create_sequences_script_data(requested_environment: DatabaseEnvironmen
                                 f"{LINEFEED}")
 
             sequences_script += (
-                f"CREATE SEQUENCE UVM.{value['name']}{LINEFEED}"
+                f"CREATE SEQUENCE {object_owner}.{value['name']}{LINEFEED}"
                 f"   INCREMENT BY {value['increment_by']}{LINEFEED}"
                 f"   START WITH {value['min_value']}{LINEFEED}"
                 f"   MAXVALUE {value['max_value']}{LINEFEED}"
                 f"   {'CYCLE' if value['cycle_flag'] else 'NOCYCLE'}{LINEFEED}"
-                f"   CACHE {value['cache_size']}"
-                f"{END_OF_SENTENCE}"
+                f"   CACHE {value['cache_size']};{LINEFEED}"
+            )
+
+            sequences_script += (
+                f"SELECT {object_owner}.{value['name']}.NEXTVAL FROM DUAL;{LINEFEED}"
             )
 
             ## CREATE COMMENTED DROP SEQUENCE STATEMENT FOR THIS SEQUENCE OBJECT
@@ -988,7 +991,9 @@ def build_create_setup_package_script_data(requested_environment: DatabaseEnviro
         package_owner = value.get("owner")
         package_name = value.get("name")
         root = "NONE"
-
+        if package_name == 'NONE' and root == 'NONE':
+            ## TODO implement GB_COMMON.* package
+            continue
         # synonym_section = build_setup_synonym_section(object_owner=package_owner, object_name=package_name)
         # grants_section = build_setup_grant_section(object_owner=package_owner, object_name=package_name)
         ## search {owner}.{package_name}.NONE.sql

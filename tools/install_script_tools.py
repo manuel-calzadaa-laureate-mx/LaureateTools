@@ -19,8 +19,6 @@ def create_install_script_manager():
         object_type = install_dependency.get("object_type")
         object_name = install_dependency.get("object_name")
         script_file_data = find_install_script_file_name(script_type=ScriptType.INSTALL.value,
-                                                         object_action=ObjectAction.CREATE.value,
-                                                         object_type=object_type,
                                                          object_name=object_name)
         if script_file_data:
             filename = script_file_data.get("filename")
@@ -53,8 +51,6 @@ def create_rollback_script_manager():
         object_type = install_dependency.get("object_type")
         object_name = install_dependency.get("object_name")
         script_file_data = find_install_script_file_name(script_type=ScriptType.ROLLBACK.value,
-                                                         object_action=ObjectAction.DELETE.value,
-                                                         object_type=object_type,
                                                          object_name=object_name)
         if script_file_data:
             filename = script_file_data.get("filename")

@@ -5,8 +5,7 @@ import pandas as pd
 
 from db.database_properties import DatabaseEnvironment
 from db.oracle_database_tools import OracleDBConnectionPool
-from files.b9_completed_procedures_file import update_missing_procedures_to_add_manager, create_source_code_manager, \
-    get_completed_procedures_name_list
+from files.b9_completed_procedures_file import update_missing_procedures_to_add_manager, create_source_code_manager
 from files.b9_incomplete_procedures_file import get_incomplete_procedures
 from files.dependency_file import extract_unique_existing_objects, extract_object_with_missing_status, \
     filter_missing_status_dependencies, find_delta_of_missing_dependencies, \
@@ -105,7 +104,10 @@ def _write_dependencies_file(dependencies_data: list[dict]):
 
 
 def append_package_dependencies():
-    installable_package_list = get_completed_procedures_name_list()
+    incomplete_procedures = get_incomplete_procedures()
+    installable_package_list = []
+    for incomplete_procedure in incomplete_procedures:
+        installable_package_list.append(incomplete_procedure.get("Package"))
 
     # Load the CSV file into a DataFrame
     dependencies_file = get_dependency_file_path()

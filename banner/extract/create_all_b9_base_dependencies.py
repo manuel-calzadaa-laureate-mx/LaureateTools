@@ -2,8 +2,8 @@ import logging
 
 from db.database_properties import DatabaseEnvironment
 from db.oracle_database_tools import OracleDBConnectionPool
-from files.b9_completed_procedures_file import create_package_specification_source_code_manager, \
-    create_source_code_manager
+from files.b9_completed_procedures_file import create_source_code_manager, \
+    create_package_specification_source_code_manager
 from files.b9_dependency_file import find_all_dependencies_manager
 from files.b9_incomplete_procedures_file import find_missing_procedures_manager
 
