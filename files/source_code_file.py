@@ -1,7 +1,9 @@
 import re
+from typing import Dict, List
 
 from db.database_properties import DatabaseEnvironment
-from db.oracle_database_tools import is_oracle_built_in_object
+from db.datasource.packages_datasource import find_if_packages_exist
+from db.oracle_database_tools import is_oracle_built_in_object, OracleDBConnectionPool
 from tools.pattern_matching_tools import extract_select_tables, extract_insert_tables, extract_update_tables, \
     extract_delete_tables, extract_type_declarations, extract_functions, extract_local_functions, extract_procedures, \
     extract_sequences, extract_independent_packages
@@ -39,6 +41,38 @@ def _remove_single_lines_comments(source_code):
     return re.sub(r"--.*", "", source_code)
 
 
+def filter_independent_packages_candidates(package_candidates: List[Dict]) -> List[str]:
+    if not package_candidates:
+        return []
+    ## package_candidates -> "package", "object_name"
+    db_pool_banner9 = OracleDBConnectionPool(database_name=DatabaseEnvironment.BANNER9)
+
+    # Get unique package names
+    unique_packages = {p["package"] for p in package_candidates}
+
+    # Find existing packages (returns list of tuples: (owner, package_name))
+    ## unique_packages -> package LIST
+    packages_exist = find_if_packages_exist(
+        db_pool=db_pool_banner9,
+        package_candidates=list(unique_packages)
+    )
+
+    ## package LIST (that exist)
+    ## filter package_candidates using packages_exist -> existing_packages dict
+    ## join package+object_name in a list
+
+    # Create a set of existing package names (ignoring owners)
+    existing_packages = {package_name for (package_name,) in packages_exist}
+
+    # Return package.object_name for candidates where package exists
+    confirmed_packages = []
+    for candidate in package_candidates:
+        if candidate['package'].upper() in existing_packages:
+            confirmed_package_formatted = f"{candidate['package'].upper()}.{candidate['object_name'].upper()}"
+            confirmed_packages.append(confirmed_package_formatted)
+    return confirmed_packages
+
+
 def extract_all_dependencies_from_one_source_code_data(source_code_lines: [str]) -> dict:
     source_code = clean_comments_and_whitespace(source_code_lines)
 
@@ -65,6 +99,10 @@ def extract_all_dependencies_from_one_source_code_data(source_code_lines: [str])
 
     # Find independent packages
     packages = extract_independent_packages(source_code)
+    independent_packages = []
+    if packages:
+        filtered_independent_packages = filter_independent_packages_candidates(package_candidates=packages)
+        independent_packages.extend(filtered_independent_packages)
 
     return {
         "TABLE": sorted(user_defined_tables),
@@ -72,5 +110,5 @@ def extract_all_dependencies_from_one_source_code_data(source_code_lines: [str])
         "LOCAL_FUNCTION": sorted(local_functions),
         "SEQUENCE": sorted(sequences),
         "PROCEDURE": sorted(procedures),
-        "INDEPENDENT_PACKAGES": sorted(packages)
+        "PACKAGES": sorted(independent_packages)
     }
