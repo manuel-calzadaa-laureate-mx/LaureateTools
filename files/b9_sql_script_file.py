@@ -140,7 +140,7 @@ def build_drop_table_with_error_handling(obj: Dict) -> str:
         f"            DBMS_OUTPUT.PUT_LINE('Error dropping table: ' || SQLERRM);{LINEFEED}"
         f"        END IF;{LINEFEED}"
         f"END;{LINEFEED}"
-        f"/{END_OF_SENTENCE}"
+        f"{get_show_errors_block()}"
     )
 
     return drop_table

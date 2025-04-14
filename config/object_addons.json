@@ -2,7 +2,7 @@
   "root": {
     "synonym": {
       "create": "CREATE PUBLIC SYNONYM {object} FOR UVM.{object};",
-      "drop": "DROP PUBLIC SYNONYM {object};"
+      "drop": "DROP PUBLIC SYNONYM {object}"
     },
     "setup_synonym": {
       "create": "CREATE PUBLIC SYNONYM {object} FOR {owner}.{object};"
