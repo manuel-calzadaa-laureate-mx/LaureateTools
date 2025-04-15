@@ -1,6 +1,6 @@
 from enum import Enum
 
-from db.datasource.all_sources_datasource import get_all_owners
+from db.datasource.owners_datasource import get_all_owners_of_packages
 from db.oracle_database_tools import OracleDBConnectionPool
 
 
@@ -16,7 +16,7 @@ class ObjectOriginType(Enum):
     DEPENDENCY = 'DEPENDENCY'  ## added by dependency analysis
 
 
-def split_table_name_into_package_and_table_name(obj_name: str) -> dict:
+def split_table_name_into_package_and_table_name(obj_name: dict) -> dict:
     """
     Parses an object name string and returns a dictionary with '
     package' or 'owner' and 'object name'.
@@ -37,7 +37,7 @@ def split_table_name_into_package_and_table_name(obj_name: str) -> dict:
 
 
 def get_all_current_owners(db_pool: OracleDBConnectionPool) -> list:
-    all_owners_fetchall = get_all_owners(db_pool=db_pool)
+    all_owners_fetchall = get_all_owners_of_packages(db_pool=db_pool)
     return [row[0] for row in all_owners_fetchall]
 
 
