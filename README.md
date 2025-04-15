@@ -107,7 +107,8 @@ This consist in several use phases:
 - [x] Add script execution tools using sqlplus
 - [X] Add environment table setup scripts
 - [x] Add environment package setup scripts
-- [] Add environment setup script list
-- [] Execute scripts for minimum target environment
-- [] Execute install scripts in order
-- [] Execute rollback scripts in order
+- [x] Add environment setup script list
+- [x] Execute scripts for minimum target environment
+- [x] Execute install scripts in order
+- [x] Execute rollback scripts in order
+- [x] Add idempotent rollback scripts

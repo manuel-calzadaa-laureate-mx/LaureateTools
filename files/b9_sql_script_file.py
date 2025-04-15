@@ -957,7 +957,18 @@ def build_delete_package_script_data(requested_environment: DatabaseEnvironment)
 
         ## DROP SECTION
         drop_object_section = f"-- Drop package{LINEFEED}{LINEFEED}"
-        drop_object_section += f"DROP PACKAGE {package_name}{END_OF_SENTENCE}"
+
+        execute_immediate = f"DROP PACKAGE {package_name}"
+
+        drop_package = (f"BEGIN{LINEFEED}"
+                        f"    EXECUTE IMMEDIATE '{execute_immediate}';{LINEFEED}"
+                        f"EXCEPTION{LINEFEED}"
+                        f"    WHEN OTHERS THEN{LINEFEED}"
+                        f"        DBMS_OUTPUT.PUT_LINE('Error dropping public object: ' || SQLERRM);{LINEFEED}"
+                        f"END;{LINEFEED}"
+                        f"/{LINEFEED}")
+
+        drop_object_section += drop_package
 
         ## FOOTER SECTION
         footer_section = build_footer_section(filename)
