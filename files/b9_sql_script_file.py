@@ -406,7 +406,7 @@ def build_delete_table_script_data(requested_environment: DatabaseEnvironment) -
                 drop_synonyms=value.get("drop_synonyms"))
 
             # Start with the fixed parts of the filename
-            filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_TABLE.value}{table_name}", object_owner, "TBL"]
+            filename_parts = [f"{SqlScriptFilenamePrefix.ROLLBACK_TABLE.value}{table_name}", object_owner, "TBL"]
 
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
@@ -789,7 +789,7 @@ def build_delete_sequences_script_data(requested_environment: DatabaseEnvironmen
 
             sequences_script = build_drop_sequence_with_error_handling(sequence_name=object_name)
 
-            filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_SEQUENCE.value}{object_name}", object_owner, "SEQ"]
+            filename_parts = [f"{SqlScriptFilenamePrefix.ROLLBACK_SEQUENCE.value}{object_name}", object_owner, "SEQ"]
 
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
@@ -947,7 +947,7 @@ def build_delete_package_script_data(requested_environment: DatabaseEnvironment)
         ## create PACKAGE filename
         ## "CREATE_PACKAGE_nameOfPackage.{package_owner}.{PK}.{GNT}.{SYN}.sql
 
-        filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_PACKAGE.value}{package_name}", package_owner, "PK"]
+        filename_parts = [f"{SqlScriptFilenamePrefix.ROLLBACK_PACKAGE.value}{package_name}", package_owner, "PK"]
 
         # Join all parts with a dot and add the file extension
         filename = ".".join(filename_parts) + ".sql"
@@ -1207,7 +1207,7 @@ def build_delete_trigger_script_data(requested_environment):
             custom_trigger_section = build_drop_trigger_section(trigger=value.get("trigger", {}))
 
             # Start with the fixed parts of the filename
-            filename_parts = [f"{SqlScriptFilenamePrefix.DELETE_TRIGGER.value}{trigger_name}", trigger_owner, "TR"]
+            filename_parts = [f"{SqlScriptFilenamePrefix.ROLLBACK_TRIGGER.value}{trigger_name}", trigger_owner, "TR"]
 
             # Join all parts with a dot and add the file extension
             filename = ".".join(filename_parts) + ".sql"
