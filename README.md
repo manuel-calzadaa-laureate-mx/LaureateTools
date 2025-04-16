@@ -112,3 +112,11 @@ This consist in several use phases:
 - [x] Execute install scripts in order
 - [x] Execute rollback scripts in order
 - [x] Add idempotent rollback scripts
+
+## 1.3.1 FIXES
+
+- [x] change filename prefix
+
+## 1.4.X IMPROVE PACKAGE DETECTION PROCESS
+
+-[] Find more packages
