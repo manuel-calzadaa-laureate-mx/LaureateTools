@@ -2,7 +2,7 @@ import logging
 import os
 
 from db.database_properties import DatabaseEnvironment
-from db.datasource.functions_datasource import get_packaged_object_owner, get_independent_object_owners
+from db.datasource.functions_datasource import get_public_package_object_owner, get_independent_object_owners
 from db.datasource.procedures_datasource import query_sources
 from db.oracle_database_tools import OracleDBConnectionPool
 from files.source_code_file import get_source_code_folder
@@ -70,7 +70,7 @@ def _find_missing_data_to_add(objects: list[dict], db_pool: OracleDBConnectionPo
     for one_object in objects:
         logging.info(f"Processing function: {one_object}")
         if one_object["PACKAGE"]:
-            result = get_packaged_object_owner(db_pool=db_pool, object_dict=one_object)
+            result = get_public_package_object_owner(db_pool=db_pool, object_dict=one_object)
             logging.info(f"packaged object: {result}")
             if result is None:
                 logging.info(f"Could not retrieve owner/package/procedure for {one_object}")

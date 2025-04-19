@@ -1,7 +1,32 @@
 from db.oracle_database_tools import OracleDBConnectionPool
 
 
-def get_packaged_object_owner(object_dict: dict, db_pool: OracleDBConnectionPool) -> tuple:
+def get_private_package_object_owner(object_dict: dict, db_pool: OracleDBConnectionPool) -> tuple:
+    """Retrieve the owner, package, and procedure for packaged objects."""
+
+    with db_pool.get_connection() as connection:
+        object_name = object_dict["NAME"]
+        package_name = object_dict["PACKAGE"]
+
+        query = """
+        SELECT owner, object_name, :object_name
+        FROM all_procedures
+        WHERE object_name = :package_name
+        """
+
+        cursor = connection.cursor()
+        cursor.execute(query, {"object_name": object_name, "package_name": package_name})
+        result = cursor.fetchone()
+
+        if result is None:
+            return None
+
+        # Unpack the result and replace the third element with our fixed object_name
+        owner, package, _ = result
+        return owner, package, object_name
+
+
+def get_public_package_object_owner(object_dict: dict, db_pool: OracleDBConnectionPool) -> tuple:
     """Retrieve the owner, package, and procedure for packaged objects."""
 
     with db_pool.get_connection() as connection:

@@ -3,7 +3,8 @@ import os
 from typing import List, Dict
 
 from db.database_properties import DatabaseEnvironment
-from db.datasource.functions_datasource import get_packaged_object_owner, get_independent_object_owners
+from db.datasource.functions_datasource import get_public_package_object_owner, get_independent_object_owners, \
+    get_private_package_object_owner
 from db.datasource.procedures_datasource import query_sources
 from db.oracle_database_tools import OracleDBConnectionPool
 from files.source_code_file import get_source_code_folder
@@ -74,10 +75,14 @@ def _find_missing_data_to_add(objects: list[dict],
     for one_object in objects:
         logging.info(f"Processing function: {one_object}")
         if one_object["PACKAGE"]:
-            result = get_packaged_object_owner(object_dict=one_object, db_pool=db_pool)
-            logging.info(f"packaged object: {result}")
+            result = get_public_package_object_owner(object_dict=one_object, db_pool=db_pool)
+
+            if result is None:
+                result = get_private_package_object_owner(object_dict=one_object, db_pool=db_pool)
+
             if result is None:
                 logging.info(f"Could not retrieve owner/package/procedure for {one_object}")
+
                 # check if package is really the owner
                 all_owners = get_all_current_owners(db_pool=db_pool)
                 # retrieve the "package" value
